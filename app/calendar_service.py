@@ -161,6 +161,78 @@ def listar_huecos_libres(
     return slots
 
 
+def listar_huecos_por_peluqueros(
+    fecha_desde: datetime,
+    fecha_hasta: datetime,
+    duracion_minutos: int,
+    peluqueros: list[dict],
+    tenant_id: str = "default",
+    horario_apertura: tuple[time, time] = (time(9, 0), time(20, 0)),
+) -> list[dict]:
+    """Huecos libres teniendo en cuenta varios peluqueros a la vez.
+
+    Cada peluquero es un dict con keys: nombre, calendar_id, dias_trabajo
+    (lista de weekday de Python: 0=lunes..6=domingo).
+
+    Un slot está disponible para un peluquero si:
+      - El día de la semana está en su dias_trabajo.
+      - No hay eventos que solapen en su calendario propio.
+    """
+    if not peluqueros:
+        return []
+
+    svc = _service(tenant_id)
+    body = {
+        "timeMin": fecha_desde.isoformat() + "Z",
+        "timeMax": fecha_hasta.isoformat() + "Z",
+        "timeZone": settings.default_timezone,
+        "items": [{"id": p["calendar_id"]} for p in peluqueros],
+    }
+    fb = svc.freebusy().query(body=body).execute()
+    busy_por_cal: dict[str, list[tuple[datetime, datetime]]] = {}
+    for cal_id, info in fb["calendars"].items():
+        periodos = [
+            (datetime.fromisoformat(p["start"].replace("Z", "+00:00")),
+             datetime.fromisoformat(p["end"].replace("Z", "+00:00")))
+            for p in info.get("busy", [])
+        ]
+        periodos.sort()
+        busy_por_cal[cal_id] = periodos
+
+    delta = timedelta(minutes=duracion_minutos)
+    resultados: list[dict] = []
+
+    day = fecha_desde.date()
+    end_day = fecha_hasta.date()
+    while day <= end_day:
+        start_dt = datetime.combine(day, horario_apertura[0])
+        end_dt = datetime.combine(day, horario_apertura[1])
+        cursor = start_dt
+        while cursor + delta <= end_dt:
+            slot_end = cursor + delta
+            for p in peluqueros:
+                dias = p.get("dias_trabajo") or list(range(7))
+                if day.weekday() not in dias:
+                    continue
+                busy = busy_por_cal.get(p["calendar_id"], [])
+                collision = any(
+                    not (slot_end <= b_start.replace(tzinfo=None)
+                         or cursor >= b_end.replace(tzinfo=None))
+                    for b_start, b_end in busy
+                )
+                if not collision:
+                    resultados.append({
+                        "inicio": cursor,
+                        "fin": slot_end,
+                        "peluquero": p["nombre"],
+                        "calendar_id": p["calendar_id"],
+                    })
+            cursor += delta
+        day += timedelta(days=1)
+
+    return resultados
+
+
 def crear_evento(
     titulo: str,
     inicio: datetime,
