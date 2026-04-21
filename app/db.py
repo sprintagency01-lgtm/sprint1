@@ -12,6 +12,7 @@ Diseñado para que el bot y el CMS compartan la misma BD (data.db).
 from __future__ import annotations
 
 import json
+import pathlib
 from datetime import datetime
 from typing import Any, Optional
 
@@ -24,6 +25,21 @@ from sqlalchemy.orm import (
 )
 
 from .config import settings
+
+
+def _ensure_sqlite_dir(url: str) -> None:
+    """Si la BD vive en una ruta absoluta (p.ej. volumen de Railway:
+    /app/data/data.db), nos aseguramos de que el directorio exista.
+    SQLAlchemy no crea carpetas automáticamente y SQLite fallaría."""
+    if url.startswith("sqlite:///"):
+        path = url.replace("sqlite:///", "", 1)
+        if path:
+            parent = pathlib.Path(path).parent
+            if str(parent) not in ("", "."):
+                parent.mkdir(parents=True, exist_ok=True)
+
+
+_ensure_sqlite_dir(settings.database_url)
 
 engine = create_engine(settings.database_url, echo=False, future=True)
 

@@ -23,8 +23,15 @@ log = logging.getLogger("bot")
 app = FastAPI(title="Bot reservas WhatsApp + CMS")
 
 # Bootstrap del usuario admin en arranque (si ADMIN_EMAIL + ADMIN_PASSWORD están
-# definidos y no existe todavía). Safe: si faltan vars solo avisa.
-ensure_admin_user()
+# definidos y no existe todavía). Si algo falla aquí (p.ej. versión de bcrypt
+# incompatible) seguimos levantando el servidor para poder diagnosticar — el
+# panel /admin avisará con un login fallido, pero / y /whatsapp siguen vivos.
+try:
+    ensure_admin_user()
+    log.info("Bootstrap admin: OK")
+except Exception:
+    log.exception("Bootstrap del admin falló — el servidor arranca igual, "
+                  "pero el login del CMS no funcionará hasta que se arregle.")
 
 # Monta el CMS bajo /admin (las rutas ya incluyen el prefijo).
 app.include_router(cms_router)
