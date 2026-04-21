@@ -314,9 +314,16 @@ async def dashboard(request: Request, uid: int = Depends(auth.current_user_id)):
 # ==========================================================================
 
 @router.get("/admin/clientes", response_class=HTMLResponse)
-async def clients_list(request: Request, uid: int = Depends(auth.current_user_id)):
+async def clients_list(
+    request: Request,
+    kind: Optional[str] = None,
+    uid: int = Depends(auth.current_user_id),
+):
     with Session(db_module.engine) as s:
-        tenants = s.query(db_module.Tenant).order_by(db_module.Tenant.name).all()
+        q = s.query(db_module.Tenant)
+        if kind in ("lead", "contracted"):
+            q = q.filter(db_module.Tenant.kind == kind)
+        tenants = q.order_by(db_module.Tenant.kind.desc(), db_module.Tenant.name).all()
         rows = []
         for t in tenants:
             m = _metrics_for_tenant(s, t.id)
@@ -325,11 +332,20 @@ async def clients_list(request: Request, uid: int = Depends(auth.current_user_id
                 "m": m,
                 "delta_tokens": _delta_pct(m["tokens_30d"], m["tokens_prev"]),
             })
+
+        # Contadores para pestañas de filtro
+        counts = {
+            "all":        s.query(db_module.Tenant).count(),
+            "lead":       s.query(db_module.Tenant).filter(db_module.Tenant.kind == "lead").count(),
+            "contracted": s.query(db_module.Tenant).filter(db_module.Tenant.kind == "contracted").count(),
+        }
     return templates.TemplateResponse("clients_list.html", {
         "request": request,
         "user_email": auth.current_user_email(uid),
         "active": "clientes",
         "rows": rows,
+        "kind_filter": kind,
+        "counts": counts,
     })
 
 
@@ -489,6 +505,7 @@ async def client_save_general(
     name: str = Form(...),
     sector: str = Form(""),
     plan: str = Form("Básico"),
+    kind: str = Form("contracted"),
     contact_name: str = Form(""),
     contact_email: str = Form(""),
     phone_number_id: str = Form(""),
@@ -505,6 +522,8 @@ async def client_save_general(
         t.name = name
         t.sector = sector
         t.plan = plan
+        if kind in ("lead", "contracted"):
+            t.kind = kind
         t.contact_name = contact_name
         t.contact_email = contact_email
         t.phone_number_id = phone_number_id

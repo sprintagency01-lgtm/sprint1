@@ -74,6 +74,10 @@ class Tenant(Base):
     name: Mapped[str] = mapped_column(String(200))
     sector: Mapped[str] = mapped_column(String(120), default="")
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | paused
+    # Etapa del cliente en el funnel:
+    #   lead       → vino del form de la landing, aún no contratado
+    #   contracted → cliente activo con el bot configurado
+    kind: Mapped[str] = mapped_column(String(20), default="contracted", index=True)
     plan: Mapped[str] = mapped_column(String(40), default="Básico")
 
     # Integraciones
@@ -141,6 +145,7 @@ class Tenant(Base):
             "name": self.name,
             "sector": self.sector,
             "status": self.status,
+            "kind": self.kind,
             "plan": self.plan,
             "phone_number_id": self.phone_number_id or None,
             "phone_display": self.phone_display,
@@ -267,6 +272,59 @@ class Lead(Base):
     ip: Mapped[str] = mapped_column(String(64), default="")
     user_agent: Mapped[str] = mapped_column(String(400), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+def _slug(s: str, maxlen: int = 32) -> str:
+    """Normaliza una cadena para usarla en un tenant_id (solo a-z0-9_)."""
+    import re as _re
+    import unicodedata as _ud
+    s = _ud.normalize("NFD", s)
+    s = "".join(c for c in s if _ud.category(c) != "Mn")
+    s = _re.sub(r"[^a-zA-Z0-9]+", "_", s.strip().lower()).strip("_")
+    return (s or "lead")[:maxlen]
+
+
+def upsert_tenant_from_lead(
+    *,
+    lead_id: int,
+    name: str,
+    phone: str,
+    email: str,
+    company: str,
+    sector: str,
+) -> str:
+    """Crea (o actualiza) un Tenant en estado 'lead' con los datos del form de
+    la landing. Devuelve el tenant_id."""
+    # Prioridad para el id: empresa > nombre > lead_id. Prefijo 'lead_' para
+    # distinguirlo visualmente y evitar colisionar con tenants contratados.
+    seed = _slug(company) or _slug(name) or f"nuevo_{lead_id}"
+    tid = f"lead_{seed}"
+
+    with Session(engine) as s:
+        # Si ya existe un tenant con ese id (porque el mismo negocio envió dos
+        # veces el form), actualizamos en vez de crear uno nuevo.
+        t = s.get(Tenant, tid)
+        if t is None:
+            # Añadir sufijo numérico si coincide con un tenant contratado (raro)
+            base = tid
+            i = 2
+            while s.get(Tenant, tid) is not None:
+                tid = f"{base}_{i}"
+                i += 1
+            t = Tenant(id=tid, kind="lead", status="paused")
+            s.add(t)
+
+        t.name = company or name or f"Lead {lead_id}"
+        t.sector = sector or t.sector
+        t.contact_name = name or t.contact_name
+        t.contact_email = email or t.contact_email
+        t.phone_display = phone or t.phone_display
+        # No tocamos phone_number_id / calendar_id / servicios: se configuran
+        # cuando promocionemos el lead a 'contracted'.
+        if not t.assistant_name:
+            t.assistant_name = "Asistente"
+        s.commit()
+        return tid
 
 
 def save_lead(

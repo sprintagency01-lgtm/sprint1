@@ -137,6 +137,19 @@ async def create_lead(
         log.exception("Error guardando lead")
         return JSONResponse({"error": "Error interno. Inténtalo en un momento."}, status_code=500)
 
+    # También crea un tenant en estado 'lead' (paused) con el email de contacto.
+    # Este tenant es el que aparecerá en /admin/clientes y podrás promocionar a
+    # 'contracted' cuando cierres el deal.
+    try:
+        db.upsert_tenant_from_lead(
+            lead_id=lead_id,
+            name=name, phone=phone, email=email,
+            company=company, sector=sector,
+        )
+    except Exception:
+        # No rompemos la respuesta al usuario si esto falla
+        log.exception("Error creando tenant desde lead")
+
     return {"ok": True, "id": lead_id}
 
 
