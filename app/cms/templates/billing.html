@@ -1,0 +1,63 @@
+{% extends "_layout.html" %}
+{% import "_layout.html" as ui %}
+{% block title %}Facturación · ReservaBot{% endblock %}
+{% block breadcrumb %}<span class="text-slate-900 font-medium">Facturación</span>{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold tracking-tight">Facturación y consumo</h1>
+  <p class="text-slate-500 text-sm mt-1">Desglose del coste de API por cliente · últimos 30 días</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm text-slate-500">Gasto acumulado</div>
+    <div class="text-2xl font-semibold mt-1">{{ total_cost|fmt_eur }}</div>
+    <div class="text-xs text-slate-400 mt-1">API del modelo</div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm text-slate-500">Tokens totales</div>
+    <div class="text-2xl font-semibold mt-1">{{ total_tokens|fmt_tokens }}</div>
+    <div class="text-xs text-slate-400 mt-1">input + output</div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm text-slate-500">Clientes</div>
+    <div class="text-2xl font-semibold mt-1">{{ rows|length }}</div>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+  <div class="p-4 border-b border-slate-100">
+    <div class="text-sm font-semibold">Desglose por cliente</div>
+  </div>
+  <table class="w-full">
+    <thead class="bg-slate-50">
+      <tr class="text-left text-xs uppercase tracking-wider text-slate-500">
+        <th class="py-3 px-4 font-medium">Cliente</th>
+        <th class="py-3 px-4 font-medium">Plan</th>
+        <th class="py-3 px-4 font-medium">Tokens</th>
+        <th class="py-3 px-4 font-medium">Coste API</th>
+        <th class="py-3 px-4 font-medium">Cuota plan</th>
+        <th class="py-3 px-4 font-medium">Margen</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="border-t border-slate-100">
+        <td class="py-3 px-4">
+          <a href="/admin/clientes/{{ r.t.id }}/metricas" class="flex items-center gap-3 hover:opacity-80">
+            {{ ui.avatar(r.t.name) }}
+            <div class="font-medium">{{ r.t.name }}</div>
+          </a>
+        </td>
+        <td class="py-3 px-4 text-sm">{{ r.t.plan }}</td>
+        <td class="py-3 px-4 text-sm">{{ r.tokens|fmt_tokens }}</td>
+        <td class="py-3 px-4 text-sm">{{ r.cost|fmt_eur }}</td>
+        <td class="py-3 px-4 text-sm">{{ r.plan_price|fmt_eur }}</td>
+        <td class="py-3 px-4 text-sm font-medium {% if r.margin >= 0 %}text-emerald-700{% else %}text-rose-700{% endif %}">{{ r.margin|fmt_eur }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

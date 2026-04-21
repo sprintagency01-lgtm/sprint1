@@ -1,0 +1,39 @@
+# Variables de entorno y secretos
+.env
+.env.local
+.env.*.local
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+
+# Base de datos y tokens (persisten en el Volume de Railway, no en el repo)
+data.db
+*.db
+.tokens/
+
+# Logs
+*.log
+nohup.out
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Screenshots locales
+screens/

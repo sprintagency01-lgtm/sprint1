@@ -1,0 +1,170 @@
+{% extends "_layout.html" %}
+{% import "_layout.html" as ui %}
+{% block title %}Dashboard · ReservaBot{% endblock %}
+{% block breadcrumb %}<span class="text-slate-900 font-medium">Dashboard</span>{% endblock %}
+
+{% block topbar_actions %}
+<a href="/admin/clientes/new" class="hidden md:flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M12 5v14M5 12h14"/></svg>
+  Nuevo cliente
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex items-end justify-between flex-wrap gap-4">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight">Panel de administración</h1>
+    <p class="text-slate-500 text-sm mt-1">Resumen de los últimos 30 días</p>
+  </div>
+</div>
+
+<!-- KPI cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="flex items-center justify-between mb-3">
+      <div class="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>
+      </div>
+    </div>
+    <div class="text-sm text-slate-500">Clientes activos</div>
+    <div class="mt-1 text-2xl font-semibold tracking-tight">{{ active_tenants|length }}</div>
+    <div class="mt-1 text-xs text-slate-400">{{ tenants|length }} en total</div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="flex items-center justify-between mb-3">
+      <div class="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
+      </div>
+    </div>
+    <div class="text-sm text-slate-500">Conversaciones (30d)</div>
+    <div class="mt-1 text-2xl font-semibold tracking-tight">{{ total_convos|fmt_int }}</div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="flex items-center justify-between mb-3">
+      <div class="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17 9 11l4 4 8-8"/></svg>
+      </div>
+      {{ ui.delta_badge(total_tokens_delta, invert_good=true) }}
+    </div>
+    <div class="text-sm text-slate-500">Tokens consumidos</div>
+    <div class="mt-1 text-2xl font-semibold tracking-tight">{{ total_tokens|fmt_tokens }}</div>
+    <div class="mt-1 text-xs text-slate-400">vs {{ total_tokens_prev|fmt_tokens }} periodo anterior</div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="flex items-center justify-between mb-3">
+      <div class="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+    </div>
+    <div class="text-sm text-slate-500">Coste estimado</div>
+    <div class="mt-1 text-2xl font-semibold tracking-tight">{{ total_cost|fmt_eur }}</div>
+    <div class="mt-1 text-xs text-slate-400">API · últimos 30 días</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Consumo tokens -->
+  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
+    <div class="flex items-center justify-between mb-2">
+      <div>
+        <div class="text-sm font-medium text-slate-900">Consumo de tokens</div>
+        <div class="text-xs text-slate-500">Últimos 30 días · todos los clientes</div>
+      </div>
+      <div class="text-right">
+        <div class="text-2xl font-semibold tracking-tight">{{ total_tokens|fmt_tokens }}</div>
+      </div>
+    </div>
+    {{ ui.bar_chart(global_series) }}
+    <div class="flex justify-between text-xs text-slate-400 mt-2">
+      <span>hace 30d</span><span>hace 20d</span><span>hace 10d</span><span>hoy</span>
+    </div>
+  </div>
+
+  <!-- Últimas conversaciones -->
+  <div class="bg-white rounded-xl border border-slate-200 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-sm font-medium">Últimas conversaciones</div>
+      <a href="/admin/conversaciones" class="text-xs text-brand-700 hover:underline">Ver todas</a>
+    </div>
+    {% if recent %}
+    <ul class="space-y-3">
+      {% for r in recent %}
+      <li class="flex items-start gap-3">
+        {{ ui.avatar(r.phone) }}
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-medium truncate">{{ r.phone }}</div>
+          <div class="text-xs text-slate-500 truncate">{{ r.tenant.name if r.tenant else '—' }}</div>
+        </div>
+        <a class="text-xs text-brand-700 hover:underline" href="/admin/conversaciones?tenant={{ r.tenant.id if r.tenant }}&phone={{ r.phone }}">abrir</a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="text-sm text-slate-400 py-8 text-center">Aún no hay conversaciones.</div>
+    {% endif %}
+  </div>
+
+  <!-- Ranking -->
+  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-sm font-medium">Consumo por cliente</div>
+      <a href="/admin/clientes" class="text-xs text-brand-700 hover:underline">Ver todos</a>
+    </div>
+    {% if ranking %}
+    <div class="space-y-4">
+      {% for r in ranking %}
+        {% set pct = (r.m.tokens_30d / max_rank_tokens * 100) if max_rank_tokens > 0 else 0 %}
+        <a href="/admin/clientes/{{ r.tenant.id }}/general" class="block group">
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-3">
+              {{ ui.avatar(r.tenant.name) }}
+              <div>
+                <div class="text-sm font-medium group-hover:text-brand-700">{{ r.tenant.name }}</div>
+                <div class="text-xs text-slate-500">{{ r.tenant.sector or '—' }}</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-semibold">{{ r.m.tokens_30d|fmt_tokens }} tokens</div>
+              <div class="text-xs text-slate-500">{{ r.m.cost_30d|fmt_eur }} · {{ r.m.convos_30d }} convs.</div>
+            </div>
+          </div>
+          <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+            <div class="h-full bg-brand-500 rounded-full" style="width: {{ '%.0f'|format(pct) }}%"></div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-sm text-slate-400 py-8 text-center">Sin datos aún. Las métricas aparecerán cuando el bot empiece a recibir mensajes.</div>
+    {% endif %}
+  </div>
+
+  <!-- Estado del sistema -->
+  <div class="bg-white rounded-xl border border-slate-200 p-6">
+    <div class="text-sm font-medium mb-4">Estado del sistema</div>
+    <ul class="space-y-3 text-sm">
+      <li class="flex gap-3 items-start">
+        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <div>
+          <div class="font-medium">Webhook activo</div>
+          <div class="text-xs text-slate-500">/whatsapp recibiendo eventos.</div>
+        </div>
+      </li>
+      <li class="flex gap-3 items-start">
+        <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        </div>
+        <div>
+          <div class="font-medium">Base de datos</div>
+          <div class="text-xs text-slate-500">{{ tenants|length }} tenants · {{ total_convos|fmt_int }} conversaciones (30d)</div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

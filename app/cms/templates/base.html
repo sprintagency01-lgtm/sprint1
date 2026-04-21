@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{% block title %}ReservaBot · Panel{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','-apple-system','Segoe UI','Roboto','sans-serif'] },
+      colors: { brand: {
+        50:'#ecfdf5',100:'#d1fae5',200:'#a7f3d0',500:'#10b981',600:'#059669',700:'#047857',900:'#064e3b',
+      } }
+    } }
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+  .nav-item.active { background:#f1f5f9; color:#0f172a; font-weight:600; }
+  .nav-item.active svg { color:#059669; }
+  .tab-btn.active { color:#0f172a; border-color:#059669; }
+  .chat-bubble-in  { background:#f1f5f9; border-radius:14px 14px 14px 4px; }
+  .chat-bubble-out { background:#d1fae5; border-radius:14px 14px 4px 14px; }
+  .fade-in { animation: fadeIn .2s ease-out; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform: translateY(0);} }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+{% block body %}{% endblock %}
+</body>
+</html>

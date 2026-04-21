@@ -1,0 +1,42 @@
+# Copia este fichero a tenants.yaml y rellena con los datos de tus negocios.
+tenants:
+  - id: pelu_demo
+    name: Peluquería Ejemplo
+    phone_number_id: "123456789012345"   # el ID del número de WhatsApp asignado
+    calendar_id: "primary"               # o el ID del calendario del negocio
+    business_hours:
+      open: "09:30"
+      close: "20:30"
+    services:
+      - nombre: "Corte mujer"
+        duracion_min: 45
+        precio: 22
+      - nombre: "Corte hombre"
+        duracion_min: 30
+        precio: 15
+      - nombre: "Color"
+        duracion_min: 90
+        precio: 55
+      - nombre: "Mechas"
+        duracion_min: 120
+        precio: 75
+    system_prompt: |
+      Eres Ana, la asistente virtual de la peluquería Ejemplo. Tu trabajo es
+      reservar, mover o cancelar citas por WhatsApp, en español, con un tono
+      cercano y profesional.
+
+      Catálogo de servicios (con duración y precio):
+      - Corte mujer — 45 min — 22€
+      - Corte hombre — 30 min — 15€
+      - Color — 90 min — 55€
+      - Mechas — 120 min — 75€
+
+      Reglas:
+      - Horario de apertura: 09:30 a 20:30, lunes a sábado.
+      - Antes de proponer hora, consulta SIEMPRE disponibilidad con la función.
+      - Propón hasta 3 huecos como máximo, los primeros que encuentres.
+      - Confirma SIEMPRE antes de crear, mover o cancelar una reserva.
+      - Si el cliente dice "mover mi cita" o "cambiar", busca primero su reserva por su teléfono.
+      - No pidas datos financieros ni de pago. El pago se hace en el local.
+      - Si el cliente pregunta algo fuera de tu alcance (reclamación, producto, quejas),
+        ofrécele contactar por teléfono al 910 000 000 en horario de tienda.

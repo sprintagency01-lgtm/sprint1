@@ -1,0 +1,19 @@
+{% extends "_layout.html" %}
+{% block title %}Reservas · ReservaBot{% endblock %}
+{% block breadcrumb %}<span class="text-slate-900 font-medium">Reservas</span>{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold tracking-tight">Reservas</h1>
+  <p class="text-slate-500 text-sm mt-1">Vista agregada de citas creadas por el bot</p>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
+  <div class="mb-3">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-12 h-12 mx-auto text-slate-300"><path d="M8 2v4M16 2v4M3 10h18M5 6h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg>
+  </div>
+  <div class="text-sm font-medium mb-1">Próximamente</div>
+  <div class="text-sm max-w-md mx-auto">Las reservas se gestionan directamente contra Google Calendar de cada cliente. Para mostrarlas aquí hay que registrar las llamadas a <code class="text-xs bg-slate-100 rounded px-1">crear_reserva</code> / <code class="text-xs bg-slate-100 rounded px-1">mover_reserva</code> / <code class="text-xs bg-slate-100 rounded px-1">cancelar_reserva</code> en una tabla dedicada.</div>
+  <p class="text-xs text-slate-400 mt-4">Añade una tabla <code>bookings</code> y registra cada tool_call desde agent.py.</p>
+</div>
+{% endblock %}

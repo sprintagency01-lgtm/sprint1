@@ -1,0 +1,74 @@
+{% extends "_layout.html" %}
+{% import "_layout.html" as ui %}
+{% block title %}Clientes · ReservaBot{% endblock %}
+{% block breadcrumb %}<span class="text-slate-900 font-medium">Clientes</span>{% endblock %}
+
+{% block topbar_actions %}
+<a href="/admin/clientes/new" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M12 5v14M5 12h14"/></svg>
+  Nuevo cliente
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold tracking-tight">Clientes</h1>
+  <p class="text-slate-500 text-sm mt-1">{{ rows|length }} negocios</p>
+</div>
+
+{% if rows %}
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
+  <table class="w-full min-w-[900px]">
+    <thead class="bg-slate-50">
+      <tr class="text-left text-xs uppercase tracking-wider text-slate-500">
+        <th class="py-3 px-4 font-medium">Cliente</th>
+        <th class="py-3 px-4 font-medium">Estado</th>
+        <th class="py-3 px-4 font-medium">Plan</th>
+        <th class="py-3 px-4 font-medium">Conversaciones</th>
+        <th class="py-3 px-4 font-medium">Tokens 30d</th>
+        <th class="py-3 px-4 font-medium">Coste 30d</th>
+        <th class="py-3 px-4 font-medium">Tendencia</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onclick="location.href='/admin/clientes/{{ r.t.id }}/general'">
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-3">
+            {{ ui.avatar(r.t.name) }}
+            <div>
+              <div class="font-medium text-slate-900">{{ r.t.name }}</div>
+              <div class="text-xs text-slate-500">{{ r.t.sector or '—' }}{% if r.t.phone_display %} · {{ r.t.phone_display }}{% endif %}</div>
+            </div>
+          </div>
+        </td>
+        <td class="py-3 px-4">{{ ui.status_badge(r.t.status) }}</td>
+        <td class="py-3 px-4 text-sm">{{ r.t.plan }}</td>
+        <td class="py-3 px-4 text-sm font-medium">{{ r.m.convos_30d }}</td>
+        <td class="py-3 px-4">
+          <div class="text-sm font-medium">{{ r.m.tokens_30d|fmt_tokens }}</div>
+          <div class="text-xs text-slate-500">{{ ui.delta_badge(r.delta_tokens, invert_good=true) }}</div>
+        </td>
+        <td class="py-3 px-4 text-sm font-medium">{{ r.m.cost_30d|fmt_eur }}</td>
+        <td class="py-3 px-4 w-32">
+          <div class="w-28">{{ ui.sparkline(r.m.series) }}</div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-white border border-slate-200 rounded-xl p-12 text-center">
+  <div class="text-slate-400 mb-2">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-12 h-12 mx-auto"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>
+  </div>
+  <div class="text-sm font-medium mb-1">Aún no tienes clientes</div>
+  <div class="text-sm text-slate-500 mb-4">Crea el primer negocio para empezar a configurar su bot.</div>
+  <a href="/admin/clientes/new" class="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M12 5v14M5 12h14"/></svg>
+    Nuevo cliente
+  </a>
+</div>
+{% endif %}
+{% endblock %}

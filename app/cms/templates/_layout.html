@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% macro nav_link(href, label, key, active, icon) %}
+<a href="{{ href }}" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-50 {% if active == key %}active{% endif %}">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5">{{ icon|safe }}</svg>
+  {{ label }}
+</a>
+{% endmacro %}
+
+{% macro avatar(name) %}
+<div class="w-9 h-9 rounded-lg {{ name|avatar_color }} flex items-center justify-center font-semibold text-sm shrink-0">{{ name|initials }}</div>
+{% endmacro %}
+
+{% macro status_badge(status) %}
+  {% if status == 'active' %}
+    <span class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Activo</span>
+  {% elif status == 'paused' %}
+    <span class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Pausado</span>
+  {% else %}
+    <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">—</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro delta_badge(pct, invert_good=false) %}
+  {% set positive = (pct < 0) if invert_good else (pct > 0) %}
+  {% if pct == 0 %}
+    <span class="text-xs px-1.5 py-0.5 rounded text-slate-500 bg-slate-100 font-medium">— 0%</span>
+  {% elif positive %}
+    <span class="text-xs px-1.5 py-0.5 rounded text-emerald-700 bg-emerald-50 font-medium">{% if pct > 0 %}↑{% else %}↓{% endif %} {{ pct|abs }}%</span>
+  {% else %}
+    <span class="text-xs px-1.5 py-0.5 rounded text-rose-700 bg-rose-50 font-medium">{% if pct > 0 %}↑{% else %}↓{% endif %} {{ pct|abs }}%</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro bar_chart(series, color='#059669') %}
+  {% set max_v = (series|max) if series and (series|max) > 0 else 1 %}
+  {% set n = series|length %}
+  <svg viewBox="0 0 600 160" class="w-full h-40" preserveAspectRatio="none">
+    {% for v in series %}
+      {% set bar_h = (v / max_v) * 140 %}
+      {% set bar_w = 600 / n - 3 %}
+      {% set x = loop.index0 * (600 / n) %}
+      {% set y = 160 - bar_h %}
+      {% set opacity = 0.4 + (v / max_v) * 0.5 %}
+      <rect x="{{ x }}" y="{{ y }}" width="{{ bar_w }}" height="{{ bar_h }}" rx="2" fill="{{ color }}" fill-opacity="{{ '%.2f'|format(opacity) }}"/>
+    {% endfor %}
+  </svg>
+{% endmacro %}
+
+{% macro sparkline(series, color='#059669') %}
+  {% set max_v = (series|max) if series and (series|max) > 0 else 1 %}
+  {% set min_v = (series|min) if series else 0 %}
+  {% set rng = (max_v - min_v) if (max_v - min_v) > 0 else 1 %}
+  {% set n = series|length %}
+  {% set step = 200 / (n - 1) if n > 1 else 0 %}
+  <svg viewBox="0 0 200 48" class="w-full h-12" preserveAspectRatio="none">
+    <polyline points="{% for v in series %}{{ '%.1f'|format(loop.index0 * step) }},{{ '%.1f'|format(48 - ((v - min_v)/rng)*48) }} {% endfor %}" fill="none" stroke="{{ color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+{% endmacro %}
+
+{% block body %}
+<div class="flex min-h-screen">
+  <aside class="hidden md:flex w-64 shrink-0 border-r border-slate-200 bg-white flex-col">
+    <div class="px-6 h-16 flex items-center gap-2 border-b border-slate-200">
+      <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-4 4v-4Z"/></svg>
+      </div>
+      <div class="font-semibold">ReservaBot</div>
+      <span class="ml-auto text-[10px] uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Admin</span>
+    </div>
+
+    <nav class="flex-1 p-3 space-y-1">
+      {{ nav_link('/admin/dashboard',     'Dashboard',      'dashboard',     active, '<path stroke-linecap="round" stroke-linejoin="round" d="M3 12 12 3l9 9M5 10v10h4v-6h6v6h4V10"/>') }}
+      {{ nav_link('/admin/clientes',      'Clientes',       'clientes',      active, '<path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM16 3.13a4 4 0 0 1 0 7.75"/>') }}
+      {{ nav_link('/admin/conversaciones','Conversaciones', 'conversaciones',active, '<path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>') }}
+      {{ nav_link('/admin/reservas',      'Reservas',       'reservas',      active, '<path stroke-linecap="round" stroke-linejoin="round" d="M8 2v4M16 2v4M3 10h18M5 6h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/>') }}
+      {{ nav_link('/admin/facturacion',   'Facturación',    'facturacion',   active, '<path stroke-linecap="round" stroke-linejoin="round" d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>') }}
+      <div class="pt-4 pb-1 px-3 text-[11px] uppercase tracking-wider text-slate-400">Configuración</div>
+      {{ nav_link('/admin/ajustes',       'Ajustes',        'ajustes',       active, '<path stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>') }}
+    </nav>
+
+    <div class="p-3 border-t border-slate-200">
+      <div class="flex items-center gap-3 px-2 py-2">
+        <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-medium">
+          {{ (user_email or '?')[0]|upper }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate">{{ user_email }}</div>
+          <a href="/admin/logout" class="text-xs text-slate-500 hover:text-brand-700">Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 min-w-0">
+    <header class="h-16 bg-white border-b border-slate-200 px-4 md:px-8 flex items-center gap-3 sticky top-0 z-10">
+      <div class="text-sm text-slate-500 flex items-center gap-2">
+        {% block breadcrumb %}{% endblock %}
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        {% block topbar_actions %}{% endblock %}
+      </div>
+    </header>
+
+    <div class="p-4 md:p-8 fade-in">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+<form method="post" action="/admin/clientes" class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
+  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
+    <h2 class="text-sm font-semibold mb-4">Datos del negocio</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">ID interno (tenant_id)*</label>
+        <input name="id" required placeholder="pelu_bella" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:border-brand-500"/>
+        <div class="text-xs text-slate-400 mt-1">Solo letras minúsculas, números y _</div>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Nombre comercial*</label>
+        <input name="name" required placeholder="Peluquería Bella" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-brand-500"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Sector</label>
+        <input name="sector" placeholder="Peluquería" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Plan</label>
+        <select name="plan" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
+          <option>Básico</option><option>Profesional</option><option>Premium</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Persona de contacto</label>
+        <input name="contact_name" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Email de contacto</label>
+        <input name="contact_email" type="email" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
+    <h2 class="text-sm font-semibold mb-4">Integraciones</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">WhatsApp Phone Number ID</label>
+        <input name="phone_number_id" placeholder="108923456789012" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Número visible</label>
+        <input name="phone_display" placeholder="+34 910 000 000" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Google Calendar ID</label>
+        <input name="calendar_id" value="primary" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Zona horaria</label>
+        <select name="timezone" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
+          <option>Europe/Madrid</option><option>Europe/Lisbon</option><option>Europe/London</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Idioma</label>
+        <select name="language" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
+          <option>Español</option><option>Catalán</option><option>Inglés</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="lg:col-span-2 flex items-center justify-end gap-2">
+    <a href="/admin/clientes" class="text-sm px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">Cancelar</a>
+    <button class="text-sm px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium">Crear cliente</button>
+  </div>
+</form>

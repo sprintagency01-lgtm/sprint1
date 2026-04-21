@@ -1,0 +1,130 @@
+{% set tones = [('cercano','Cercano'),('profesional','Profesional'),('juvenil','Juvenil'),('calido','Cálido'),('formal','Formal')] %}
+
+<form method="post" action="/admin/clientes/{{ t.id }}/personalizacion" class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+  <!-- Editor -->
+  <div class="lg:col-span-3 space-y-6">
+
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+      <h2 class="text-sm font-semibold mb-4">Identidad del asistente</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-medium text-slate-700 mb-1 block">Nombre del asistente</label>
+          <input name="assistant_name" value="{{ t.assistant_name }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-brand-500"/>
+          <div class="text-xs text-slate-400 mt-1">Aparece en el saludo y firma las respuestas.</div>
+        </div>
+      </div>
+
+      <div class="mt-5">
+        <label class="text-xs font-medium text-slate-700 mb-2 block">Tono de voz</label>
+        <div class="flex flex-wrap gap-2" id="tone-chips">
+          {% for tn_id, tn_label in tones %}
+            <button type="button" data-tone="{{ tn_id }}" class="tone-chip px-3 py-1.5 rounded-full border text-sm {% if t.assistant_tone == tn_id %}border-brand-500 bg-brand-50 text-brand-700 font-medium{% else %}border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">{{ tn_label }}</button>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="assistant_tone" id="assistant_tone" value="{{ t.assistant_tone }}"/>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-medium text-slate-700 mb-2 block">Tratamiento</label>
+          <div class="flex rounded-lg border border-slate-200 overflow-hidden w-fit" id="formality-toggle">
+            <button type="button" data-v="tu" class="formality-btn px-4 py-1.5 text-sm {% if t.assistant_formality == 'tu' %}bg-slate-900 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Tú</button>
+            <button type="button" data-v="usted" class="formality-btn px-4 py-1.5 text-sm {% if t.assistant_formality == 'usted' %}bg-slate-900 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Usted</button>
+          </div>
+          <input type="hidden" name="assistant_formality" id="assistant_formality" value="{{ t.assistant_formality }}"/>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-700 mb-2 block">Emojis</label>
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <div class="relative">
+              <input type="checkbox" name="assistant_emoji" {% if t.assistant_emoji %}checked{% endif %} class="sr-only peer"/>
+              <div class="w-9 h-5 rounded-full bg-slate-200 peer-checked:bg-brand-500 transition"></div>
+              <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition peer-checked:translate-x-4"></div>
+            </div>
+            <span class="text-sm text-slate-600">Usar emojis con moderación</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+      <h2 class="text-sm font-semibold mb-4">Mensajes clave</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-medium text-slate-700 mb-1 block">Saludo inicial</label>
+          <textarea name="assistant_greeting" rows="3" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-brand-500">{{ t.assistant_greeting }}</textarea>
+          <div class="text-xs text-slate-400 mt-1">Primer mensaje que enviará el bot.</div>
+        </div>
+        <div>
+          <label class="text-xs font-medium text-slate-700 mb-1 block">Teléfono de fallback</label>
+          <input name="assistant_fallback_phone" value="{{ t.assistant_fallback_phone }}" placeholder="910 000 000" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"/>
+          <div class="text-xs text-slate-400 mt-1">Se ofrece si el bot no puede resolver la petición.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+      <h2 class="text-sm font-semibold mb-2">Reglas específicas</h2>
+      <p class="text-xs text-slate-500 mb-3">Una regla por línea. Se añaden al <code>system_prompt</code>.</p>
+      <textarea name="assistant_rules" rows="8" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:border-brand-500" placeholder="Urgencias: derivar al teléfono&#10;Confirmar alergias antes de reservar">{{ t.assistant_rules|join('\n') }}</textarea>
+    </div>
+
+    <details class="bg-white rounded-xl border border-slate-200 p-6">
+      <summary class="cursor-pointer text-sm font-semibold flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="m9 18 6-6-6-6"/></svg>
+        Avanzado: sobreescribir el prompt completo
+      </summary>
+      <p class="text-xs text-slate-500 mt-3 mb-2">Si rellenas este campo, se ignorarán el tono, reglas y saludo y se usará este texto literal como <code>system_prompt</code>.</p>
+      <textarea name="system_prompt_override" rows="10" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono">{{ t.system_prompt_override }}</textarea>
+    </details>
+
+    <div class="flex items-center justify-end">
+      <button type="submit" class="text-sm px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium">Guardar personalización</button>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="lg:col-span-2 space-y-6">
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+      <h2 class="text-sm font-semibold mb-3">Prompt generado</h2>
+      <p class="text-xs text-slate-500 mb-3">Esto es lo que recibirá el LLM en cada conversación.</p>
+      <pre class="text-xs bg-slate-900 text-slate-100 rounded-lg p-4 whitespace-pre-wrap max-h-[480px] overflow-auto">{{ prompt_preview }}</pre>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+      <h2 class="text-sm font-semibold mb-3">Vista previa del chat</h2>
+      <div class="bg-slate-50 rounded-xl p-4 space-y-2">
+        <div class="chat-bubble-in max-w-[80%] px-3 py-2 text-sm">Hola</div>
+        <div class="chat-bubble-out max-w-[80%] ml-auto px-3 py-2 text-sm">{{ t.assistant_greeting or '¡Hola! ¿Te ayudo a reservar?' }}</div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<script>
+document.querySelectorAll('.tone-chip').forEach(b => {
+  b.addEventListener('click', () => {
+    const v = b.dataset.tone;
+    document.getElementById('assistant_tone').value = v;
+    document.querySelectorAll('.tone-chip').forEach(x => {
+      x.classList.remove('border-brand-500','bg-brand-50','text-brand-700','font-medium');
+      x.classList.add('border-slate-200','text-slate-600','hover:bg-slate-50');
+    });
+    b.classList.remove('border-slate-200','text-slate-600','hover:bg-slate-50');
+    b.classList.add('border-brand-500','bg-brand-50','text-brand-700','font-medium');
+  });
+});
+
+document.querySelectorAll('.formality-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    const v = b.dataset.v;
+    document.getElementById('assistant_formality').value = v;
+    document.querySelectorAll('.formality-btn').forEach(x => {
+      x.classList.remove('bg-slate-900','text-white');
+      x.classList.add('text-slate-600','hover:bg-slate-50');
+    });
+    b.classList.remove('text-slate-600','hover:bg-slate-50');
+    b.classList.add('bg-slate-900','text-white');
+  });
+});
+</script>

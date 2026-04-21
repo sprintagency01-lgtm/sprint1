@@ -1,0 +1,38 @@
+{% import "_layout.html" as ui %}
+{% set m = metrics %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm text-slate-500">Conversaciones (30d)</div>
+    <div class="text-2xl font-semibold mt-1">{{ m.convos_30d }}</div>
+    {{ ui.delta_badge(metrics_deltas.convos) }}
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm text-slate-500">Tokens consumidos</div>
+    <div class="text-2xl font-semibold mt-1">{{ m.tokens_30d|fmt_tokens }}</div>
+    <div class="text-xs text-slate-400 mt-0.5">vs {{ m.tokens_prev|fmt_tokens }} ant.</div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm text-slate-500">Coste estimado</div>
+    <div class="text-2xl font-semibold mt-1">{{ m.cost_30d|fmt_eur }}</div>
+    <div class="text-xs text-slate-400 mt-0.5">últimos 30d</div>
+  </div>
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="text-sm text-slate-500">Coste/conversación</div>
+    <div class="text-2xl font-semibold mt-1">{% if m.convos_30d %}{{ (m.cost_30d / m.convos_30d)|fmt_eur }}{% else %}—{% endif %}</div>
+    <div class="text-xs text-slate-400 mt-0.5">media por cliente final</div>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 p-6">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <div class="text-sm font-semibold">Consumo de tokens diario</div>
+      <div class="text-xs text-slate-500">Últimos 30 días</div>
+    </div>
+  </div>
+  {{ ui.bar_chart(m.series) }}
+  <div class="flex justify-between text-xs text-slate-400 mt-2">
+    <span>hace 30d</span><span>hace 20d</span><span>hace 10d</span><span>hoy</span>
+  </div>
+</div>

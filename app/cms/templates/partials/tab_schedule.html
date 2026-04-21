@@ -1,0 +1,56 @@
+{% set day_labels = {'mon':'Lunes','tue':'Martes','wed':'Miércoles','thu':'Jueves','fri':'Viernes','sat':'Sábado','sun':'Domingo'} %}
+{% set hours = t.business_hours %}
+
+<form method="post" action="/admin/clientes/{{ t.id }}/horarios" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
+    <h2 class="text-sm font-semibold mb-1">Horario de atención</h2>
+    <p class="text-xs text-slate-500 mb-4">El bot solo propondrá huecos dentro de este horario.</p>
+
+    <div class="divide-y divide-slate-100">
+      {% for key, label in day_labels.items() %}
+        {% set h = hours.get(key) %}
+        {% set closed = (not h) or (h[0] == 'closed') %}
+        {% set open_v = (h[0] if (h and not closed) else '09:00') %}
+        {% set close_v = (h[1] if (h and not closed and h|length > 1) else '20:00') %}
+        <div class="flex items-center gap-4 py-3">
+          <div class="w-24 text-sm font-medium">{{ label }}</div>
+
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <div class="relative">
+              <input type="checkbox" name="{{ key }}_enabled" {% if not closed %}checked{% endif %} class="sr-only peer day-toggle" data-day="{{ key }}"/>
+              <div class="w-9 h-5 rounded-full bg-slate-200 peer-checked:bg-brand-500 transition"></div>
+              <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition peer-checked:translate-x-4"></div>
+            </div>
+          </label>
+
+          <div class="flex items-center gap-2 flex-1">
+            <input type="time" name="{{ key }}_open"  value="{{ open_v }}"  class="px-2 py-1 rounded border border-slate-200 text-sm {% if closed %}bg-slate-50 text-slate-400{% endif %}" {% if closed %}disabled{% endif %}/>
+            <span class="text-slate-400 text-sm">–</span>
+            <input type="time" name="{{ key }}_close" value="{{ close_v }}" class="px-2 py-1 rounded border border-slate-200 text-sm {% if closed %}bg-slate-50 text-slate-400{% endif %}" {% if closed %}disabled{% endif %}/>
+            {% if closed %}<span class="text-xs text-slate-400 ml-2">Cerrado</span>{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="mt-6 flex items-center justify-end">
+      <button type="submit" class="text-sm px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium">Guardar horario</button>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-6">
+    <h2 class="text-sm font-semibold mb-3">Consejo</h2>
+    <p class="text-sm text-slate-600">El horario se envía al prompt del bot como parte del contexto, para que proponga huecos coherentes. Si tienes turnos partidos puedes dejar solo el tramo principal: la función <code class="text-xs bg-slate-100 rounded px-1">consultar_disponibilidad</code> devuelve los huecos reales del calendario, respetando eventos existentes.</p>
+  </div>
+</form>
+
+<script>
+document.querySelectorAll('.day-toggle').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const day = cb.dataset.day;
+    const open = document.querySelector(`input[name="${day}_open"]`);
+    const close = document.querySelector(`input[name="${day}_close"]`);
+    [open, close].forEach(el => { el.disabled = !cb.checked; el.classList.toggle('bg-slate-50', !cb.checked); el.classList.toggle('text-slate-400', !cb.checked); });
+  });
+});
+</script>
