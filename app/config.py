@@ -39,5 +39,12 @@ class Settings:
     tenants_file: str = os.getenv("TENANTS_FILE", "./tenants.yaml")
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
 
+    # ElevenLabs Conversational AI
+    # Secreto compartido que ElevenLabs envía en X-Tool-Secret al llamar a
+    # /tools/*. Si está vacío los endpoints devuelven 500 como seguro.
+    tool_secret: str = os.getenv("TOOL_SECRET", "")
+    # ID del agente en ElevenLabs (se guarda tras crear con scripts/setup_elevenlabs_agent.py).
+    elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
+
 
 settings = Settings()

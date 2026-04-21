@@ -1,0 +1,339 @@
+"""Endpoints HTTP que ElevenLabs Conversational AI llama como "server tools".
+
+El agente de voz, cuando habla con un cliente, decide qué herramienta ejecutar
+y hace una llamada HTTP POST a estos endpoints con los argumentos como JSON.
+Nosotros ejecutamos la operación real contra Google Calendar y devolvemos el
+resultado (que ElevenLabs devuelve al LLM para que siga la conversación).
+
+Protegidos con un secreto compartido (X-Tool-Secret) para que nadie externo
+pueda provocar reservas falsas.
+
+Para cambiar de tenant, el agente pasa `tenant_id` como query param al
+registrar la URL. En el MVP (un solo negocio) basta con que caiga en el primero.
+"""
+from __future__ import annotations
+
+import json
+import logging
+from datetime import datetime, timedelta
+from typing import Any
+
+from fastapi import APIRouter, Header, HTTPException, Query
+from pydantic import BaseModel, Field
+
+from .config import settings
+from . import calendar_service as cal
+from . import tenants as tn
+
+log = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/tools", tags=["voice-agent-tools"])
+
+
+# ---------- Auth helper ----------
+
+def _check_secret(x_tool_secret: str | None) -> None:
+    """Exige el header X-Tool-Secret y comprueba que coincida con TOOL_SECRET del .env."""
+    expected = settings.tool_secret
+    if not expected:
+        raise HTTPException(
+            status_code=500,
+            detail="TOOL_SECRET no configurado en .env. Sin secreto, no abrimos endpoints.",
+        )
+    if x_tool_secret != expected:
+        raise HTTPException(status_code=401, detail="Bad X-Tool-Secret")
+
+
+def _resolve_tenant(tenant_id: str | None) -> dict:
+    """Devuelve el dict del tenant. Si no se especifica, usa el primero del YAML."""
+    all_tenants = tn.load_tenants()
+    if tenant_id:
+        for t in all_tenants:
+            if t.get("id") == tenant_id:
+                return t
+        raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' no encontrado")
+    return all_tenants[0]
+
+
+def _calendar_id_for_booking(tenant: dict, peluquero: str | None = None) -> str:
+    """Calendario destino para nuevas reservas en este entorno.
+
+    En fase de pruebas queremos que la reserva final aparezca en el calendario
+    principal del cliente (Sprintagency), salvo que en el futuro se decida otro
+    comportamiento.
+    """
+    return tenant.get("calendar_id") or settings.default_calendar_id
+
+
+# ---------- Pydantic models ----------
+
+class ConsultaReq(BaseModel):
+    fecha_desde_iso: str = Field(..., description="ISO 8601 (Europe/Madrid naive o con offset)")
+    fecha_hasta_iso: str
+    duracion_minutos: int
+    peluquero_preferido: str | None = None
+    max_resultados: int = 5
+
+
+class CrearReq(BaseModel):
+    titulo: str
+    inicio_iso: str
+    fin_iso: str
+    telefono_cliente: str
+    peluquero: str = "sin preferencia"
+    notas: str = ""
+
+
+class BuscarReq(BaseModel):
+    telefono_cliente: str
+    dias_adelante: int = 30
+
+
+class MoverReq(BaseModel):
+    event_id: str
+    nuevo_inicio_iso: str
+    nuevo_fin_iso: str
+    peluquero: str | None = None  # si se mueve entre peluqueros
+
+
+class CancelarReq(BaseModel):
+    event_id: str
+
+
+# ---------- Helpers internos ----------
+
+def _peluqueros_filtrados(tenant: dict, preferido: str | None) -> list[dict]:
+    pelus = tenant.get("peluqueros") or []
+    if preferido:
+        pref = preferido.strip().lower()
+        match = [p for p in pelus if p["nombre"].strip().lower() == pref]
+        if match:
+            return match
+    return pelus
+
+
+def _horario(tenant: dict):
+    """Devuelve (apertura, cierre) típicas del negocio.
+
+    Soporta dos esquemas de `business_hours`:
+      - Plano (YAML legacy): {"open": "09:30", "close": "20:30"}
+      - Por día (BD CMS):    {"mon": ["09:30","20:30"], "sat": ["closed"]}
+    Con schema por-día se toma el primer día no cerrado para delimitar el
+    rango intra-día de búsqueda; la validación por día laborable la imponen
+    los `dias_trabajo` de cada peluquero en calendar_service.
+    """
+    from datetime import time as _time
+    bh = tenant.get("business_hours") or {}
+
+    def _p(s, d):
+        try:
+            h, m = s.split(":")
+            return _time(int(h), int(m))
+        except Exception:
+            return d
+
+    # Schema plano
+    if "open" in bh or "close" in bh:
+        return (_p(bh.get("open", "09:00"), _time(9, 0)),
+                _p(bh.get("close", "20:00"), _time(20, 0)))
+
+    # Schema por día — primer día no cerrado
+    for day_key in ("mon", "tue", "wed", "thu", "fri", "sat", "sun"):
+        h = bh.get(day_key)
+        if h and h != ["closed"] and h[0] != "closed" and len(h) >= 2:
+            return (_p(h[0], _time(9, 0)), _p(h[1], _time(20, 0)))
+
+    return (_time(9, 0), _time(20, 0))
+
+
+# ---------- Endpoints ----------
+
+@router.post("/consultar_disponibilidad")
+def consultar_disponibilidad(
+    req: ConsultaReq,
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    _check_secret(x_tool_secret)
+    tenant = _resolve_tenant(tenant_id)
+
+    desde = datetime.fromisoformat(req.fecha_desde_iso)
+    hasta = datetime.fromisoformat(req.fecha_hasta_iso)
+    horario = _horario(tenant)
+    limit = max(1, min(req.max_resultados, 15))
+    peluqueros = tenant.get("peluqueros") or []
+
+    if peluqueros:
+        pelus = _peluqueros_filtrados(tenant, req.peluquero_preferido)
+        if not pelus:
+            return {
+                "huecos": [],
+                "aviso": (
+                    f"No tengo peluquero con nombre '{req.peluquero_preferido}'. "
+                    + "Peluqueros: " + ", ".join(p["nombre"] for p in peluqueros)
+                ),
+            }
+        huecos = cal.listar_huecos_por_peluqueros(
+            desde, hasta, req.duracion_minutos,
+            peluqueros=pelus,
+            tenant_id=tenant.get("id", "default"),
+            horario_apertura=horario,
+        )
+        huecos.sort(key=lambda h: h["inicio"])
+        return {
+            "huecos": [
+                {
+                    "inicio": h["inicio"].isoformat(),
+                    "fin": h["fin"].isoformat(),
+                    "peluquero": h["peluquero"],
+                }
+                for h in huecos[:limit]
+            ]
+        }
+
+    # Fallback: modo calendario único
+    slots = cal.listar_huecos_libres(
+        desde, hasta, req.duracion_minutos,
+        calendar_id=tenant.get("calendar_id") or settings.default_calendar_id,
+        tenant_id=tenant.get("id", "default"),
+        horario_apertura=horario,
+    )
+    return {"huecos": [{"inicio": s.start.isoformat(), "fin": s.end.isoformat()} for s in slots[:limit]]}
+
+
+@router.post("/crear_reserva")
+def crear_reserva(
+    req: CrearReq,
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    _check_secret(x_tool_secret)
+    tenant = _resolve_tenant(tenant_id)
+    peluqueros = tenant.get("peluqueros") or []
+
+    destino_cal = _calendar_id_for_booking(tenant, req.peluquero)
+    peluquero = (req.peluquero or "").strip()
+    if peluqueros and peluquero and peluquero.lower() != "sin preferencia":
+        match = [p for p in peluqueros if p["nombre"].strip().lower() == peluquero.lower()]
+        if not match:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Peluquero '{peluquero}' no existe. "
+                       f"Opciones: " + ", ".join(p["nombre"] for p in peluqueros),
+            )
+
+    ev = cal.crear_evento(
+        titulo=req.titulo,
+        inicio=datetime.fromisoformat(req.inicio_iso),
+        fin=datetime.fromisoformat(req.fin_iso),
+        descripcion=req.notas,
+        telefono_cliente=req.telefono_cliente,
+        calendar_id=destino_cal,
+        tenant_id=tenant.get("id", "default"),
+    )
+    log.info("Reserva creada por voz: %s (%s)", ev.get("id"), peluquero or "sin preferencia")
+    return {
+        "ok": True,
+        "event_id": ev.get("id"),
+        "peluquero": peluquero or "sin preferencia",
+    }
+
+
+@router.post("/buscar_reserva_cliente")
+def buscar_reserva_cliente(
+    req: BuscarReq,
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    _check_secret(x_tool_secret)
+    tenant = _resolve_tenant(tenant_id)
+    peluqueros = tenant.get("peluqueros") or []
+    desde = datetime.utcnow()
+    hasta = desde + timedelta(days=req.dias_adelante)
+
+    # Buscar en todos los calendarios de peluqueros + el principal
+    calendars_to_check = [p["calendar_id"] for p in peluqueros]
+    main_cal = tenant.get("calendar_id") or settings.default_calendar_id
+    if main_cal not in calendars_to_check:
+        calendars_to_check.append(main_cal)
+
+    for cal_id in calendars_to_check:
+        ev = cal.buscar_evento_por_telefono(
+            req.telefono_cliente, desde, hasta,
+            calendar_id=cal_id,
+            tenant_id=tenant.get("id", "default"),
+        )
+        if ev:
+            return {
+                "encontrada": True,
+                "event_id": ev["id"],
+                "titulo": ev.get("summary"),
+                "inicio": ev["start"].get("dateTime"),
+                "fin": ev["end"].get("dateTime"),
+                "calendar_id": cal_id,
+            }
+    return {"encontrada": False}
+
+
+@router.post("/mover_reserva")
+def mover_reserva(
+    req: MoverReq,
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    _check_secret(x_tool_secret)
+    tenant = _resolve_tenant(tenant_id)
+    # En MVP el evento vive en el calendario de su peluquero original; si el
+    # agente quiere cambiar de peluquero, eso requiere borrar y crear de nuevo.
+    cal_id = tenant.get("calendar_id") or settings.default_calendar_id
+    # Intenta detectar en qué calendario está (peluqueros primero, luego main)
+    pelus = tenant.get("peluqueros") or []
+    for p in pelus:
+        try:
+            cal.mover_evento(
+                event_id=req.event_id,
+                nuevo_inicio=datetime.fromisoformat(req.nuevo_inicio_iso),
+                nuevo_fin=datetime.fromisoformat(req.nuevo_fin_iso),
+                calendar_id=p["calendar_id"],
+                tenant_id=tenant.get("id", "default"),
+            )
+            return {"ok": True, "calendar_id": p["calendar_id"]}
+        except Exception:
+            continue
+    cal.mover_evento(
+        event_id=req.event_id,
+        nuevo_inicio=datetime.fromisoformat(req.nuevo_inicio_iso),
+        nuevo_fin=datetime.fromisoformat(req.nuevo_fin_iso),
+        calendar_id=cal_id,
+        tenant_id=tenant.get("id", "default"),
+    )
+    return {"ok": True, "calendar_id": cal_id}
+
+
+@router.post("/cancelar_reserva")
+def cancelar_reserva(
+    req: CancelarReq,
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    _check_secret(x_tool_secret)
+    tenant = _resolve_tenant(tenant_id)
+    pelus = tenant.get("peluqueros") or []
+    # Intentar borrar en cada calendario hasta que funcione
+    for p in pelus:
+        try:
+            cal.cancelar_evento(
+                req.event_id,
+                calendar_id=p["calendar_id"],
+                tenant_id=tenant.get("id", "default"),
+            )
+            return {"ok": True, "calendar_id": p["calendar_id"]}
+        except Exception:
+            continue
+    cal_id = tenant.get("calendar_id") or settings.default_calendar_id
+    cal.cancelar_evento(
+        req.event_id,
+        calendar_id=cal_id,
+        tenant_id=tenant.get("id", "default"),
+    )
+    return {"ok": True, "calendar_id": cal_id}

@@ -11,6 +11,7 @@ from . import db
 from . import tenants
 from . import agent
 from . import voice
+from . import eleven_tools
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
 
@@ -35,6 +36,10 @@ except Exception:
 
 # Monta el CMS bajo /admin (las rutas ya incluyen el prefijo).
 app.include_router(cms_router)
+# Endpoints /tools/* que ElevenLabs Conversational AI llama como server tools
+# durante las llamadas de voz (consultar disponibilidad, crear/mover/cancelar
+# reserva). Protegidos por X-Tool-Secret.
+app.include_router(eleven_tools.router)
 
 
 @app.get("/")
