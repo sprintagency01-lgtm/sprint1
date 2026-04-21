@@ -1,9 +1,12 @@
-"""FastAPI app: webhook de WhatsApp + pipeline LLM + Google Calendar."""
+"""FastAPI app: webhook de WhatsApp + pipeline LLM + Google Calendar + landing."""
 from __future__ import annotations
 
 import logging
+import pathlib
+import re
 
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, Response
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, Response, Form
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from .config import settings
 from . import whatsapp
@@ -47,9 +50,94 @@ app.include_router(eleven_tools.router)
 app.include_router(oauth_web.router)
 
 
-@app.get("/")
+# ---------- Landing pública ----------
+
+_LANDING_PATH = pathlib.Path(__file__).parent / "templates" / "landing.html"
+_LANDING_CACHE: str | None = None
+
+
+def _landing_html() -> str:
+    """Lee la landing una sola vez (cachea en memoria)."""
+    global _LANDING_CACHE
+    if _LANDING_CACHE is None:
+        try:
+            _LANDING_CACHE = _LANDING_PATH.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            _LANDING_CACHE = (
+                "<!doctype html><meta charset=utf-8>"
+                "<title>Sprint</title>"
+                "<h1>Sprint</h1><p>La landing aún no está desplegada.</p>"
+            )
+    return _LANDING_CACHE
+
+
+@app.get("/", response_class=HTMLResponse)
+async def landing() -> HTMLResponse:
+    return HTMLResponse(_landing_html())
+
+
+@app.get("/health")
 async def health() -> dict:
-    return {"ok": True, "service": "bot_reservas", "version": "0.2.0"}
+    """Endpoint de healthcheck para Railway (ligero, no renderiza la landing)."""
+    return {"ok": True, "service": "bot_reservas", "version": "0.3.0"}
+
+
+# ---------- Captura de leads desde la landing ----------
+
+# Valida el teléfono: admite +, espacios, guiones, paréntesis y dígitos.
+_PHONE_RE = re.compile(r"^\+?[0-9\s\-\(\)\.]{6,25}$")
+
+
+@app.post("/api/leads")
+async def create_lead(
+    request: Request,
+    name: str = Form(...),
+    phone: str = Form(...),
+    email: str = Form(""),
+    company: str = Form(""),
+    sector: str = Form(""),
+    message: str = Form(""),
+    consent: str = Form(""),
+    source: str = Form(""),
+    utm_source: str = Form(""),
+    utm_medium: str = Form(""),
+    utm_campaign: str = Form(""),
+    utm_term: str = Form(""),
+    utm_content: str = Form(""),
+):
+    # Validaciones mínimas
+    name = name.strip()
+    phone = phone.strip()
+    email = email.strip()
+    company = company.strip()
+
+    if not name or len(name) < 2:
+        return JSONResponse({"error": "Dinos tu nombre."}, status_code=400)
+    if not _PHONE_RE.match(phone):
+        return JSONResponse({"error": "El teléfono no parece válido."}, status_code=400)
+    if not consent:
+        return JSONResponse({"error": "Tienes que aceptar que te contactemos."}, status_code=400)
+    if email and "@" not in email:
+        return JSONResponse({"error": "El email no parece válido."}, status_code=400)
+
+    ip = (request.client.host if request.client else "") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    ua = request.headers.get("user-agent", "")[:400]
+
+    try:
+        lead_id = db.save_lead(
+            name=name, phone=phone, email=email, company=company,
+            sector=sector, message=message.strip(),
+            source=source or "landing",
+            utm_source=utm_source, utm_medium=utm_medium,
+            utm_campaign=utm_campaign, utm_term=utm_term, utm_content=utm_content,
+            ip=ip, user_agent=ua,
+        )
+        log.info("lead nuevo id=%s name=%s phone=%s sector=%s source=%s", lead_id, name, phone, sector, source)
+    except Exception:
+        log.exception("Error guardando lead")
+        return JSONResponse({"error": "Error interno. Inténtalo en un momento."}, status_code=500)
+
+    return {"ok": True, "id": lead_id}
 
 
 # ---------- Webhook WhatsApp ----------

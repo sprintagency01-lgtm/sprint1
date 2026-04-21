@@ -241,6 +241,69 @@ def save_token_usage(
 
 
 # ---------------------------------------------------------------------
+#  LEADS  (capturas desde la landing pública)
+# ---------------------------------------------------------------------
+
+class Lead(Base):
+    __tablename__ = "leads"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), default="")
+    phone: Mapped[str] = mapped_column(String(40), index=True)
+    email: Mapped[str] = mapped_column(String(200), default="")
+    company: Mapped[str] = mapped_column(String(200), default="")
+    sector: Mapped[str] = mapped_column(String(80), default="")
+    message: Mapped[str] = mapped_column(Text, default="")
+    # Origen del lead (landing_final_cta, hero, nav, etc.) y UTMs
+    source: Mapped[str] = mapped_column(String(80), default="")
+    utm_source: Mapped[str] = mapped_column(String(120), default="")
+    utm_medium: Mapped[str] = mapped_column(String(120), default="")
+    utm_campaign: Mapped[str] = mapped_column(String(120), default="")
+    utm_term: Mapped[str] = mapped_column(String(120), default="")
+    utm_content: Mapped[str] = mapped_column(String(120), default="")
+    # Estado de seguimiento: new, contacted, qualified, converted, lost
+    status: Mapped[str] = mapped_column(String(20), default="new", index=True)
+    # Metadatos de la petición
+    ip: Mapped[str] = mapped_column(String(64), default="")
+    user_agent: Mapped[str] = mapped_column(String(400), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+def save_lead(
+    *,
+    name: str,
+    phone: str,
+    email: str = "",
+    company: str = "",
+    sector: str = "",
+    message: str = "",
+    source: str = "",
+    utm_source: str = "",
+    utm_medium: str = "",
+    utm_campaign: str = "",
+    utm_term: str = "",
+    utm_content: str = "",
+    ip: str = "",
+    user_agent: str = "",
+) -> int:
+    """Persiste un lead de la landing. Devuelve el id del registro creado."""
+    with Session(engine) as s:
+        lead = Lead(
+            name=name[:200], phone=phone[:40], email=email[:200],
+            company=company[:200], sector=sector[:80], message=message[:2000],
+            source=source[:80],
+            utm_source=utm_source[:120], utm_medium=utm_medium[:120],
+            utm_campaign=utm_campaign[:120], utm_term=utm_term[:120],
+            utm_content=utm_content[:120],
+            ip=ip[:64], user_agent=user_agent[:400],
+        )
+        s.add(lead)
+        s.commit()
+        s.refresh(lead)
+        return lead.id
+
+
+# ---------------------------------------------------------------------
 #  ADMIN USERS  (login del CMS)
 # ---------------------------------------------------------------------
 

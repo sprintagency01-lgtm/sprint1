@@ -1,0 +1,2164 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprint — Tu recepcionista con IA para WhatsApp, chat y llamadas</title>
+<meta name="description" content="Sprint es el asistente con IA que contesta por ti en WhatsApp, chat web y llamadas. Reserva, mueve y confirma citas 24/7 para peluquerías, clínicas, consultores y más. Listo en 48 horas.">
+<meta name="keywords" content="bot reservas WhatsApp, asistente IA citas, agenda automatizada, chatbot peluquería, reservas clínica, automatización WhatsApp">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<meta name="author" content="Sprint">
+<meta name="theme-color" content="#EEF3EC">
+<link rel="canonical" href="https://sprint.agency/">
+<meta name="format-detection" content="telephone=no">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_ES">
+<meta property="og:site_name" content="Sprint">
+<meta property="og:title" content="Sprint — Tu recepcionista con IA que nunca duerme">
+<meta property="og:description" content="Asistente con IA para WhatsApp, chat y llamadas. Reserva, mueve y confirma citas 24/7 con tu propio tono.">
+<meta property="og:url" content="https://sprint.agency/">
+<meta property="og:image" content="https://sprint.agency/og.png">
+<meta property="og:image:alt" content="Sprint — Asistente de reservas con IA">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Sprint — Tu recepcionista con IA que nunca duerme">
+<meta name="twitter:description" content="Asistente con IA para WhatsApp, chat y llamadas. Reserva, mueve y confirma citas 24/7.">
+<meta name="twitter:image" content="https://sprint.agency/og.png">
+
+<!-- Favicon (inline SVG) -->
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%230F1A14"/><circle cx="20" cy="12" r="5" fill="%232F7A55"/></svg>'>
+
+<!-- JSON-LD: SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Sprint",
+  "description": "Asistente con IA para gestionar citas y reservas por WhatsApp, chat web y llamadas telefónicas.",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "es-ES",
+  "url": "https://sprint.agency/",
+  "offers": [
+    {"@type": "Offer", "name": "Solo", "price": "39", "priceCurrency": "EUR", "description": "Hasta 150 conversaciones/mes"},
+    {"@type": "Offer", "name": "Estudio", "price": "99", "priceCurrency": "EUR", "description": "Hasta 800 conversaciones/mes"},
+    {"@type": "Offer", "name": "Equipo", "price": "299", "priceCurrency": "EUR", "description": "Conversaciones ilimitadas"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Sprint",
+  "url": "https://sprint.agency/",
+  "email": "hola@sprint.agency",
+  "description": "Asistente con IA para reservas por WhatsApp, chat y llamadas.",
+  "areaServed": "ES",
+  "sameAs": []
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "¿Cuánto tarda en estar listo?", "acceptedAnswer": {"@type": "Answer", "text": "48 horas desde la llamada inicial."}},
+    {"@type": "Question", "name": "¿Tengo que cambiar de número de WhatsApp?", "acceptedAnswer": {"@type": "Answer", "text": "No. Sprint se conecta a tu número actual vía WhatsApp Business API."}},
+    {"@type": "Question", "name": "¿Funciona con mi calendario?", "acceptedAnswer": {"@type": "Answer", "text": "Sí, se integra con Google Calendar y Outlook."}}
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,500&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<script>
+  const TWEAKS = /*EDITMODE-BEGIN*/{
+    "palette": "mint",
+    "heroHeadline": "Tus citas, en piloto automático.",
+    "heroSubline": "Sprint es el asistente con personalidad propia que contesta por ti en WhatsApp, chat y llamadas. Reserva, mueve y confirma citas mientras tú haces lo tuyo.",
+    "ctaLabel": "Habla con nosotros",
+    "showBadge": true,
+    "heroVariant": "demo"
+  }/*EDITMODE-END*/;
+</script>
+<style>
+  :root{
+    --bg: #F5EFE4;
+    --bg-card: #FBF7EE;
+    --bg-deep: #E9DFCB;
+    --ink: #1A1410;
+    --ink-2: #3C342C;
+    --muted: #7A6E5E;
+    --line: #D9CEB8;
+    --accent: #D96B3A;
+    --accent-2: #6B4B2E;
+    --accent-soft: #F0C9A8;
+    --green: #3E7A4E;
+    --yellow: #E8B84A;
+    --radius: 14px;
+    --radius-lg: 22px;
+    --shadow-1: 0 1px 0 rgba(26,20,16,.06), 0 8px 24px -12px rgba(26,20,16,.15);
+    --shadow-2: 0 1px 0 rgba(26,20,16,.08), 0 20px 50px -20px rgba(26,20,16,.25);
+    --serif: "Fraunces", "Georgia", serif;
+    --sans: "Inter Tight", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  body[data-palette="mint"]{
+    --bg:#EEF3EC; --bg-card:#F6F9F4; --bg-deep:#DDE7DA;
+    --ink:#0F1A14; --ink-2:#2A3A2F; --muted:#5E6E62; --line:#C9D5C5;
+    --accent:#2F7A55; --accent-2:#1F4A33; --accent-soft:#C7E0CE;
+  }
+  body[data-palette="ink"]{
+    --bg:#F3EEE6; --bg-card:#FAF5EB; --bg-deep:#E4DBC8;
+    --ink:#0B1B2B; --ink-2:#1E2F41; --muted:#5B6A78; --line:#CFC6B3;
+    --accent:#0B1B2B; --accent-2:#3C5A7A; --accent-soft:#C8D4E0;
+  }
+  body[data-palette="plum"]{
+    --bg:#F2EDEA; --bg-card:#FAF4F0; --bg-deep:#E6D9D2;
+    --ink:#1F1218; --ink-2:#3C2A33; --muted:#7A6770; --line:#D9C8C0;
+    --accent:#7A3E5E; --accent-2:#4A2438; --accent-soft:#E9CBDA;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{background:var(--bg); color:var(--ink); font-family:var(--sans); -webkit-font-smoothing:antialiased;}
+  html{ scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html{ scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
+  }
+  .skip-link{
+    position:absolute; left:-9999px; top:8px;
+    background:var(--ink); color:var(--bg-card);
+    padding:10px 16px; border-radius:8px;
+    font-size:14px; font-weight:600;
+    z-index:1000;
+  }
+  .skip-link:focus{ left:8px; }
+  :focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  body{ font-feature-settings: "ss01","cv11"; }
+  a{color:inherit; text-decoration:none}
+  img{max-width:100%; display:block}
+  button{font:inherit; cursor:pointer; border:none; background:none; color:inherit}
+  ::selection{ background:var(--accent); color:var(--bg-card); }
+
+  .container{ max-width:1280px; margin:0 auto; padding:0 28px; }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:sticky; top:0; z-index:40;
+    background: color-mix(in oklab, var(--bg) 88%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom:1px solid transparent;
+    transition:border-color .2s;
+  }
+  .nav.scrolled{ border-color:var(--line); }
+  .nav-inner{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 0;
+  }
+  .logo{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--serif); font-weight:700; font-size:24px;
+    letter-spacing:-0.02em;
+    font-style: italic;
+  }
+  .logo-mark{
+    width:28px; height:28px; border-radius:50%;
+    background:var(--ink);
+    position:relative;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .logo-mark::before{
+    content:""; width:10px; height:10px; border-radius:50%;
+    background:var(--accent);
+    transform: translate(3px,-3px);
+    box-shadow: 0 0 0 2px var(--bg);
+  }
+  .nav-links{ display:flex; gap:28px; font-size:14px; color:var(--ink-2); font-weight:500; }
+  .nav-links a{ padding:8px 0; transition:color .15s; }
+  .nav-links a:hover{ color:var(--accent); }
+  .nav-cta{
+    display:flex; align-items:center; gap:12px;
+  }
+  @media (max-width:860px){ .nav-links{display:none} }
+
+  /* ---------- BUTTONS ---------- */
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:14px 20px; border-radius:999px;
+    font-weight:600; font-size:15px; letter-spacing:-0.01em;
+    transition: transform .12s ease, background .15s, color .15s;
+    border:1px solid transparent;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--ink); color:var(--bg-card); }
+  .btn-primary:hover{ background:var(--accent); }
+  .btn-ghost{ color:var(--ink); border-color:var(--line); }
+  .btn-ghost:hover{ border-color:var(--ink); }
+  .btn-accent{ background:var(--accent); color:var(--bg-card); }
+  .btn-accent:hover{ background:var(--accent-2); }
+  .btn-sm{ padding:10px 14px; font-size:13.5px; }
+  .btn .arrow{
+    display:inline-block; transition:transform .15s;
+  }
+  .btn:hover .arrow{ transform:translateX(3px); }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    padding:56px 0 96px;
+    overflow:hidden;
+  }
+  .hero-grid{
+    display:grid; grid-template-columns: 1.05fr 1fr;
+    gap:48px; align-items:center;
+  }
+  @media (max-width:980px){
+    .hero-grid{ grid-template-columns:1fr; gap:40px; }
+  }
+  .hero-eyebrow{
+    display:inline-flex; align-items:center; gap:10px;
+    padding:7px 14px 7px 10px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:var(--bg-card);
+    font-size:13px; font-weight:500; color:var(--ink-2);
+    margin-bottom:28px;
+  }
+  .hero-eyebrow .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--green);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--green) 20%, transparent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ box-shadow: 0 0 0 4px color-mix(in oklab, var(--green) 20%, transparent); }
+    50%{ box-shadow: 0 0 0 8px color-mix(in oklab, var(--green) 5%, transparent); }
+  }
+  .hero h1{
+    font-family:var(--serif);
+    font-size: clamp(44px, 6.2vw, 84px);
+    line-height:0.98;
+    letter-spacing:-0.035em;
+    font-weight:500;
+    margin-bottom:24px;
+    text-wrap: balance;
+  }
+  .hero h1 em{
+    font-style:italic;
+    font-weight:400;
+    color:var(--accent);
+    position:relative;
+  }
+  .hero h1 em::after{
+    content:""; position:absolute; left:0; right:0; bottom:0.08em; height:0.06em;
+    background: var(--accent);
+    opacity:.2;
+    border-radius:2px;
+  }
+  .hero .lede{
+    font-size: clamp(17px, 1.35vw, 20px);
+    line-height:1.5; color:var(--ink-2);
+    max-width:540px; margin-bottom:36px;
+    text-wrap: pretty;
+  }
+  .hero-actions{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .hero-meta{
+    margin-top:36px;
+    display:flex; align-items:center; gap:24px;
+    font-size:13.5px; color:var(--muted);
+    flex-wrap:wrap;
+  }
+  .hero-meta-item{ display:flex; align-items:center; gap:8px; }
+  .hero-meta-item svg{ width:16px; height:16px; color:var(--accent); }
+
+  /* floating decoration */
+  .hero-blob{
+    position:absolute; pointer-events:none;
+    width:520px; height:520px; border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, var(--accent-soft), transparent 70%);
+    filter: blur(8px);
+    opacity:.55;
+    top:-120px; right:-180px;
+    z-index:0;
+  }
+  .hero-grid > *{ position:relative; z-index:1; }
+
+  /* ---------- CHAT DEMO ---------- */
+  .phone-wrap{
+    position:relative;
+    display:flex; justify-content:center;
+    perspective: 1200px;
+  }
+  .phone{
+    width:min(360px, 100%);
+    background:#0E0C0A;
+    border-radius:44px;
+    padding:14px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.06) inset,
+      0 40px 80px -30px rgba(26,20,16,.55),
+      0 20px 40px -20px rgba(26,20,16,.25);
+    transform: rotate(-2deg);
+    transition: transform .4s ease;
+  }
+  .phone-wrap:hover .phone{ transform: rotate(0deg); }
+  .phone-screen{
+    background: #ECE5DD;
+    border-radius:32px;
+    overflow:hidden;
+    position:relative;
+    height:620px;
+    display:flex; flex-direction:column;
+  }
+  .wa-bar{
+    background:#075E54; color:#fff;
+    padding:14px 14px 12px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .wa-avatar{
+    width:36px; height:36px; border-radius:50%;
+    background:var(--accent);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-weight:700; font-size:17px;
+    color:#fff;
+    font-style:italic;
+    flex-shrink:0;
+  }
+  .wa-id{ display:flex; flex-direction:column; line-height:1.15; }
+  .wa-name{ font-size:14.5px; font-weight:600; }
+  .wa-status{ font-size:11.5px; opacity:.8; }
+  .wa-actions{ margin-left:auto; display:flex; gap:14px; opacity:.85; }
+  .wa-actions svg{ width:18px; height:18px; }
+
+  .wa-body{
+    flex:1; padding:16px 10px 10px;
+    display:flex; flex-direction:column; gap:8px;
+    overflow:hidden;
+    background:
+      repeating-linear-gradient(45deg, rgba(0,0,0,.02) 0 2px, transparent 2px 12px),
+      #ECE5DD;
+    position:relative;
+  }
+  .bubble{
+    max-width:78%;
+    padding:8px 12px 18px;
+    border-radius:12px;
+    font-size:14px; line-height:1.35;
+    color:#111;
+    position:relative;
+    box-shadow: 0 1px 1px rgba(0,0,0,.06);
+    opacity:0; transform: translateY(8px);
+    animation: bubble-in .35s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .bubble.me{
+    background:#DCF8C6; align-self:flex-end;
+    border-top-right-radius:3px;
+  }
+  .bubble.bot{
+    background:#fff; align-self:flex-start;
+    border-top-left-radius:3px;
+  }
+  .bubble .time{
+    position:absolute; right:8px; bottom:3px;
+    font-size:10px; color:#6a6a6a;
+  }
+  .bubble .time.read{ color:#34B7F1; font-weight:700; letter-spacing:-1px; }
+  @keyframes bubble-in{ to{ opacity:1; transform: translateY(0); } }
+
+  .typing{
+    display:inline-flex; align-items:center; gap:4px;
+    padding:10px 14px;
+  }
+  .typing span{
+    width:6px; height:6px; border-radius:50%; background:#999;
+    animation: typing 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2){ animation-delay:.15s; }
+  .typing span:nth-child(3){ animation-delay:.3s; }
+  @keyframes typing{
+    0%,60%,100%{ transform: translateY(0); opacity:.5; }
+    30%{ transform: translateY(-4px); opacity:1; }
+  }
+
+  /* Calendar card within chat */
+  .wa-card{
+    align-self:flex-start; max-width:82%;
+    background:#fff; border-radius:12px;
+    padding:10px; box-shadow: 0 1px 1px rgba(0,0,0,.06);
+    display:flex; flex-direction:column; gap:6px;
+    border-top-left-radius:3px;
+  }
+  .wa-card .cal-h{
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; color:#666;
+    padding:4px 2px 6px; border-bottom:1px solid #eee;
+  }
+  .cal-dot{ width:10px; height:10px; border-radius:2px; background:var(--accent); }
+  .cal-slot{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 8px; border-radius:8px;
+    font-size:12.5px; color:#222;
+    background:#F7F4EE;
+  }
+  .cal-slot.chosen{ background:#DCF8C6; outline:1.5px solid #8BC58B; }
+  .cal-slot span{ font-variant-numeric: tabular-nums; font-weight:500; }
+
+  /* Sprint badge pill above phone */
+  .sprint-badge{
+    position:absolute; top:-14px; left:50%;
+    transform: translateX(-50%) rotate(-4deg);
+    background:var(--ink); color:var(--bg-card);
+    padding:8px 16px; border-radius:999px;
+    font-size:12px; font-weight:500; letter-spacing:.02em;
+    display:inline-flex; align-items:center; gap:8px;
+    z-index:2;
+    box-shadow: 0 10px 30px -10px rgba(26,20,16,.4);
+  }
+  .sprint-badge .dot{
+    width:7px; height:7px; border-radius:50%; background:var(--green);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  /* Floating stickers */
+  .sticker{
+    position:absolute;
+    font-family:var(--serif); font-style:italic; font-weight:500;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    padding:10px 14px; border-radius:12px;
+    box-shadow:var(--shadow-1);
+    font-size:14px;
+    display:flex; align-items:center; gap:8px;
+    z-index:3;
+  }
+  .sticker svg{ width:16px; height:16px; color:var(--accent); }
+  .sticker.s1{ top:40px; right:-16px; transform:rotate(4deg); animation: float1 6s ease-in-out infinite; }
+  .sticker.s2{ bottom:80px; left:-24px; transform:rotate(-5deg); animation: float2 7s ease-in-out infinite; }
+  @keyframes float1 { 0%,100%{transform:rotate(4deg) translateY(0)} 50%{transform:rotate(4deg) translateY(-8px)} }
+  @keyframes float2 { 0%,100%{transform:rotate(-5deg) translateY(0)} 50%{transform:rotate(-5deg) translateY(8px)} }
+
+  /* ---------- MARQUEE ---------- */
+  .marquee{
+    padding:32px 0;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    background:var(--bg-card);
+    overflow:hidden;
+    position:relative;
+  }
+  .marquee-track{
+    display:flex; gap:60px; align-items:center;
+    animation: scroll 38s linear infinite;
+    white-space:nowrap;
+    width:max-content;
+  }
+  @keyframes scroll{ from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  .marq-item{
+    font-family:var(--serif); font-style:italic; font-size:22px;
+    color:var(--ink-2); display:inline-flex; align-items:center; gap:14px;
+  }
+  .marq-item .sep{
+    width:6px; height:6px; border-radius:50%; background:var(--accent);
+  }
+
+  /* ---------- SECTION HEAD ---------- */
+  section{ padding:96px 0; }
+  @media(max-width:860px){ section{ padding:72px 0; } }
+  .sec-head{ max-width:720px; margin-bottom:56px; }
+  .sec-kicker{
+    display:inline-flex; align-items:center; gap:10px;
+    font-family:var(--mono); font-size:12px; text-transform:uppercase;
+    letter-spacing:.12em; color:var(--accent);
+    margin-bottom:20px;
+  }
+  .sec-kicker::before{
+    content:""; width:18px; height:1px; background:var(--accent);
+  }
+  .sec-head h2{
+    font-family:var(--serif); font-weight:500;
+    font-size: clamp(34px, 4.2vw, 56px);
+    line-height:1.02; letter-spacing:-0.025em;
+    margin-bottom:18px;
+    text-wrap: balance;
+  }
+  .sec-head h2 em{ font-style:italic; color:var(--accent); font-weight:400; }
+  .sec-head p{
+    font-size: clamp(16px, 1.2vw, 18px); line-height:1.55;
+    color:var(--ink-2);
+    max-width:560px; text-wrap: pretty;
+  }
+
+  /* ---------- CANALES ---------- */
+  .channels{ background:var(--bg); }
+  .channel-grid{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:20px;
+  }
+  @media(max-width:860px){ .channel-grid{ grid-template-columns:1fr; } }
+  .channel{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:28px 26px 26px;
+    display:flex; flex-direction:column;
+    min-height:380px;
+    position:relative; overflow:hidden;
+    transition: transform .25s ease, box-shadow .25s ease, border-color .25s;
+  }
+  .channel:hover{ transform:translateY(-4px); box-shadow:var(--shadow-2); border-color:var(--ink); }
+  .channel-icon{
+    width:52px; height:52px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:24px;
+    font-size:24px;
+  }
+  .channel-icon.wa{ background:#25D366; color:#fff; }
+  .channel-icon.chat{ background:var(--accent); color:#fff; }
+  .channel-icon.call{ background:var(--ink); color:var(--bg-card); }
+  .channel-icon svg{ width:26px; height:26px; }
+  .channel h3{
+    font-family:var(--serif); font-size:28px; font-weight:500;
+    letter-spacing:-0.02em; margin-bottom:10px;
+  }
+  .channel p{ color:var(--ink-2); font-size:15px; line-height:1.5; }
+  .channel-demo{
+    margin-top:auto; padding-top:24px;
+  }
+  .mini-chat{
+    background:var(--bg-deep);
+    border-radius:12px; padding:12px;
+    font-size:12.5px; color:var(--ink-2);
+    display:flex; flex-direction:column; gap:6px;
+    font-family:var(--mono);
+  }
+  .mini-line{ display:flex; gap:8px; align-items:flex-start; }
+  .mini-tag{
+    flex-shrink:0; width:38px; font-weight:600;
+    color:var(--muted); font-size:11px;
+  }
+  .waveform{
+    display:flex; align-items:center; gap:3px; height:36px;
+    padding:0 4px;
+  }
+  .waveform span{
+    width:3px; background:var(--accent); border-radius:2px;
+    animation: wave 1.4s ease-in-out infinite;
+  }
+  @keyframes wave{ 0%,100%{ height:20%; } 50%{ height:100%; } }
+
+  /* ---------- CÓMO FUNCIONA ---------- */
+  .how{
+    background:var(--ink); color:var(--bg-card);
+    border-radius: var(--radius-lg);
+    margin: 0 28px;
+    padding: 88px 0;
+    position:relative; overflow:hidden;
+  }
+  @media(max-width:860px){ .how{ margin:0 16px; padding:64px 0; } }
+  .how .sec-head h2{ color:var(--bg-card); }
+  .how .sec-head h2 em{ color:var(--accent-soft); }
+  .how .sec-head p{ color: color-mix(in oklab, var(--bg-card) 70%, transparent); }
+  .how .sec-kicker{ color:var(--accent-soft); }
+  .how .sec-kicker::before{ background:var(--accent-soft); }
+
+  .steps{
+    display:grid; grid-template-columns: repeat(4, 1fr); gap:0;
+    position:relative;
+  }
+  @media(max-width:860px){ .steps{ grid-template-columns:1fr; } }
+  .step{
+    padding:28px 26px;
+    border-left:1px solid rgba(255,255,255,.12);
+    position:relative;
+  }
+  .step:first-child{ border-left:none; }
+  @media(max-width:860px){ .step{ border-left:none; border-top:1px solid rgba(255,255,255,.12); } }
+  .step-num{
+    font-family:var(--mono); font-size:12px; color:var(--accent-soft);
+    margin-bottom:16px;
+  }
+  .step-title{
+    font-family:var(--serif); font-size:24px; font-weight:500;
+    letter-spacing:-0.02em; margin-bottom:10px;
+    color:var(--bg-card);
+  }
+  .step-desc{
+    font-size:14.5px; line-height:1.5;
+    color: color-mix(in oklab, var(--bg-card) 70%, transparent);
+  }
+  .step-ico{
+    width:40px; height:40px; border-radius:10px;
+    background: rgba(255,255,255,.08);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:28px;
+    color:var(--accent-soft);
+  }
+  .step-ico svg{ width:20px; height:20px; }
+
+  /* ---------- SECTORES ---------- */
+  .sectors{ background:var(--bg-card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .sec-tabs{
+    display:flex; gap:8px; flex-wrap:wrap; margin-bottom:40px;
+  }
+  .sec-tab{
+    padding:10px 18px; border-radius:999px;
+    border:1px solid var(--line); background:var(--bg);
+    font-size:14px; font-weight:500; color:var(--ink-2);
+    display:inline-flex; align-items:center; gap:8px;
+    transition: all .15s;
+  }
+  .sec-tab:hover{ border-color:var(--ink); }
+  .sec-tab.active{ background:var(--ink); color:var(--bg-card); border-color:var(--ink); }
+  .sec-tab .emo{ font-size:16px; }
+
+  .sector-panel{
+    display:grid; grid-template-columns: 1fr 1fr; gap:40px;
+    align-items:center;
+  }
+  @media(max-width:860px){ .sector-panel{ grid-template-columns:1fr; } }
+
+  .sector-copy h3{
+    font-family:var(--serif); font-weight:500; font-size:36px;
+    letter-spacing:-0.02em; line-height:1.08;
+    margin-bottom:16px;
+  }
+  .sector-copy h3 em{ font-style:italic; color:var(--accent); }
+  .sector-copy p{
+    font-size:16px; line-height:1.55; color:var(--ink-2); margin-bottom:28px;
+  }
+  .sector-points{ display:flex; flex-direction:column; gap:14px; }
+  .sector-point{
+    display:flex; align-items:flex-start; gap:12px;
+    font-size:15px; color:var(--ink-2); line-height:1.5;
+  }
+  .sector-point::before{
+    content:""; flex-shrink:0; margin-top:7px;
+    width:8px; height:8px; background:var(--accent); border-radius:50%;
+  }
+
+  .sector-card{
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:28px;
+    min-height:440px;
+    display:flex; flex-direction:column;
+    gap:14px;
+    font-family:var(--mono); font-size:13px;
+    color:var(--ink-2);
+    position:relative;
+  }
+  .sc-head{
+    display:flex; align-items:center; gap:10px;
+    padding-bottom:14px; border-bottom:1px dashed var(--line);
+    font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em;
+  }
+  .sc-row{
+    padding:12px 14px; border-radius:10px;
+    background:var(--bg-card);
+    display:flex; justify-content:space-between; align-items:center;
+    border:1px solid var(--line);
+  }
+  .sc-row .who{ color:var(--ink); font-weight:500; font-family:var(--sans); }
+  .sc-row .t{ color:var(--muted); font-variant-numeric: tabular-nums; }
+  .sc-row.conf{ background:color-mix(in oklab, var(--green) 10%, var(--bg)); border-color:color-mix(in oklab, var(--green) 40%, var(--line)); }
+  .sc-row.new{ background:color-mix(in oklab, var(--accent) 10%, var(--bg)); border-color:color-mix(in oklab, var(--accent) 40%, var(--line)); }
+  .sc-row .pill{
+    font-family:var(--mono); font-size:10px; padding:3px 8px; border-radius:999px;
+    background:var(--ink); color:var(--bg-card);
+  }
+  .sc-row .pill.g{ background:var(--green); }
+  .sc-row .pill.o{ background:var(--accent); }
+
+  /* ---------- VOZ / PERSONALIZACIÓN ---------- */
+  .voice{ background:var(--bg); overflow:hidden; }
+  .voice-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap:24px;
+  }
+  @media(max-width:980px){ .voice-grid{ grid-template-columns:1fr; } }
+  .voice-card{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:32px 30px;
+    position:relative;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+    min-height:360px;
+    transition: transform .25s ease, box-shadow .25s ease, border-color .25s;
+  }
+  .voice-card:hover{ transform:translateY(-4px); box-shadow:var(--shadow-2); border-color:var(--ink); }
+  .voice-card.wide{ grid-column: span 2; background:var(--ink); color:var(--bg-card); border-color:var(--ink); min-height:300px; }
+  @media(max-width:980px){ .voice-card.wide{ grid-column: auto; } }
+  .voice-card.wide .voice-label{ color:var(--accent-soft); }
+  .voice-card.wide .voice-sub{ color: color-mix(in oklab, var(--bg-card) 70%, transparent); }
+  .voice-card.wide h3{ color:var(--bg-card); }
+
+  .voice-label{
+    font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.12em;
+    color:var(--accent); margin-bottom:14px;
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .voice-label::before{
+    content:""; width:14px; height:1px; background:currentColor;
+  }
+  .voice-card h3{
+    font-family:var(--serif); font-weight:500;
+    font-size:30px; line-height:1.05; letter-spacing:-0.02em;
+    margin-bottom:10px;
+  }
+  .voice-card h3 em{ font-style:italic; color:var(--accent); font-weight:400; }
+  .voice-card.wide h3 em{ color:var(--accent-soft); }
+  .voice-sub{
+    font-size:15px; line-height:1.5; color:var(--ink-2); margin-bottom:20px;
+    max-width: 520px;
+  }
+
+  /* Tono chips */
+  .tone-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; }
+  .tone-chip{
+    padding:8px 14px; border-radius:999px;
+    border:1px solid var(--line); background:var(--bg);
+    font-size:13.5px; font-weight:500; color:var(--ink-2);
+    font-family:var(--serif); font-style:italic;
+    transition: all .15s;
+  }
+  .tone-chip.on{ background:var(--accent); color:var(--bg-card); border-color:var(--accent); }
+  .tone-chip:hover{ border-color:var(--ink); }
+  .tone-preview{
+    margin-top:22px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px;
+    font-size:14.5px; line-height:1.45; color:var(--ink);
+    min-height:74px;
+    display:flex; align-items:center; gap:12px;
+    position:relative;
+  }
+  .tone-preview .tp-av{
+    width:30px; height:30px; border-radius:50%;
+    background:var(--accent); color:#fff; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-style:italic; font-weight:700; font-size:14px;
+  }
+  .tone-preview .tp-text{ flex:1; }
+
+  /* Voice selector card */
+  .voice-list{ display:flex; flex-direction:column; gap:8px; margin-top:auto; }
+  .voice-item{
+    display:flex; align-items:center; gap:14px;
+    padding:12px 14px;
+    background:var(--bg); border:1px solid var(--line);
+    border-radius:12px;
+    cursor:pointer;
+    transition: all .15s;
+  }
+  .voice-item:hover{ border-color:var(--ink); }
+  .voice-item.playing{ background: color-mix(in oklab, var(--accent) 14%, var(--bg)); border-color: var(--accent); }
+  .voice-item .v-dot{
+    width:36px; height:36px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    background:var(--bg-card); border:1px solid var(--line);
+    color:var(--accent);
+  }
+  .voice-item.playing .v-dot{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .voice-item .v-dot svg{ width:14px; height:14px; }
+  .voice-item .v-info{ flex:1; display:flex; flex-direction:column; gap:2px; }
+  .voice-item .v-name{ font-weight:600; font-size:14px; }
+  .voice-item .v-desc{ font-size:12.5px; color:var(--muted); font-family:var(--mono); }
+  .v-wave{
+    display:flex; align-items:center; gap:2px; height:22px; width:56px; justify-content:flex-end;
+  }
+  .v-wave span{ width:2px; background:var(--muted); border-radius:2px; height:4px; opacity:.4; }
+  .voice-item.playing .v-wave span{
+    background:var(--accent); opacity:1;
+    animation: wave 1.4s ease-in-out infinite;
+  }
+  .voice-item.playing .v-wave span:nth-child(2){ animation-delay:-.2s }
+  .voice-item.playing .v-wave span:nth-child(3){ animation-delay:-.4s }
+  .voice-item.playing .v-wave span:nth-child(4){ animation-delay:-.1s }
+  .voice-item.playing .v-wave span:nth-child(5){ animation-delay:-.3s }
+  .voice-item.playing .v-wave span:nth-child(6){ animation-delay:-.5s }
+
+  /* Clone row */
+  .clone-row{
+    display:grid; grid-template-columns: auto 1fr; gap:28px; align-items:center;
+  }
+  @media(max-width:720px){ .clone-row{ grid-template-columns:1fr; } }
+  .clone-viz{
+    width:140px; height:140px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    position:relative; flex-shrink:0;
+    background: radial-gradient(circle at 30% 30%, var(--accent-soft), transparent 70%);
+  }
+  .clone-viz::before, .clone-viz::after{
+    content:""; position:absolute; inset:0; border-radius:50%;
+    border:1.5px solid color-mix(in oklab, var(--accent-soft) 60%, transparent);
+    animation: ripple 3s ease-out infinite;
+  }
+  .clone-viz::after{ animation-delay: 1.5s; }
+  @keyframes ripple{
+    0%{ transform:scale(.6); opacity:1; }
+    100%{ transform:scale(1.35); opacity:0; }
+  }
+  .clone-mic{
+    width:58px; height:58px; border-radius:50%;
+    background:var(--accent); color:var(--bg-card);
+    display:flex; align-items:center; justify-content:center;
+    position:relative; z-index:1;
+    box-shadow: 0 10px 30px -8px color-mix(in oklab, var(--accent) 70%, transparent);
+  }
+  .clone-mic svg{ width:24px; height:24px; }
+  .clone-steps{ display:flex; gap:14px; flex-wrap:wrap; font-size:13.5px; }
+  .clone-step{
+    display:flex; align-items:center; gap:8px;
+    color: color-mix(in oklab, var(--bg-card) 80%, transparent);
+  }
+  .clone-step .n{
+    width:22px; height:22px; border-radius:50%;
+    background: color-mix(in oklab, var(--accent-soft) 30%, transparent);
+    color:var(--accent-soft);
+    display:inline-flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:11px; font-weight:600;
+  }
+  .clone-tag{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 12px; border-radius:999px;
+    background: color-mix(in oklab, var(--bg-card) 12%, transparent);
+    border:1px solid color-mix(in oklab, var(--bg-card) 25%, transparent);
+    font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--accent-soft);
+    margin-bottom:14px;
+  }
+  .clone-tag .d{ width:6px; height:6px; border-radius:50%; background:var(--accent-soft); animation: pulse 2s ease-in-out infinite; }
+
+  /* ---------- INTEGRACIONES ---------- */
+  .integrations .int-grid{
+    display:grid; grid-template-columns: repeat(6, 1fr); gap:12px;
+  }
+  @media(max-width:860px){ .integrations .int-grid{ grid-template-columns: repeat(3, 1fr); } }
+  .int-cell{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:24px 14px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    min-height:110px;
+    justify-content:center;
+    transition: all .15s;
+  }
+  .int-cell:hover{ border-color:var(--ink); transform:translateY(-2px); }
+  .int-logo{ font-family:var(--serif); font-weight:600; font-size:14px; }
+  .int-name{ font-size:12px; color:var(--muted); font-family:var(--mono); letter-spacing:.04em; text-transform:uppercase; }
+
+  /* ---------- PRICING ---------- */
+  .pricing{ background:var(--bg); }
+  .price-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:18px;
+  }
+  @media(max-width:860px){ .price-grid{ grid-template-columns:1fr; } }
+  .price-card{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding:32px 28px;
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+  .price-card.highlight{
+    background:var(--ink); color:var(--bg-card);
+    border-color:var(--ink);
+    transform: translateY(-8px);
+  }
+  @media(max-width:860px){ .price-card.highlight{ transform:none; } }
+  .price-card.highlight .price-muted{ color: color-mix(in oklab, var(--bg-card) 70%, transparent); }
+  .price-card.highlight .price-feat svg{ color:var(--accent-soft); }
+  .price-card.highlight .btn-ghost{ border-color: rgba(255,255,255,.25); color:var(--bg-card); }
+  .price-card.highlight .btn-ghost:hover{ background:var(--bg-card); color:var(--ink); }
+
+  .price-tag{
+    position:absolute; top:18px; right:18px;
+    font-family:var(--mono); font-size:11px;
+    padding:4px 10px; border-radius:999px;
+    background:var(--accent); color:var(--bg-card);
+    text-transform:uppercase; letter-spacing:.1em;
+  }
+  .price-name{
+    font-family:var(--serif); font-size:28px; font-weight:500;
+    letter-spacing:-0.02em; margin-bottom:4px;
+  }
+  .price-for{
+    font-size:13px; color:var(--muted); margin-bottom:24px;
+  }
+  .price-card.highlight .price-for{ color: color-mix(in oklab, var(--bg-card) 60%, transparent); }
+  .price-amount{
+    display:flex; align-items:baseline; gap:4px;
+    margin-bottom:6px;
+  }
+  .price-amount .num{
+    font-family:var(--serif); font-size:56px; font-weight:500;
+    letter-spacing:-0.035em; line-height:1;
+  }
+  .price-amount .per{ font-size:14px; color:var(--muted); }
+  .price-card.highlight .price-amount .per{ color: color-mix(in oklab, var(--bg-card) 60%, transparent); }
+  .price-muted{ font-size:13px; color:var(--muted); margin-bottom:28px; }
+  .price-feats{ list-style:none; display:flex; flex-direction:column; gap:12px; margin-bottom:32px; }
+  .price-feat{ display:flex; align-items:flex-start; gap:10px; font-size:14.5px; line-height:1.45; }
+  .price-feat svg{ width:16px; height:16px; color:var(--accent); flex-shrink:0; margin-top:3px; }
+  .price-card .btn{ margin-top:auto; justify-content:center; }
+
+  /* ---------- FINAL CTA ---------- */
+  .final-cta{
+    background:var(--accent);
+    color:var(--bg-card);
+    position:relative;
+    overflow:hidden;
+  }
+  .final-cta .container{ position:relative; z-index:2; }
+  .final-cta h2{
+    font-family:var(--serif); font-weight:500;
+    font-size: clamp(42px, 6vw, 88px);
+    letter-spacing:-0.035em; line-height:0.98;
+    margin-bottom:32px;
+    text-wrap: balance;
+  }
+  .final-cta h2 em{ font-style:italic; }
+  .final-cta p{
+    font-size: clamp(17px, 1.3vw, 20px);
+    max-width:560px;
+    color: color-mix(in oklab, var(--bg-card) 88%, transparent);
+    margin-bottom:40px;
+    line-height:1.5;
+  }
+  .final-cta .btn-primary{
+    background:var(--ink); color:var(--bg-card);
+    padding:18px 28px; font-size:16px;
+  }
+  .final-cta .btn-primary:hover{ background:var(--bg-card); color:var(--ink); }
+  .final-bg-word{
+    position:absolute;
+    font-family:var(--serif); font-style:italic; font-weight:400;
+    font-size: clamp(260px, 40vw, 540px);
+    color: color-mix(in oklab, var(--bg-card) 12%, transparent);
+    bottom:-0.3em; right:-0.05em;
+    line-height:1;
+    pointer-events:none;
+    letter-spacing:-0.05em;
+    z-index:1;
+  }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    padding:56px 0 32px;
+    border-top:1px solid var(--line);
+    background:var(--bg);
+  }
+  .foot{
+    display:grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap:40px;
+    margin-bottom:40px;
+  }
+  @media(max-width:860px){ .foot{ grid-template-columns:1fr 1fr; } }
+  .foot h4{
+    font-family:var(--mono); font-size:11px; text-transform:uppercase;
+    letter-spacing:.14em; color:var(--muted); margin-bottom:14px;
+  }
+  .foot ul{ list-style:none; display:flex; flex-direction:column; gap:8px; }
+  .foot a{ font-size:14px; color:var(--ink-2); }
+  .foot a:hover{ color:var(--accent); }
+  .foot-tag{ font-size:14px; color:var(--muted); max-width:320px; line-height:1.5; margin-top:14px; }
+  .foot-bottom{
+    display:flex; justify-content:space-between; align-items:center;
+    padding-top:28px; border-top:1px solid var(--line);
+    font-size:13px; color:var(--muted);
+    flex-wrap:wrap; gap:12px;
+  }
+
+  /* ---------- TWEAK PANEL ---------- */
+  .tw-panel{
+    position:fixed; bottom:20px; right:20px; z-index:100;
+    width:320px;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:18px;
+    box-shadow: 0 20px 50px -20px rgba(0,0,0,.35);
+    font-family:var(--sans);
+    display:none;
+  }
+  .tw-panel.on{ display:block; }
+  .tw-h{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--line);
+  }
+  .tw-h strong{ font-family:var(--serif); font-size:17px; font-weight:600; }
+  .tw-row{ margin-bottom:14px; }
+  .tw-label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; font-family:var(--mono); }
+  .tw-palette{ display:flex; gap:6px; }
+  .tw-sw{
+    width:30px; height:30px; border-radius:8px; cursor:pointer;
+    border:2px solid transparent;
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:600;
+    transition: transform .12s;
+  }
+  .tw-sw:hover{ transform:scale(1.1); }
+  .tw-sw.active{ border-color:var(--ink); }
+  .tw-sw.p-terracota{ background: linear-gradient(135deg, #D96B3A 50%, #F5EFE4 50%); }
+  .tw-sw.p-mint{ background: linear-gradient(135deg, #2F7A55 50%, #EEF3EC 50%); }
+  .tw-sw.p-ink{ background: linear-gradient(135deg, #0B1B2B 50%, #F3EEE6 50%); }
+  .tw-sw.p-plum{ background: linear-gradient(135deg, #7A3E5E 50%, #F2EDEA 50%); }
+  .tw-textarea, .tw-input{
+    width:100%; padding:8px 10px;
+    border:1px solid var(--line); border-radius:8px;
+    background:var(--bg); font-family:var(--sans); font-size:13px; color:var(--ink);
+    resize:vertical; line-height:1.4;
+  }
+  .tw-textarea:focus, .tw-input:focus{ outline:none; border-color:var(--accent); }
+  .tw-seg{ display:flex; gap:4px; padding:3px; background:var(--bg); border:1px solid var(--line); border-radius:10px; }
+  .tw-seg button{
+    flex:1; padding:6px 10px; border-radius:7px; font-size:12px; font-weight:500; color:var(--ink-2);
+    transition: all .12s;
+  }
+  .tw-seg button.active{ background:var(--ink); color:var(--bg-card); }
+  .tw-close{
+    background:var(--bg); border:1px solid var(--line);
+    width:26px; height:26px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* ---------- LEAD MODAL ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0; z-index:200;
+    background: color-mix(in oklab, var(--ink) 60%, transparent);
+    backdrop-filter: blur(6px);
+    display:none; align-items:center; justify-content:center;
+    padding:20px;
+    opacity:0; transition: opacity .2s;
+  }
+  .modal-backdrop.on{ display:flex; opacity:1; }
+  .modal{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius: var(--radius-lg);
+    max-width:480px; width:100%;
+    padding:36px 32px 30px;
+    position:relative;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,.4);
+    transform: translateY(16px) scale(.98);
+    transition: transform .25s cubic-bezier(.2,.7,.3,1);
+  }
+  .modal-backdrop.on .modal{ transform: translateY(0) scale(1); }
+  .modal-close{
+    position:absolute; top:14px; right:14px;
+    width:30px; height:30px; border-radius:50%;
+    background:var(--bg); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:var(--ink-2);
+  }
+  .modal-close:hover{ color:var(--ink); }
+  .modal-eyebrow{
+    font-family:var(--mono); font-size:11px; text-transform:uppercase;
+    letter-spacing:.14em; color:var(--accent); margin-bottom:14px;
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .modal-eyebrow::before{ content:""; width:12px; height:1px; background:currentColor; }
+  .modal h3{
+    font-family:var(--serif); font-weight:500;
+    font-size:32px; line-height:1.05; letter-spacing:-0.025em;
+    margin-bottom:10px;
+  }
+  .modal h3 em{ font-style:italic; color:var(--accent); }
+  .modal p.mp{ font-size:15px; line-height:1.5; color:var(--ink-2); margin-bottom:22px; }
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .field label{ font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
+  .field input, .field textarea, .field select{
+    width:100%; padding:13px 14px;
+    border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); font-family:var(--sans); font-size:15px; color:var(--ink);
+    transition: border-color .15s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus{ outline:none; border-color:var(--accent); }
+  .field .err{ color:#C4452C; font-size:12px; font-family:var(--mono); min-height:14px; }
+  .modal .btn-accent{ width:100%; justify-content:center; padding:15px 20px; font-size:15px; margin-top:6px; }
+  .modal-foot{
+    margin-top:16px; font-size:12px; color:var(--muted); text-align:center;
+    line-height:1.4;
+  }
+  .modal-success{ display:none; text-align:center; padding:10px 0; }
+  .modal-success.on{ display:block; }
+  .success-icon{
+    width:64px; height:64px; border-radius:50%;
+    background: color-mix(in oklab, var(--green) 18%, var(--bg));
+    color:var(--green);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 20px;
+  }
+  .success-icon svg{ width:32px; height:32px; }
+  .modal-ctx-tag{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:5px 12px; border-radius:999px;
+    background:var(--bg); border:1px solid var(--line);
+    font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--ink-2); margin-bottom:16px;
+  }
+  .modal-ctx-tag .d{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
+
+</style>
+</head>
+<body data-palette="terracota">
+
+<a href="#main" class="skip-link">Saltar al contenido</a>
+
+<!-- NAV -->
+<header>
+<nav class="nav" id="nav" aria-label="Navegación principal">
+  <div class="container nav-inner">
+    <a class="logo" href="#">
+      <span class="logo-mark"></span>
+      sprint
+    </a>
+    <div class="nav-links">
+      <a href="#canales">Canales</a>
+      <a href="#como">Cómo funciona</a>
+      <a href="#sectores">Sectores</a>
+      <a href="#voz">Voz</a>
+      <a href="#precios">Precios</a>
+      <a href="#integraciones">Integraciones</a>
+    </div>
+    <div class="nav-cta">
+      <a href="#final" class="btn btn-sm btn-ghost" data-lead="Entrar">Entrar</a>
+      <a href="#final" class="btn btn-sm btn-primary" data-lead="Nav CTA">Habla con nosotros <span class="arrow">→</span></a>
+    </div>
+  </div>
+</nav>
+</header>
+
+<main id="main">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-blob"></div>
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <div class="hero-eyebrow" id="badge">
+        <span class="dot"></span>
+        Tu agenda deja de depender de ti
+      </div>
+      <h1 id="h1">
+        Tus citas,<br>
+        <em>en piloto automático.</em>
+      </h1>
+      <p class="lede" id="sub">
+        Sprint es el asistente con personalidad propia que contesta por ti en
+        WhatsApp, chat y llamadas. Reserva, mueve y confirma citas mientras
+        tú haces lo tuyo.
+      </p>
+      <div class="hero-actions">
+        <a href="#final" class="btn btn-primary" id="cta" data-lead="Hero">
+          Habla con nosotros <span class="arrow">→</span>
+        </a>
+        <a href="#como" class="btn btn-ghost">Ver cómo funciona</a>
+      </div>
+      <div class="hero-meta">
+        <div class="hero-meta-item">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l4 4 10-10"/></svg>
+          Listo en 48 horas
+        </div>
+        <div class="hero-meta-item">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l4 4 10-10"/></svg>
+          Sin cambiar tu número
+        </div>
+        <div class="hero-meta-item">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l4 4 10-10"/></svg>
+          Con tu propio tono
+        </div>
+      </div>
+    </div>
+
+    <!-- Phone demo -->
+    <div class="phone-wrap">
+      <div class="sprint-badge"><span class="dot"></span>Sprint está respondiendo</div>
+
+      <div class="sticker s1">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+        +38% de reservas
+      </div>
+      <div class="sticker s2">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z"/></svg>
+        24/7, sin café
+      </div>
+
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="wa-bar">
+            <div class="wa-avatar">L</div>
+            <div class="wa-id">
+              <span class="wa-name">Luna · Peluquería</span>
+              <span class="wa-status">en línea · asistente Sprint</span>
+            </div>
+            <div class="wa-actions">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
+            </div>
+          </div>
+          <div class="wa-body" id="chat-body">
+            <!-- injected -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee">
+  <div class="marquee-track">
+    <span class="marq-item">No más llamadas perdidas <span class="sep"></span></span>
+    <span class="marq-item">Reserva mientras duermes <span class="sep"></span></span>
+    <span class="marq-item">Contesta en 4 segundos <span class="sep"></span></span>
+    <span class="marq-item">Habla con tu tono <span class="sep"></span></span>
+    <span class="marq-item">Conecta con Google Calendar <span class="sep"></span></span>
+    <span class="marq-item">Funciona por WhatsApp <span class="sep"></span></span>
+    <!-- duplicate for loop -->
+    <span class="marq-item">No más llamadas perdidas <span class="sep"></span></span>
+    <span class="marq-item">Reserva mientras duermes <span class="sep"></span></span>
+    <span class="marq-item">Contesta en 4 segundos <span class="sep"></span></span>
+    <span class="marq-item">Habla con tu tono <span class="sep"></span></span>
+    <span class="marq-item">Conecta con Google Calendar <span class="sep"></span></span>
+    <span class="marq-item">Funciona por WhatsApp <span class="sep"></span></span>
+  </div>
+</div>
+
+<!-- CANALES -->
+<section class="channels" id="canales">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-kicker">01 · Canales</div>
+      <h2>Donde tus clientes ya están, <em>respondiendo por ti.</em></h2>
+      <p>WhatsApp, chat web y llamada de voz. Un único asistente entrenado con tu negocio, tu horario, tus servicios y tu forma de hablar.</p>
+    </div>
+    <div class="channel-grid">
+      <div class="channel">
+        <div class="channel-icon wa">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.6.1-.8-.4-1.7-.9-2.5-1.9-.6-.8-1-1.7-1.1-2-.1-.3 0-.5.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4 0 1.4 1.1 2.8 1.2 3 .2.2 2.1 3.3 5.2 4.6.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.5 15.2L2 22l5-1.3A10 10 0 1 0 12 2z"/></svg>
+        </div>
+        <h3>WhatsApp Business</h3>
+        <p>Sprint se conecta a tu número oficial y responde al instante: ofrece huecos, confirma, mueve y cancela.</p>
+        <div class="channel-demo">
+          <div class="mini-chat">
+            <div class="mini-line"><span class="mini-tag">14:02</span>Hola, ¿tenéis hueco mañana?</div>
+            <div class="mini-line"><span class="mini-tag">14:02</span>🤖 ¡Hola! Sí, tengo las 11:00 o las 17:30. ¿Cuál prefieres?</div>
+            <div class="mini-line"><span class="mini-tag">14:03</span>La de las 17:30 perfecta</div>
+            <div class="mini-line"><span class="mini-tag">14:03</span>🤖 ¡Hecho! Te veo mañana a las 17:30 ✨</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="channel">
+        <div class="channel-icon chat">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3>Chat web</h3>
+        <p>Un widget elegante en tu página. Sin formularios, sin 'déjanos tu email'. Se reserva y punto.</p>
+        <div class="channel-demo">
+          <div class="mini-chat">
+            <div class="mini-line"><span class="mini-tag">WEB</span>¿Hacéis limpieza + blanqueamiento?</div>
+            <div class="mini-line"><span class="mini-tag">SPR</span>🤖 Sí, 45 min. Te propongo jueves 10:00. ¿Te reservo?</div>
+            <div class="mini-line"><span class="mini-tag">WEB</span>Sí, a nombre de Marta Pérez</div>
+            <div class="mini-line"><span class="mini-tag">SPR</span>🤖 Confirmado ✓ Te enviamos recordatorio.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="channel">
+        <div class="channel-icon call">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
+        </div>
+        <h3>Llamada por voz</h3>
+        <p>Cuando alguien llama y tú estás ocupado, Sprint responde con voz natural y reserva la cita.</p>
+        <div class="channel-demo">
+          <div class="mini-chat">
+            <div class="mini-line" style="align-items:center">
+              <span class="mini-tag">LIVE</span>
+              <div class="waveform">
+                <span style="animation-delay:-.2s"></span>
+                <span style="animation-delay:-.1s"></span>
+                <span></span>
+                <span style="animation-delay:-.3s"></span>
+                <span style="animation-delay:-.5s"></span>
+                <span style="animation-delay:-.15s"></span>
+                <span style="animation-delay:-.4s"></span>
+                <span style="animation-delay:-.25s"></span>
+                <span style="animation-delay:-.1s"></span>
+                <span></span>
+              </div>
+            </div>
+            <div class="mini-line"><span class="mini-tag">🤖</span>"Claro, Juan. Te agendo el corte para el sábado a las 12:30. ¿Te parece?"</div>
+            <div class="mini-line"><span class="mini-tag">👤</span>"Perfecto, gracias."</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CÓMO FUNCIONA -->
+<section id="como" style="padding-top:0">
+  <div class="how">
+    <div class="container">
+      <div class="sec-head">
+        <div class="sec-kicker">02 · Cómo funciona</div>
+        <h2>De 'no contesto, estoy ocupado' a <em>'ya lo resolvió Sprint'</em>.</h2>
+        <p>Cuatro pasos. Cuarenta y ocho horas. Ningún conocimiento técnico requerido.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-ico">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <div class="step-num">PASO 01</div>
+          <div class="step-title">Cuéntanos</div>
+          <div class="step-desc">En una llamada de 30 min nos dices qué vendes, tus horarios, y cómo hablas a tus clientes.</div>
+        </div>
+        <div class="step">
+          <div class="step-ico">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div class="step-num">PASO 02</div>
+          <div class="step-title">Entrenamos</div>
+          <div class="step-desc">Creamos tu asistente con tu tono, tus reglas y tu calendario. Listo en 48 horas.</div>
+        </div>
+        <div class="step">
+          <div class="step-ico">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <div class="step-num">PASO 03</div>
+          <div class="step-title">Conectamos</div>
+          <div class="step-desc">Enlazamos tu WhatsApp, tu web y tu Google Calendar. Sin cambiar tu número ni tus herramientas.</div>
+        </div>
+        <div class="step">
+          <div class="step-ico">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="step-num">PASO 04</div>
+          <div class="step-title">Relájate</div>
+          <div class="step-desc">Sprint contesta, agenda y confirma 24/7. Tú ves todo en un panel y recibes resumen diario.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTORES -->
+<section class="sectors" id="sectores">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-kicker">03 · Sectores</div>
+      <h2>Hecho para negocios <em>que viven de las citas.</em></h2>
+      <p>Cada sector tiene sus particularidades. Sprint las aprende: desde vocabulario y servicios hasta reglas de reserva.</p>
+    </div>
+
+    <div class="sec-tabs" id="sec-tabs" role="tablist" aria-label="Selector de sector">
+      <button class="sec-tab active" data-sec="pelu" role="tab" aria-selected="true" type="button"><span class="emo" aria-hidden="true">✂️</span>Peluquerías</button>
+      <button class="sec-tab" data-sec="clinica" role="tab" aria-selected="false" type="button"><span class="emo" aria-hidden="true">🦷</span>Clínicas</button>
+      <button class="sec-tab" data-sec="consultor" role="tab" aria-selected="false" type="button"><span class="emo" aria-hidden="true">💼</span>Consultores</button>
+      <button class="sec-tab" data-sec="vet" role="tab" aria-selected="false" type="button"><span class="emo" aria-hidden="true">🐾</span>Veterinarias</button>
+      <button class="sec-tab" data-sec="resto" role="tab" aria-selected="false" type="button"><span class="emo" aria-hidden="true">🍽️</span>Restaurantes</button>
+    </div>
+
+    <div class="sector-panel" id="sec-panel">
+      <!-- JS fills -->
+    </div>
+  </div>
+</section>
+
+<!-- VOZ / PERSONALIZACIÓN -->
+<section class="voice" id="voz">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-kicker">04 · Voz y personalidad</div>
+      <h2>Que suene a ti. <em>Literalmente.</em></h2>
+      <p>Sprint no habla como un bot de call center. Eliges su tono, su voz para las llamadas — o le pasas un audio tuyo y te clona. Inquietante. Pero funciona.</p>
+    </div>
+
+    <div class="voice-grid">
+
+      <!-- Tono del chat -->
+      <div class="voice-card">
+        <div class="voice-label">Tono del chat</div>
+        <h3>Del <em>"estimado cliente"</em> al <em>"¡ey, guapi!"</em></h3>
+        <p class="voice-sub">Elige la personalidad de tu asistente y vigila cómo cambia la misma respuesta según el tono que pongas.</p>
+
+        <div class="tone-chips" id="tone-chips">
+          <button class="tone-chip on" data-tone="formal">Formal</button>
+          <button class="tone-chip" data-tone="cercano">Cercano</button>
+          <button class="tone-chip" data-tone="divertido">Divertido</button>
+          <button class="tone-chip" data-tone="minimal">Minimal</button>
+        </div>
+
+        <div class="tone-preview">
+          <div class="tp-av">S</div>
+          <div class="tp-text" id="tone-preview-text">Buenos días. Dispongo de cita el jueves a las 16:30. ¿Le reservo?</div>
+        </div>
+      </div>
+
+      <!-- Voz de llamadas -->
+      <div class="voice-card">
+        <div class="voice-label">Voz de las llamadas</div>
+        <h3>Seis voces. Todas <em>suenan humanas.</em></h3>
+        <p class="voice-sub">Elige el timbre que más encaje con tu marca. Acento español de España, latino o mezcla — tú decides.</p>
+
+        <div class="voice-list" id="voice-list">
+          <button class="voice-item playing" data-voice="lucia">
+            <span class="v-dot">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <div class="v-info">
+              <span class="v-name">Lucía</span>
+              <span class="v-desc">ES · cálida · 28 años</span>
+            </div>
+            <div class="v-wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          </button>
+          <button class="voice-item" data-voice="martin">
+            <span class="v-dot">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <div class="v-info">
+              <span class="v-name">Martín</span>
+              <span class="v-desc">ES · profesional · 40 años</span>
+            </div>
+            <div class="v-wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          </button>
+          <button class="voice-item" data-voice="valentina">
+            <span class="v-dot">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <div class="v-info">
+              <span class="v-name">Valentina</span>
+              <span class="v-desc">LATAM · fresca · 24 años</span>
+            </div>
+            <div class="v-wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Clonación -->
+      <div class="voice-card wide">
+        <div class="clone-row">
+          <div class="clone-viz">
+            <div class="clone-mic">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </div>
+          </div>
+          <div>
+            <div class="clone-tag"><span class="d"></span>Próximamente · Beta</div>
+            <h3>¿Y si <em>tu voz</em> contestara por ti? Ahora puede.</h3>
+            <p class="voice-sub">Grabas 2 minutos leyendo un texto. Sprint clona tu voz y la usa para responder llamadas con tu forma de hablar, tus muletillas y tu acento. Tus clientes no notarán la diferencia.</p>
+            <div class="clone-steps">
+              <div class="clone-step"><span class="n">1</span>Graba 2 min</div>
+              <div class="clone-step"><span class="n">2</span>Entrenamos tu clon</div>
+              <div class="clone-step"><span class="n">3</span>Revisas y apruebas</div>
+              <div class="clone-step"><span class="n">4</span>En vivo en 72h</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- INTEGRACIONES -->
+<section class="integrations" id="integraciones">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-kicker">05 · Integraciones</div>
+      <h2>Se enchufa a <em>lo que ya usas.</em></h2>
+      <p>No te pedimos migrar nada. Sprint vive junto a tus herramientas actuales.</p>
+    </div>
+    <div class="int-grid">
+      <div class="int-cell"><div class="int-logo">G Calendar</div><div class="int-name">calendario</div></div>
+      <div class="int-cell"><div class="int-logo">WhatsApp</div><div class="int-name">business api</div></div>
+      <div class="int-cell"><div class="int-logo">Outlook</div><div class="int-name">calendario</div></div>
+      <div class="int-cell"><div class="int-logo">Stripe</div><div class="int-name">cobros</div></div>
+      <div class="int-cell"><div class="int-logo">Zapier</div><div class="int-name">automatiza</div></div>
+      <div class="int-cell"><div class="int-logo">Slack</div><div class="int-name">avisos</div></div>
+      <div class="int-cell"><div class="int-logo">Instagram</div><div class="int-name">DM</div></div>
+      <div class="int-cell"><div class="int-logo">Sheets</div><div class="int-name">reportes</div></div>
+      <div class="int-cell"><div class="int-logo">Mailchimp</div><div class="int-name">email</div></div>
+      <div class="int-cell"><div class="int-logo">HubSpot</div><div class="int-name">CRM</div></div>
+      <div class="int-cell"><div class="int-logo">Zoom</div><div class="int-name">video</div></div>
+      <div class="int-cell"><div class="int-logo">Twilio</div><div class="int-name">voz</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="precios">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-kicker">06 · Precios</div>
+      <h2>Menos que una llamada perdida. <em>Bastante menos.</em></h2>
+      <p>Sin permanencia. Primera semana de setup incluida. Si no te convence, te devolvemos el dinero.</p>
+    </div>
+    <div class="price-grid">
+      <div class="price-card">
+        <div class="price-name">Solo</div>
+        <div class="price-for">Profesional independiente</div>
+        <div class="price-amount"><span class="num">39€</span><span class="per">/mes</span></div>
+        <div class="price-muted">Hasta 150 conversaciones/mes</div>
+        <ul class="price-feats">
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>WhatsApp + Chat web</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Google Calendar</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Recordatorios automáticos</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Panel de conversaciones</li>
+        </ul>
+        <a href="#final" class="btn btn-ghost" data-lead="Plan Solo">Empezar</a>
+      </div>
+
+      <div class="price-card highlight">
+        <div class="price-tag">Más elegido</div>
+        <div class="price-name">Estudio</div>
+        <div class="price-for">Pequeño equipo o local</div>
+        <div class="price-amount"><span class="num">99€</span><span class="per">/mes</span></div>
+        <div class="price-muted">Hasta 800 conversaciones/mes</div>
+        <ul class="price-feats">
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Todo lo de Solo</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Llamadas por voz con IA</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Varios profesionales</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Cobros por Stripe</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Personalidad a medida</li>
+        </ul>
+        <a href="#final" class="btn btn-accent" data-lead="Plan Estudio">Empezar ahora <span class="arrow">→</span></a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-name">Equipo</div>
+        <div class="price-for">Varios locales o clínica</div>
+        <div class="price-amount"><span class="num">299€</span><span class="per">/mes</span></div>
+        <div class="price-muted">Conversaciones ilimitadas</div>
+        <ul class="price-feats">
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Todo lo de Estudio</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Múltiples sedes</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>CRM + integraciones avanzadas</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Soporte prioritario</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Account manager</li>
+        </ul>
+        <a href="#final" class="btn btn-ghost" data-lead="Plan Equipo">Habla con ventas</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta" id="final">
+  <div class="final-bg-word">sprint.</div>
+  <div class="container">
+    <h2>Ahora toca <em>no hacer nada.</em><br>De eso nos encargamos.</h2>
+    <p>Cuéntanos tu negocio en una llamada de 20 minutos. Si encaja, en 48 horas tienes a Sprint contestando por ti.</p>
+    <a href="#" class="btn btn-primary" id="final-cta" data-lead="Final CTA">Habla con nosotros <span class="arrow">→</span></a>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="foot">
+      <div>
+        <a class="logo" href="#">
+          <span class="logo-mark"></span>
+          sprint
+        </a>
+        <p class="foot-tag">Tu recepcionista con IA para WhatsApp, chat y llamadas. Menos teléfono, más citas.</p>
+      </div>
+      <div>
+        <h4>Producto</h4>
+        <ul>
+          <li><a href="#canales">Canales</a></li>
+          <li><a href="#como">Cómo funciona</a></li>
+          <li><a href="#integraciones">Integraciones</a></li>
+          <li><a href="#precios">Precios</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Sectores</h4>
+        <ul>
+          <li><a href="#sectores">Peluquerías</a></li>
+          <li><a href="#sectores">Clínicas</a></li>
+          <li><a href="#sectores">Consultores</a></li>
+          <li><a href="#sectores">Veterinarias</a></li>
+          <li><a href="#sectores">Restaurantes</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Empresa</h4>
+        <ul>
+          <li><a href="#">Sobre Sprint</a></li>
+          <li><a href="#">Contacto</a></li>
+          <li><a href="#">Privacidad</a></li>
+          <li><a href="#">Términos</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <div>© 2026 Sprint — Hecho en Madrid con mucho café ☕</div>
+      <div>hola@sprint.agency</div>
+    </div>
+  </div>
+</footer>
+
+<!-- LEAD MODAL -->
+<div class="modal-backdrop" id="lead-modal" role="dialog" aria-modal="true" aria-labelledby="lead-title" aria-hidden="true">
+  <div class="modal">
+    <button class="modal-close" id="lead-close" aria-label="Cerrar formulario" type="button">×</button>
+    <div id="lead-form-wrap">
+      <div class="modal-eyebrow">Hablemos</div>
+      <div class="modal-ctx-tag" id="lead-ctx"><span class="d"></span><span id="lead-ctx-label">Hero</span></div>
+      <h3 id="lead-title">Déjanos tu teléfono y <em>te llamamos.</em></h3>
+      <p class="mp">En menos de 24 h te contactamos para ver si Sprint encaja con tu negocio. Sin rollos.</p>
+      <form id="lead-form" novalidate action="/api/leads" method="post">
+        <div class="field">
+          <label for="lead-phone">Tu WhatsApp o teléfono</label>
+          <input type="tel" id="lead-phone" name="phone" required placeholder="+34 600 000 000" autocomplete="tel" inputmode="tel">
+          <div class="err" id="lead-err" role="alert" aria-live="polite"></div>
+        </div>
+        <div class="field">
+          <label for="lead-name">Tu nombre</label>
+          <input type="text" id="lead-name" name="name" required placeholder="Cómo te llamamos" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="lead-email">Email (opcional)</label>
+          <input type="email" id="lead-email" name="email" placeholder="tu@empresa.com" autocomplete="email" inputmode="email" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="lead-biz">Tu negocio (opcional)</label>
+          <input type="text" id="lead-biz" name="company" placeholder="Peluquería, clínica, estudio…">
+        </div>
+        <div class="field">
+          <label for="lead-sector">Sector (opcional)</label>
+          <select id="lead-sector" name="sector">
+            <option value="">Elige uno</option>
+            <option value="peluqueria">Peluquería / barbería</option>
+            <option value="clinica">Clínica / dentista / fisio</option>
+            <option value="consultor">Consultor / coach / abogado</option>
+            <option value="veterinaria">Veterinaria</option>
+            <option value="restaurante">Restaurante</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <input type="hidden" name="consent" value="1">
+        <button type="submit" class="btn btn-accent">Enviar <span class="arrow" aria-hidden="true">→</span></button>
+      </form>
+      <div class="modal-foot">Al enviar aceptas que te contactemos por teléfono o WhatsApp. No compartimos tus datos.</div>
+    </div>
+    <div class="modal-success" id="lead-success">
+      <div class="success-icon">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+      </div>
+      <h3 style="font-family:var(--serif); font-weight:500; font-size:26px; letter-spacing:-0.02em; margin-bottom:8px;">¡Recibido! <em>Gracias.</em></h3>
+      <p style="color:var(--ink-2); font-size:15px; line-height:1.5;">Te escribimos en las próximas 24h. Mientras tanto, puedes seguir explorando la web.</p>
+      <button class="btn btn-ghost" id="lead-reset" type="button" style="margin-top:22px;">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TWEAKS -->
+<div class="tw-panel" id="tw-panel">
+  <div class="tw-h">
+    <strong>Tweaks</strong>
+    <button class="tw-close" id="tw-close-btn" aria-label="Cerrar panel de tweaks" type="button">×</button>
+  </div>
+  <div class="tw-row">
+    <span class="tw-label">Paleta</span>
+    <div class="tw-palette" id="tw-palette">
+      <button class="tw-sw p-terracota" data-pal="terracota" title="Terracota"></button>
+      <button class="tw-sw p-mint" data-pal="mint" title="Menta"></button>
+      <button class="tw-sw p-ink" data-pal="ink" title="Tinta"></button>
+      <button class="tw-sw p-plum" data-pal="plum" title="Ciruela"></button>
+    </div>
+  </div>
+  <div class="tw-row">
+    <span class="tw-label">Titular del hero</span>
+    <textarea class="tw-textarea" id="tw-h1" rows="2"></textarea>
+  </div>
+  <div class="tw-row">
+    <span class="tw-label">Subtítulo</span>
+    <textarea class="tw-textarea" id="tw-sub" rows="3"></textarea>
+  </div>
+  <div class="tw-row">
+    <span class="tw-label">CTA principal</span>
+    <input class="tw-input" id="tw-cta" type="text">
+  </div>
+  <div class="tw-row">
+    <span class="tw-label">Variante de hero</span>
+    <div class="tw-seg" id="tw-hero-seg">
+      <button data-v="demo" class="active">Demo chat</button>
+      <button data-v="minimal">Minimal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ========== NAV scroll ========== */
+  window.addEventListener('scroll', () => {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  /* ========== APPLY TWEAKS ========== */
+  function applyTweaks(t){
+    document.body.setAttribute('data-palette', t.palette);
+    // highlight active swatch
+    document.querySelectorAll('.tw-sw').forEach(b=>{
+      b.classList.toggle('active', b.dataset.pal === t.palette);
+    });
+    // copy
+    const h1 = document.getElementById('h1');
+    // wrap last word in em
+    const parts = t.heroHeadline.split(/\s+/);
+    if (parts.length >= 2){
+      const mid = Math.ceil(parts.length/2);
+      const first = parts.slice(0, mid).join(' ');
+      const em = parts.slice(mid).join(' ');
+      h1.innerHTML = first + '<br><em>' + em + '</em>';
+    } else {
+      h1.textContent = t.heroHeadline;
+    }
+    document.getElementById('sub').textContent = t.heroSubline;
+    const ctaNode = document.getElementById('cta');
+    ctaNode.innerHTML = t.ctaLabel + ' <span class="arrow">→</span>';
+    document.getElementById('final-cta').innerHTML = t.ctaLabel + ' <span class="arrow">→</span>';
+    // also nav cta
+    document.querySelectorAll('.nav-cta .btn-primary').forEach(el => {
+      el.innerHTML = t.ctaLabel + ' <span class="arrow">→</span>';
+    });
+    // sync panel fields
+    document.getElementById('tw-h1').value = t.heroHeadline;
+    document.getElementById('tw-sub').value = t.heroSubline;
+    document.getElementById('tw-cta').value = t.ctaLabel;
+    document.querySelectorAll('#tw-hero-seg button').forEach(b=>{
+      b.classList.toggle('active', b.dataset.v === t.heroVariant);
+    });
+    // hero variant
+    document.querySelector('.phone-wrap').style.display = t.heroVariant === 'minimal' ? 'none' : '';
+    if (t.heroVariant === 'minimal'){
+      document.querySelector('.hero-grid').style.gridTemplateColumns = '1fr';
+      document.querySelector('.hero-copy').style.textAlign = 'center';
+      document.querySelector('.hero-copy').style.maxWidth = '800px';
+      document.querySelector('.hero-copy').style.margin = '0 auto';
+    } else {
+      document.querySelector('.hero-grid').style.gridTemplateColumns = '';
+      document.querySelector('.hero-copy').style.textAlign = '';
+      document.querySelector('.hero-copy').style.maxWidth = '';
+      document.querySelector('.hero-copy').style.margin = '';
+    }
+  }
+  let state = { ...TWEAKS };
+  applyTweaks(state);
+
+  function pushEdit(patch){
+    state = { ...state, ...patch };
+    applyTweaks(state);
+    try {
+      window.parent.postMessage({type:'__edit_mode_set_keys', edits: patch}, '*');
+    } catch(e){}
+  }
+
+  // Palette
+  document.getElementById('tw-palette').addEventListener('click', (e)=>{
+    const b = e.target.closest('.tw-sw');
+    if (!b) return;
+    pushEdit({ palette: b.dataset.pal });
+  });
+  // Hero variant seg
+  document.getElementById('tw-hero-seg').addEventListener('click', (e)=>{
+    const b = e.target.closest('button');
+    if (!b) return;
+    pushEdit({ heroVariant: b.dataset.v });
+  });
+  // Inputs
+  document.getElementById('tw-h1').addEventListener('input', e => pushEdit({ heroHeadline: e.target.value }));
+  document.getElementById('tw-sub').addEventListener('input', e => pushEdit({ heroSubline: e.target.value }));
+  document.getElementById('tw-cta').addEventListener('input', e => pushEdit({ ctaLabel: e.target.value }));
+
+  /* ========== EDIT MODE hook ========== */
+  window.addEventListener('message', (e)=>{
+    if (!e.data) return;
+    if (e.data.type === '__activate_edit_mode') document.getElementById('tw-panel').classList.add('on');
+    if (e.data.type === '__deactivate_edit_mode') document.getElementById('tw-panel').classList.remove('on');
+  });
+  document.getElementById('tw-close-btn').addEventListener('click', ()=>{
+    document.getElementById('tw-panel').classList.remove('on');
+  });
+  try{ window.parent.postMessage({type:'__edit_mode_available'}, '*'); }catch(e){}
+
+  /* ========== CHAT LOOP ========== */
+  const CHAT_SCRIPTS = [
+    [
+      {who:'me', text:'Hola, ¿tenéis hueco mañana para corte y barba?', t:'14:02', read:true},
+      {who:'typing'},
+      {who:'bot', text:'¡Hola Juan! Sí 💈 Tengo las 11:00, 13:30 o las 17:30. ¿Cuál te va mejor?', t:'14:02'},
+      {who:'card'},
+      {who:'me', text:'La de las 17:30 perfecta', t:'14:03', read:true},
+      {who:'typing'},
+      {who:'bot', text:'¡Hecho! Mañana a las 17:30 con Paco. Te mando recordatorio por la mañana ✨', t:'14:03'},
+    ],
+    [
+      {who:'me', text:'Hola, necesito mover mi cita del jueves', t:'10:14', read:true},
+      {who:'typing'},
+      {who:'bot', text:'Claro. Tu cita es el jueves 23 a las 16:00 (corte). ¿La muevo al viernes 24 a la misma hora?', t:'10:14'},
+      {who:'me', text:'Mejor sábado por la mañana', t:'10:15', read:true},
+      {who:'typing'},
+      {who:'bot', text:'El sábado 25 tengo 10:00, 11:30 y 12:45. ¿Alguna te va?', t:'10:15'},
+      {who:'me', text:'11:30', t:'10:16', read:true},
+      {who:'bot', text:'¡Cambiado ✓ Sábado 25 · 11:30. Te veo entonces!', t:'10:16'},
+    ],
+    [
+      {who:'me', text:'¿Está Paco el viernes?', t:'19:42', read:true},
+      {who:'typing'},
+      {who:'bot', text:'Viernes Paco tiene hueco a las 09:30 y a las 18:00. ¿Te reservo alguno?', t:'19:42'},
+      {who:'me', text:'18h me va genial, nombre de María', t:'19:43', read:true},
+      {who:'typing'},
+      {who:'bot', text:'Reservado para María · viernes 18:00 con Paco. Si cambias de idea, escríbeme y lo movemos 💛', t:'19:43'},
+    ],
+  ];
+
+  const chatBody = document.getElementById('chat-body');
+  let scriptIdx = 0;
+
+  function bubble({who, text, t, read}){
+    const el = document.createElement('div');
+    if (who === 'typing'){
+      el.className = 'bubble bot';
+      el.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
+    } else {
+      el.className = 'bubble ' + (who === 'me' ? 'me' : 'bot');
+      const timeHTML = t ? `<span class="time${read ? ' read' : ''}">${t}${read ? ' ✓✓' : ''}</span>` : '';
+      el.innerHTML = text + timeHTML;
+    }
+    return el;
+  }
+
+  function cardEl(){
+    const c = document.createElement('div');
+    c.className = 'wa-card';
+    c.style.opacity = '0';
+    c.style.transform = 'translateY(8px)';
+    c.style.transition = 'all .35s cubic-bezier(.2,.7,.3,1)';
+    c.innerHTML = `
+      <div class="cal-h"><span class="cal-dot"></span>Disponibles · mañana</div>
+      <div class="cal-slot"><span>11:00 – 11:45</span><span style="color:#888">Paco</span></div>
+      <div class="cal-slot"><span>13:30 – 14:15</span><span style="color:#888">Lucía</span></div>
+      <div class="cal-slot chosen"><span>17:30 – 18:15</span><span style="color:#4a8050">★ Paco</span></div>
+    `;
+    requestAnimationFrame(()=>{
+      setTimeout(()=>{ c.style.opacity='1'; c.style.transform='translateY(0)'; }, 20);
+    });
+    return c;
+  }
+
+  async function playScript(list){
+    chatBody.innerHTML = '';
+    for (let i = 0; i < list.length; i++){
+      const msg = list[i];
+      if (msg.who === 'typing'){
+        const t = bubble(msg);
+        chatBody.appendChild(t);
+        await wait(900 + Math.random()*400);
+        chatBody.removeChild(t);
+      } else if (msg.who === 'card'){
+        chatBody.appendChild(cardEl());
+        await wait(1600);
+      } else {
+        chatBody.appendChild(bubble(msg));
+        await wait(msg.who === 'me' ? 600 : 1100);
+      }
+    }
+  }
+
+  function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  async function loop(){
+    while(true){
+      await playScript(CHAT_SCRIPTS[scriptIdx]);
+      await wait(2500);
+      // fade out existing
+      chatBody.style.transition = 'opacity .5s';
+      chatBody.style.opacity = '0';
+      await wait(500);
+      chatBody.style.opacity = '1';
+      scriptIdx = (scriptIdx + 1) % CHAT_SCRIPTS.length;
+    }
+  }
+  loop();
+
+  /* ========== SECTOR TABS ========== */
+  const SECTORS = {
+    pelu: {
+      title: 'Peluquerías y barberías',
+      emphasis: 'Siempre rapado a tiempo.',
+      body: 'Tus clientes piden cita cuando les viene, no cuando tú puedes contestar. Sprint agenda por WhatsApp al instante, propone huecos reales de tu equipo y envía recordatorios para que no te dejen plantado.',
+      points: [
+        'Elige profesional, servicio y duración',
+        'Recordatorio 24h antes + confirmación 2h antes',
+        'Bloquea huecos si tu barbero tiene día libre',
+        'Lista de espera automática para cancelaciones',
+      ],
+      card: [
+        ['10:30','Sergio · corte','nuevo','new','o'],
+        ['11:00','María · tinte 90m','confirmado','conf','g'],
+        ['12:00','Pedro · barba','confirmado','conf','g'],
+        ['13:30','🟠 Cancelación','aviso','',''],
+        ['14:00','Laura · corte+peinado','nuevo','new','o'],
+        ['17:30','Juan · corte+barba','confirmado','conf','g'],
+        ['18:30','Ana · color','nuevo','new','o'],
+      ]
+    },
+    clinica: {
+      title: 'Clínicas y consultas',
+      emphasis: 'Tu recepción, sin colas.',
+      body: 'Pacientes que piden cita, confirman, reprograman y cancelan — todo solos, sin pasar por recepción. Sprint respeta huecos por doctor, duraciones por tipo de consulta y reglas como "primera visita presencial".',
+      points: [
+        'Citas por tipo de consulta y especialidad',
+        'Gestión de primeras visitas vs. revisiones',
+        'Recordatorio + link al cuestionario previo',
+        'Integración con historia clínica (API)',
+      ],
+      card: [
+        ['09:00','Dra. López · revisión','confirmado','conf','g'],
+        ['09:30','Dr. García · primera','nuevo','new','o'],
+        ['10:15','Fisioterapia 45m','confirmado','conf','g'],
+        ['11:30','🟢 Hueco liberado','aviso','',''],
+        ['12:00','Dra. López · urgencia','nuevo','new','o'],
+        ['16:00','Higiene 30m','confirmado','conf','g'],
+        ['17:00','Dr. García · revisión','confirmado','conf','g'],
+      ]
+    },
+    consultor: {
+      title: 'Consultores, coaches y abogados',
+      emphasis: 'Que tu tiempo valga lo que cuesta.',
+      body: 'Sprint sabe que tu hora se paga. Califica al prospecto, le pasa el precio, le pide un depósito por Stripe y solo entonces reserva. Nada de "oye, ¿tienes 5 minutos gratis?".',
+      points: [
+        'Calificación antes de agendar',
+        'Cobro de depósito o sesión completa',
+        'Sesiones presenciales, Zoom o Meet',
+        'Diferentes duraciones (30/60/90 min)',
+      ],
+      card: [
+        ['10:00','Discovery · 30m · Zoom','confirmado','conf','g'],
+        ['11:30','Consulta · 60m','pendiente pago','pend','o'],
+        ['13:00','🟢 BLOQUE FOCUS','sin citas','',''],
+        ['15:00','Sesión 2/6 · María','confirmado','conf','g'],
+        ['16:30','Audiencia · presencial','confirmado','conf','g'],
+        ['18:00','Primera · 60m','nuevo','new','o'],
+      ]
+    },
+    vet: {
+      title: 'Veterinarias',
+      emphasis: 'Para cuando la consulta eres tú solo.',
+      body: 'Mientras haces una cirugía, Sprint atiende a la familia preocupada del cocker. Agenda visita, diferencia entre vacuna, urgencia y revisión, y te avisa si es algo que no puede esperar.',
+      points: [
+        'Distingue urgencias de revisiones',
+        'Ficha de la mascota en cada reserva',
+        'Recordatorios de vacunas anuales',
+        'Protocolo distinto para postoperatorios',
+      ],
+      card: [
+        ['09:30','Luna (gato) · vacuna','confirmado','conf','g'],
+        ['10:00','Rocky (perro) · revisión','confirmado','conf','g'],
+        ['11:15','🔴 URGENCIA · Canela','urgente','new','o'],
+        ['12:30','Toby · postop','confirmado','conf','g'],
+        ['16:00','Mila (cobaya) · primera','nuevo','new','o'],
+        ['17:30','Simba · vacuna','confirmado','conf','g'],
+      ]
+    },
+    resto: {
+      title: 'Pequeños restaurantes',
+      emphasis: 'Mesas llenas, móvil descansado.',
+      body: 'Reservas por WhatsApp o llamada, con control de aforo, turnos de cocina y notas especiales ("alérgico al gluten", "cumpleaños"). Sprint confirma la noche anterior para que no te quedes con mesas vacías.',
+      points: [
+        'Turnos de 1ª y 2ª sentada',
+        'Control de aforo y mesas grandes',
+        'Notas: alergias, cumpleaños, trona',
+        'Confirmación la noche anterior',
+      ],
+      card: [
+        ['13:30','Mesa 4 pax · María','confirmado','conf','g'],
+        ['14:00','Mesa 2 pax · walk-in','confirmado','conf','g'],
+        ['20:30','Mesa 6 · cumpleaños 🎂','confirmado','conf','g'],
+        ['21:00','Mesa 2 · sin gluten','nuevo','new','o'],
+        ['21:30','🟠 Lista espera · 4 pax','aviso','',''],
+        ['22:00','Mesa 3 pax','nuevo','new','o'],
+      ]
+    },
+  };
+
+  function renderSector(key){
+    const s = SECTORS[key];
+    const panel = document.getElementById('sec-panel');
+    panel.innerHTML = `
+      <div class="sector-copy">
+        <h3>${s.title.replace(/ y /,' y <em>').replace(/$/,'</em>')}</h3>
+        <p style="font-family:var(--serif); font-style:italic; font-size:20px; color:var(--accent); margin-bottom:14px;">${s.emphasis}</p>
+        <p>${s.body}</p>
+        <div class="sector-points">
+          ${s.points.map(p => `<div class="sector-point">${p}</div>`).join('')}
+        </div>
+      </div>
+      <div class="sector-card">
+        <div class="sc-head"><span>📅</span> HOY · ${new Date().toLocaleDateString('es-ES',{weekday:'long', day:'numeric', month:'long'})}</div>
+        ${s.card.map(([t, who, label, cls, pillCls]) => `
+          <div class="sc-row ${cls}">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span class="t">${t}</span>
+              <span class="who">${who}</span>
+            </div>
+            ${label ? `<span class="pill ${pillCls}">${label}</span>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  renderSector('pelu');
+  document.getElementById('sec-tabs').addEventListener('click', (e)=>{
+    const b = e.target.closest('.sec-tab');
+    if (!b) return;
+    document.querySelectorAll('.sec-tab').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
+    b.classList.add('active');
+    b.setAttribute('aria-selected','true');
+    renderSector(b.dataset.sec);
+  });
+
+  /* ========== TONO CHIPS ========== */
+  const TONES = {
+    formal:    'Buenos días. Dispongo de cita el jueves a las 16:30. ¿Le reservo?',
+    cercano:   'Hola 👋 Tengo hueco el jueves a las 16:30. ¿Te va bien?',
+    divertido: '¡Ey! 🙌 El jueves a las 16:30 está libre. ¿Lo bloqueo a tu nombre?',
+    minimal:   'Jueves 16:30 disponible. ¿Reservo?'
+  };
+  document.getElementById('tone-chips').addEventListener('click', (e)=>{
+    const b = e.target.closest('.tone-chip');
+    if (!b) return;
+    document.querySelectorAll('.tone-chip').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    const node = document.getElementById('tone-preview-text');
+    node.style.opacity = '0';
+    node.style.transform = 'translateY(4px)';
+    node.style.transition = 'all .25s';
+    setTimeout(()=>{
+      node.textContent = TONES[b.dataset.tone];
+      node.style.opacity = '1';
+      node.style.transform = 'translateY(0)';
+    }, 180);
+  });
+
+  /* ========== VOICE LIST ========== */
+  document.getElementById('voice-list').addEventListener('click', (e)=>{
+    const b = e.target.closest('.voice-item');
+    if (!b) return;
+    document.querySelectorAll('.voice-item').forEach(x => x.classList.remove('playing'));
+    b.classList.add('playing');
+  });
+  /* ========== LEAD MODAL ========== */
+  // Los leads se POSTean a /api/leads (backend FastAPI en el mismo dominio).
+  const LEAD_ENDPOINT = '/api/leads';
+
+  const modal = document.getElementById('lead-modal');
+  const modalForm = document.getElementById('lead-form');
+  const modalSuccess = document.getElementById('lead-success');
+  const modalFormWrap = document.getElementById('lead-form-wrap');
+  const ctxLabel = document.getElementById('lead-ctx-label');
+  const phoneInput = document.getElementById('lead-phone');
+  const nameInput = document.getElementById('lead-name');
+  const errNode = document.getElementById('lead-err');
+
+  function openModal(ctx){
+    ctxLabel.textContent = ctx || 'Contacto';
+    modal.classList.add('on');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    modalFormWrap.style.display = '';
+    modalSuccess.classList.remove('on');
+    setTimeout(()=> phoneInput.focus(), 200);
+  }
+  function closeModal(){
+    modal.classList.remove('on');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    modalForm.reset();
+    errNode.textContent = '';
+  }
+
+  // Intercept all CTA clicks
+  document.querySelectorAll('[data-lead]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModal(el.getAttribute('data-lead'));
+    });
+  });
+  document.getElementById('lead-close').addEventListener('click', closeModal);
+  document.getElementById('lead-reset').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('on')) closeModal(); });
+
+  function validPhone(s){ return /^\+?[0-9\s\-\(\)\.]{6,25}$/.test(s); }
+
+  modalForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const phone = phoneInput.value.trim();
+    const name = nameInput.value.trim();
+
+    if (!name){
+      errNode.textContent = 'Dinos tu nombre';
+      nameInput.focus();
+      return;
+    }
+    if (!validPhone(phone)){
+      errNode.textContent = 'Introduce un teléfono válido (ej. +34 600 000 000)';
+      phoneInput.focus();
+      return;
+    }
+    errNode.textContent = '';
+
+    // Construir form-data con todos los campos + source + UTMs
+    const fd = new FormData(modalForm);
+    fd.set('source', ctxLabel.textContent || 'modal');
+    const params = new URLSearchParams(location.search);
+    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(k => {
+      if (params.get(k)) fd.set(k, params.get(k));
+    });
+
+    const submitBtn = modalForm.querySelector('button[type="submit"]');
+    const originalHTML = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Enviando...';
+
+    try{
+      const res = await fetch(LEAD_ENDPOINT, {
+        method: 'POST',
+        body: fd,
+        headers: {'Accept': 'application/json'}
+      });
+      if (!res.ok){
+        let data = {};
+        try { data = await res.json(); } catch(_){}
+        throw new Error(data.error || data.detail || 'No hemos podido enviar tu solicitud.');
+      }
+      // Éxito → mostrar pantalla de gracias
+      modalFormWrap.style.display = 'none';
+      modalSuccess.classList.add('on');
+    }catch(err){
+      errNode.textContent = err.message || 'Algo ha fallado. Inténtalo en un momento.';
+    }finally{
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHTML;
+    }
+  });
+</script>
+</body>
+</html>

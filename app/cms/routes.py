@@ -783,3 +783,78 @@ async def bookings_view(request: Request, uid: int = Depends(auth.current_user_i
         "user_email": auth.current_user_email(uid),
         "active": "reservas",
     })
+
+
+# ==========================================================================
+#  LEADS  (capturados desde la landing pública)
+# ==========================================================================
+
+_STATUS_LABELS = {
+    "new":       "Nuevo",
+    "contacted": "Contactado",
+    "qualified": "Cualificado",
+    "converted": "Convertido",
+    "lost":      "Perdido",
+}
+
+
+@router.get("/admin/leads", response_class=HTMLResponse)
+async def leads_view(
+    request: Request,
+    status: Optional[str] = None,
+    uid: int = Depends(auth.current_user_id),
+):
+    with Session(db_module.engine) as s:
+        q = s.query(db_module.Lead)
+        if status and status in _STATUS_LABELS:
+            q = q.filter(db_module.Lead.status == status)
+        leads = q.order_by(db_module.Lead.created_at.desc()).limit(500).all()
+
+        # KPIs
+        total = s.query(func.count(db_module.Lead.id)).scalar() or 0
+        new_count = s.query(func.count(db_module.Lead.id)).filter(
+            db_module.Lead.status == "new"
+        ).scalar() or 0
+        last_7d = s.query(func.count(db_module.Lead.id)).filter(
+            db_module.Lead.created_at >= datetime.utcnow() - timedelta(days=7)
+        ).scalar() or 0
+
+    return templates.TemplateResponse("leads.html", {
+        "request": request,
+        "user_email": auth.current_user_email(uid),
+        "active": "leads",
+        "leads": leads,
+        "status_filter": status,
+        "status_labels": _STATUS_LABELS,
+        "total_leads": total,
+        "new_leads": new_count,
+        "last_7d": last_7d,
+    })
+
+
+@router.post("/admin/leads/{lead_id}/status")
+async def leads_update_status(
+    lead_id: int,
+    status: str = Form(...),
+    uid: int = Depends(auth.current_user_id),
+):
+    if status not in _STATUS_LABELS:
+        raise HTTPException(400, "Estado inválido")
+    with Session(db_module.engine) as s:
+        lead = s.get(db_module.Lead, lead_id)
+        if lead is None:
+            raise HTTPException(404)
+        lead.status = status
+        s.commit()
+    return RedirectResponse(url="/admin/leads", status_code=303)
+
+
+@router.post("/admin/leads/{lead_id}/delete")
+async def leads_delete(lead_id: int, uid: int = Depends(auth.current_user_id)):
+    with Session(db_module.engine) as s:
+        lead = s.get(db_module.Lead, lead_id)
+        if lead is None:
+            raise HTTPException(404)
+        s.delete(lead)
+        s.commit()
+    return RedirectResponse(url="/admin/leads", status_code=303)
