@@ -118,7 +118,10 @@ class CrearReq(BaseModel):
 
 
 class BuscarReq(BaseModel):
-    telefono_cliente: str
+    # Opcional: con caller_id inyectado vía query param, el LLM no manda teléfono.
+    # Si lo manda explícito (cliente da otro número), se usa ese. Si no, se cae
+    # al caller_id como fallback dentro del handler.
+    telefono_cliente: str | None = None
     dias_adelante: int = 30
 
 
@@ -415,21 +418,41 @@ def buscar_reserva_cliente(
     if main_cal not in calendars_to_check:
         calendars_to_check.append(main_cal)
 
-    for cal_id in calendars_to_check:
-        ev = cal.buscar_evento_por_telefono(
-            tel, desde, hasta,
-            calendar_id=cal_id,
-            tenant_id=tenant.get("id", "default"),
-        )
-        if ev:
-            return {
-                "encontrada": True,
-                "event_id": ev["id"],
-                "titulo": ev.get("summary"),
-                "inicio": ev["start"].get("dateTime"),
-                "fin": ev["end"].get("dateTime"),
-                "calendar_id": cal_id,
-            }
+    # Reintenta ante errores transitorios de Google. Si aun así falla,
+    # devolvemos 200 con encontrada:false + retryable para que Ana pueda
+    # decidir si reintenta o deriva al número de tienda, en vez de oír un 500.
+    try:
+        for cal_id in calendars_to_check:
+            ev = _retry_google(
+                lambda cal_id=cal_id: cal.buscar_evento_por_telefono(
+                    tel, desde, hasta,
+                    calendar_id=cal_id,
+                    tenant_id=tenant.get("id", "default"),
+                ),
+                "buscar_evento_por_telefono",
+            )
+            if ev:
+                return {
+                    "encontrada": True,
+                    "event_id": ev["id"],
+                    "titulo": ev.get("summary"),
+                    "inicio": ev["start"].get("dateTime"),
+                    "fin": ev["end"].get("dateTime"),
+                    "calendar_id": cal_id,
+                }
+    except Exception as e:  # noqa: BLE001
+        log.error("buscar_reserva_cliente falló tras reintentos: %s\n%s",
+                  e, traceback.format_exc())
+        return {
+            "encontrada": False,
+            "error": (
+                "No he podido consultar el calendario ahora mismo. "
+                "Puede ser un pequeño corte del servicio de Google. "
+                "Intenta de nuevo en unos segundos."
+            ),
+            "retryable": True,
+            "detail": str(e)[:200],
+        }
     return {"encontrada": False}
 
 
