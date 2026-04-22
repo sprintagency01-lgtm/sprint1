@@ -331,6 +331,88 @@ con audio de forma fiable en ES.
 que el motor de voz (ElevenLabs) lo hará genera llamadas que suenan a bot. Esto aplica
 a TODOS los agentes que hagan tool calls, no solo Ana.
 
+### 4.9 `TypeError: can't compare offset-naive and offset-aware datetimes`
+
+**Síntoma**: HTTP 500 en `/tools/consultar_disponibilidad` prácticamente SIEMPRE que
+había al menos un evento ocupado en alguno de los calendarios consultados. Ana
+contestaba "Uy, perdona, ha habido un pequeño error al consultar la agenda" y el
+cliente colgaba.
+
+**Causa**: en `calendar_service.py`, la detección de colisiones comparaba datetimes
+mixtos. `cursor` y `slot_end` se construían con `tzinfo=TZ` (tz-aware, Madrid), pero
+los periodos busy se normalizaban con `b_start.replace(tzinfo=None)` (naive). Python
+lanza `TypeError` al comparar tz-aware con naive. El fallo era silente hasta que
+Google devolvía algún periodo busy no vacío (casi siempre en agenda real).
+
+**Fix**: quitar `.replace(tzinfo=None)` y comparar tz-aware directo. Python convierte
+ambos lados a UTC internamente. Aplicado en las dos funciones (`listar_huecos_libres`
+y `listar_huecos_por_peluqueros`). Commit `20c3733`.
+
+**Detección**: se añadió endpoint temporal `/_diag/consultar` que capturaba el
+traceback en el body de la respuesta. Fundamental: sin ese diag, el 500 era opaco
+(Railway no exponía el stacktrace).
+
+**Lección**: cuando haya 500 inexplicable en Railway y no tengas acceso fácil a logs,
+mete un endpoint diag que ejecute la misma ruta con try/except y devuelva
+`traceback.format_exc()` en la respuesta. Borrarlo en cuanto detectas el bug.
+
+### 4.10 Peluquero inexistente y peluquero-sin-huecos sin aviso
+
+**Síntoma 1**: cliente dice "quiero cita con Pepa" (que no existe) → Ana le ofrece
+huecos de Mario sin darse cuenta.
+
+**Síntoma 2**: cliente dice "con Marcos el lunes" (Marcos solo miércoles) → la tool
+devuelve `huecos: []` sin explicación y Ana improvisa mal.
+
+**Causa**: `_peluqueros_filtrados` caía al fallback de "devolver todos" cuando el
+nombre no existía; y no había campo `aviso` cuando un peluquero concreto no tenía
+huecos por `dias_trabajo`.
+
+**Fix** en `eleven_tools.py:consultar_disponibilidad`:
+- Nombre no existe → `{huecos: [], aviso: "No tengo peluquero con nombre 'X'. Peluqueros: ..."}`.
+- Peluquero válido pero 0 huecos → `aviso: "Marcos no tiene huecos en ese rango. Días que trabaja: miércoles."`.
+- Regla dura nº 10 del prompt añadida: "si viene `aviso`, LO LEES antes que los huecos".
+
+Commit `ab98079`.
+
+### 4.11 LLM serializa `None` como string literal `"None"`
+
+**Síntoma**: en Google Calendar aparecía "Teléfono: None" en la descripción del
+evento cuando el cliente no quería dar teléfono. Ana había enviado
+`"telefono_cliente": "None"` (string).
+
+**Causa**: Gemini a veces serializa Python None como la string `"None"` en JSON de
+tool calls en lugar de omitir el campo o enviar `null`.
+
+**Fix**: en `crear_reserva` normalizar:
+```python
+if tel.lower() in ("none", "null", "n/a", "na", "sin telefono", "sin teléfono", "-"):
+    tel = ""
+```
+
+Commit `ab98079`.
+
+### 4.12 Ana se saltaba pasos y repreguntaba lo ya dicho
+
+**Síntoma**: cliente dice "quiero cita mañana con Mario por la mañana, corte de
+hombre, soy Juan". Ana respondía "¿Qué servicio necesitas?" o "¿Para cuándo lo
+buscas?", ignorando que ya se lo había dicho. Cliente se enfadaba: "ya te lo he
+dicho".
+
+**Causa**: LLM seguía el flujo paso a paso literal sin extraer múltiples datos de
+un turno cargado.
+
+**Fix** en el prompt (v10.7 KB):
+- Regla dura nº 6 explícita: "ESCUCHA TODO lo que dice el cliente en cada turno
+  y EXTRAE TODOS los datos a la vez. NO repreguntes datos que ya te dieron."
+- Preámbulo al flujo: "ANTES DE EMPEZAR haz inventario mental: ¿ya me ha dicho
+  servicio, día, hora, peluquero, nombre? Pregunta SOLO por los que falten."
+- Cada paso lleva "(si no lo tienes)".
+- Regla 5 reforzada con ejemplo explícito: "cliente dice 'Hola soy Juan, quiero
+  cortarme el pelo mañana' → guardas 'Juan' EN SILENCIO y sigues con paso 1".
+
+PATCHed al agente. Verificado con 3 simulaciones distintas: todas pasan.
+
 ### 4.8 Desktop vs GitHub desincronizados
 
 **Síntoma**: cambios locales se perdían al pushear, o features remotas desaparecían al
