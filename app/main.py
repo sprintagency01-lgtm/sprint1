@@ -82,52 +82,6 @@ async def health() -> dict:
     return {"ok": True, "service": "bot_reservas", "version": "0.3.0"}
 
 
-@app.get("/_diag/tenant")
-async def _diag_tenant(tenant_id: str = "pelu_demo", x_tool_secret: str | None = None) -> dict:
-    """Diag temporal: devuelve cómo ve el runtime un tenant (horario, peluqueros)."""
-    if not settings.tool_secret or x_tool_secret != settings.tool_secret:
-        raise HTTPException(status_code=401, detail="Bad x_tool_secret")
-    from . import tenants as tn
-    from .eleven_tools import _horario
-    t = tn.get_tenant(tenant_id)
-    if not t:
-        return {"found": False}
-    horario = _horario(t)
-    return {
-        "found": True,
-        "id": t.get("id"),
-        "business_hours": t.get("business_hours"),
-        "horario_used": [str(horario[0]), str(horario[1])],
-        "peluqueros": [{"nombre": p.get("nombre"), "dias": p.get("dias_trabajo")} for p in (t.get("peluqueros") or [])],
-        "calendar_id": t.get("calendar_id"),
-    }
-
-
-@app.post("/_diag/fix_pelu_demo_hours")
-async def _diag_fix_hours(x_tool_secret: str | None = None) -> dict:
-    """One-shot: fija el horario de pelu_demo a 09:30–20:30 lun-sáb.
-
-    Existe porque pelu_demo se creó con el horario por defecto del CMS
-    (09:00–20:00 de lunes a viernes, sáb y dom cerrado) pero la peluquería
-    real abre de 09:30 a 20:30 incluido sábado. Una vez corregido, el cliente
-    puede seguir editándolo desde el panel.
-    """
-    from sqlalchemy.orm import Session as _S
-    if not settings.tool_secret or x_tool_secret != settings.tool_secret:
-        raise HTTPException(status_code=401, detail="Bad x_tool_secret")
-    correct = {
-        "mon": ["09:30", "20:30"], "tue": ["09:30", "20:30"],
-        "wed": ["09:30", "20:30"], "thu": ["09:30", "20:30"],
-        "fri": ["09:30", "20:30"], "sat": ["09:30", "20:30"],
-        "sun": ["closed"],
-    }
-    with _S(db.engine) as s:
-        t = s.get(db.Tenant, "pelu_demo")
-        if t is None:
-            return {"ok": False, "reason": "tenant no existe"}
-        t.business_hours = correct
-        s.commit()
-    return {"ok": True, "business_hours": correct}
 
 
 # ---------- Captura de leads desde la landing ----------

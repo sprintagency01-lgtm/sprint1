@@ -79,7 +79,9 @@ class CrearReq(BaseModel):
     titulo: str
     inicio_iso: str
     fin_iso: str
-    telefono_cliente: str
+    # El teléfono es opcional: algunos clientes no lo quieren dar y preferimos
+    # que la reserva se cree igualmente a que salte un 422 y Ana se corte.
+    telefono_cliente: str | None = None
     peluquero: str = "sin preferencia"
     notas: str = ""
 
@@ -222,12 +224,13 @@ def crear_reserva(
                        f"Opciones: " + ", ".join(p["nombre"] for p in peluqueros),
             )
 
+    tel = (req.telefono_cliente or "").strip()
     ev = cal.crear_evento(
         titulo=req.titulo,
         inicio=datetime.fromisoformat(req.inicio_iso),
         fin=datetime.fromisoformat(req.fin_iso),
         descripcion=req.notas,
-        telefono_cliente=req.telefono_cliente,
+        telefono_cliente=tel,
         calendar_id=destino_cal,
         tenant_id=tenant.get("id", "default"),
     )
