@@ -77,9 +77,22 @@ def _client_config() -> dict:
 
 
 def _load_creds(tenant_id: str = "default") -> Credentials | None:
+    """Carga credenciales del tenant.
+
+    Si el tenant no tiene un token propio, cae al `default.json`. Este fallback
+    es útil en demos y entornos donde un único consent de Google cubre todos
+    los calendarios relevantes (típico cuando los calendarios están compartidos
+    como editor con la cuenta que hizo el OAuth). En un despliegue multi-tenant
+    real conviene que cada tenant tenga su propio token.
+    """
     path = TOKENS_DIR / f"{tenant_id}.json"
     if not path.exists():
-        return None
+        fallback = TOKENS_DIR / "default.json"
+        if tenant_id != "default" and fallback.exists():
+            log.info("Tenant '%s' sin token propio; usando default.json", tenant_id)
+            path = fallback
+        else:
+            return None
     data = json.loads(path.read_text())
     creds = Credentials.from_authorized_user_info(data, SCOPES)
     if creds.expired and creds.refresh_token:
