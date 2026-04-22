@@ -82,6 +82,58 @@ async def health() -> dict:
     return {"ok": True, "service": "bot_reservas", "version": "0.3.0"}
 
 
+@app.get("/_diag/tokens")
+async def _diag_tokens(x_tool_secret: str | None = None) -> dict:
+    """Diagnóstico rápido de estado de tokens OAuth. Protegido por TOOL_SECRET.
+
+    Usage: GET /_diag/tokens?x_tool_secret=<TOOL_SECRET>
+    """
+    from .calendar_service import TOKENS_DIR, SCOPES, _load_creds
+    from fastapi import Header
+    if not settings.tool_secret or x_tool_secret != settings.tool_secret:
+        raise HTTPException(status_code=401, detail="Bad x_tool_secret")
+    out = {
+        "build_marker": "diag_v1_fallback_default",
+        "tokens_dir": str(TOKENS_DIR),
+        "tokens_dir_exists": TOKENS_DIR.exists(),
+        "scopes_requested": SCOPES,
+        "files": [],
+    }
+    if TOKENS_DIR.exists():
+        for p in sorted(TOKENS_DIR.iterdir()):
+            entry: dict = {"name": p.name, "size": p.stat().st_size}
+            try:
+                import json as _j
+                data = _j.loads(p.read_text())
+                entry["scopes_file"] = data.get("scopes")
+                entry["has_refresh"] = bool(data.get("refresh_token"))
+                entry["client_id_tail"] = (data.get("client_id") or "")[-15:]
+            except Exception as e:
+                entry["error"] = f"{type(e).__name__}: {str(e)[:100]}"
+            out["files"].append(entry)
+    # Try loading default tenant creds
+    try:
+        c = _load_creds("default")
+        out["default_load"] = {
+            "ok": c is not None,
+            "valid": bool(c and c.valid),
+            "has_refresh": bool(c and c.refresh_token),
+            "scopes": list(c.scopes) if (c and c.scopes) else None,
+        }
+    except Exception as e:
+        out["default_load"] = {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
+    try:
+        c = _load_creds("pelu_demo")
+        out["pelu_demo_load"] = {
+            "ok": c is not None,
+            "valid": bool(c and c.valid),
+            "scopes": list(c.scopes) if (c and c.scopes) else None,
+        }
+    except Exception as e:
+        out["pelu_demo_load"] = {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
+    return out
+
+
 # ---------- Captura de leads desde la landing ----------
 
 # Valida el teléfono: admite +, espacios, guiones, paréntesis y dígitos.
