@@ -23,6 +23,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta, time
 from typing import Iterable
+from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -39,6 +40,19 @@ SCOPES = [
 ]
 TOKENS_DIR = pathlib.Path(os.getenv("TOKENS_DIR", ".tokens"))
 TOKENS_DIR.mkdir(parents=True, exist_ok=True)
+TZ = ZoneInfo(settings.default_timezone)
+
+
+def _ensure_local_tz(dt: datetime) -> datetime:
+    """Normaliza datetimes al huso del negocio.
+
+    Si llegan naive, se asume que representan hora local del negocio.
+    Si llegan con tz, se convierten a la zona configurada para evitar
+    desplazamientos al serializar hacia Google Calendar.
+    """
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=TZ)
+    return dt.astimezone(TZ)
 
 
 @dataclass
@@ -121,9 +135,11 @@ def listar_huecos_libres(
     """
     svc = _service(tenant_id)
     cal = calendar_id or settings.default_calendar_id
+    fecha_desde = _ensure_local_tz(fecha_desde)
+    fecha_hasta = _ensure_local_tz(fecha_hasta)
     body = {
-        "timeMin": fecha_desde.isoformat() + "Z",
-        "timeMax": fecha_hasta.isoformat() + "Z",
+        "timeMin": fecha_desde.isoformat(),
+        "timeMax": fecha_hasta.isoformat(),
         "timeZone": settings.default_timezone,
         "items": [{"id": cal}],
     }
@@ -139,11 +155,11 @@ def listar_huecos_libres(
     delta = timedelta(minutes=duracion_minutos)
 
     # Recorrido por días dentro del rango
-    day = fecha_desde.date()
-    end_day = fecha_hasta.date()
+    day = fecha_desde.astimezone(TZ).date()
+    end_day = fecha_hasta.astimezone(TZ).date()
     while day <= end_day:
-        start_dt = datetime.combine(day, horario_apertura[0])
-        end_dt = datetime.combine(day, horario_apertura[1])
+        start_dt = datetime.combine(day, horario_apertura[0], tzinfo=TZ)
+        end_dt = datetime.combine(day, horario_apertura[1], tzinfo=TZ)
         cursor = start_dt
         while cursor + delta <= end_dt:
             # ¿colisiona con algún busy?
@@ -182,9 +198,11 @@ def listar_huecos_por_peluqueros(
         return []
 
     svc = _service(tenant_id)
+    fecha_desde = _ensure_local_tz(fecha_desde)
+    fecha_hasta = _ensure_local_tz(fecha_hasta)
     body = {
-        "timeMin": fecha_desde.isoformat() + "Z",
-        "timeMax": fecha_hasta.isoformat() + "Z",
+        "timeMin": fecha_desde.isoformat(),
+        "timeMax": fecha_hasta.isoformat(),
         "timeZone": settings.default_timezone,
         "items": [{"id": p["calendar_id"]} for p in peluqueros],
     }
@@ -202,11 +220,11 @@ def listar_huecos_por_peluqueros(
     delta = timedelta(minutes=duracion_minutos)
     resultados: list[dict] = []
 
-    day = fecha_desde.date()
-    end_day = fecha_hasta.date()
+    day = fecha_desde.astimezone(TZ).date()
+    end_day = fecha_hasta.astimezone(TZ).date()
     while day <= end_day:
-        start_dt = datetime.combine(day, horario_apertura[0])
-        end_dt = datetime.combine(day, horario_apertura[1])
+        start_dt = datetime.combine(day, horario_apertura[0], tzinfo=TZ)
+        end_dt = datetime.combine(day, horario_apertura[1], tzinfo=TZ)
         cursor = start_dt
         while cursor + delta <= end_dt:
             slot_end = cursor + delta
@@ -244,6 +262,8 @@ def crear_evento(
 ) -> dict:
     svc = _service(tenant_id)
     cal = calendar_id or settings.default_calendar_id
+    inicio = _ensure_local_tz(inicio)
+    fin = _ensure_local_tz(fin)
     event = {
         "summary": titulo,
         "description": f"{descripcion}\n\nTel. cliente: {telefono_cliente}".strip(),
@@ -265,6 +285,8 @@ def mover_evento(
 ) -> dict:
     svc = _service(tenant_id)
     cal = calendar_id or settings.default_calendar_id
+    nuevo_inicio = _ensure_local_tz(nuevo_inicio)
+    nuevo_fin = _ensure_local_tz(nuevo_fin)
     patch = {
         "start": {"dateTime": nuevo_inicio.isoformat(), "timeZone": settings.default_timezone},
         "end": {"dateTime": nuevo_fin.isoformat(), "timeZone": settings.default_timezone},
@@ -292,10 +314,12 @@ def buscar_evento_por_telefono(
     """Busca el próximo evento de un cliente por su teléfono."""
     svc = _service(tenant_id)
     cal = calendar_id or settings.default_calendar_id
+    desde = _ensure_local_tz(desde)
+    hasta = _ensure_local_tz(hasta)
     events = svc.events().list(
         calendarId=cal,
-        timeMin=desde.isoformat() + "Z",
-        timeMax=hasta.isoformat() + "Z",
+        timeMin=desde.isoformat(),
+        timeMax=hasta.isoformat(),
         singleEvents=True,
         orderBy="startTime",
         privateExtendedProperty=f"phone={telefono}",
