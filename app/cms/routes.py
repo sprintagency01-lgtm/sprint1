@@ -267,6 +267,39 @@ def _diag_calendar_connection(tenant_id: str, calendar_id: str) -> dict:
     except Exception as e:
         add("freeBusy", False, f"{type(e).__name__}: {str(e)[:240]}")
 
+    # 6) listar_huecos_libres con los parámetros de una llamada REAL de Ana.
+    #    Esto replica exactamente el camino que `consultar_disponibilidad`
+    #    ejecuta cuando el tenant no tiene equipo: loop intra-día + ranges_for_weekday
+    #    + generación de slots. Si algo peta aquí y no en los pasos 1-5, el fallo
+    #    está en el loop, no en la conexión Google.
+    try:
+        import traceback as _tb
+        from .. import tenants as _tn
+        tenant_dict = _tn.get_tenant(tenant_id) or {}
+        bh = tenant_dict.get("business_hours") or {}
+        # Ventana: próximo día laborable desde ahora (24h-48h adelante)
+        desde = datetime.now(_cal.TZ).replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        hasta = desde.replace(hour=20, minute=0)
+        slots = _cal.listar_huecos_libres(
+            desde, hasta, 30,
+            calendar_id=target,
+            tenant_id=tenant_id,
+            business_hours=bh,
+        )
+        detail = (
+            f"{len(slots)} huecos de 30min entre "
+            f"{desde.strftime('%a %d/%m %H:%M')} y {hasta.strftime('%H:%M')}. "
+            f"business_hours del día: {bh.get(['mon','tue','wed','thu','fri','sat','sun'][desde.weekday()])}"
+        )
+        add("listar_huecos_libres", True, detail)
+    except Exception as e:
+        tb_lines = _tb.format_exc().splitlines()
+        add(
+            "listar_huecos_libres",
+            False,
+            f"{type(e).__name__}: {str(e)[:200]} | último frame: {tb_lines[-3] if len(tb_lines) >= 3 else ''}",
+        )
+
     return result
 
 
