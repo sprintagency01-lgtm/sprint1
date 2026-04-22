@@ -554,6 +554,58 @@ Reglas operativas (siempre):
 
 
 # ---------------------------------------------------------------------
+#  Helpers de horario (formato business_hours)
+#
+#  El formato JSON de `business_hours` soporta múltiples franjas por día:
+#    {"mon": ["09:00", "12:00", "14:00", "20:00"]}  → dos franjas 09-12 y 14-20
+#    {"mon": ["09:00", "20:00"]}                     → una franja continua
+#    {"mon": ["closed"]}                             → cerrado
+#  Pares consecutivos = una franja. Fuente canónica para el horario del bot.
+# ---------------------------------------------------------------------
+
+_DAY_KEYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def ranges_for_weekday(business_hours: dict, weekday_py: int) -> list[tuple]:
+    """Devuelve las franjas de un día como lista de (time, time).
+
+    `weekday_py`: 0=lunes ... 6=domingo (mismo convenio que `datetime.weekday()`).
+    Devuelve [] si el día está cerrado o si los datos son inconsistentes.
+    """
+    from datetime import time as _time
+    if weekday_py < 0 or weekday_py > 6:
+        return []
+    bh = business_hours or {}
+
+    # Fallback: schema plano {"open": "09:00", "close": "20:00"} (YAML legacy)
+    if "open" in bh or "close" in bh:
+        try:
+            o_h, o_m = (bh.get("open") or "09:00").split(":")
+            c_h, c_m = (bh.get("close") or "20:00").split(":")
+            return [(_time(int(o_h), int(o_m)), _time(int(c_h), int(c_m)))]
+        except (ValueError, AttributeError):
+            return []
+
+    v = bh.get(_DAY_KEYS[weekday_py])
+    if not v or (isinstance(v, list) and v and v[0] == "closed"):
+        return []
+
+    out: list[tuple] = []
+    # Pares consecutivos: (v[0],v[1]), (v[2],v[3]), ...
+    for i in range(0, len(v) - 1, 2):
+        try:
+            h0, m0 = str(v[i]).split(":")
+            h1, m1 = str(v[i + 1]).split(":")
+            open_t = _time(int(h0), int(m0))
+            close_t = _time(int(h1), int(m1))
+            if close_t > open_t:  # ignora rangos inválidos (fin<=inicio)
+                out.append((open_t, close_t))
+        except (ValueError, AttributeError):
+            continue
+    return out
+
+
+# ---------------------------------------------------------------------
 #  Composición del prompt de VOZ (Ana en ElevenLabs)
 #
 #  El equivalente a render_system_prompt pero para el agente de voz. Tiene una
@@ -570,48 +622,52 @@ _WEEKDAY_ES_LARGO = {0: "lunes", 1: "martes", 2: "miércoles", 3: "jueves", 4: "
 
 
 def _horario_legible(business_hours: dict) -> str:
-    """Resume el horario semanal en una frase corta: 'lun-sáb 09:30-20:30. Domingo cerrado.'
+    """Resume el horario semanal en una frase compacta.
 
-    Si todos los días abiertos tienen el mismo rango, se dice el rango una sola
-    vez. Si no, se lista día por día.
+    Ejemplos:
+      lun-sáb 09:30-20:30. Domingo cerrado.
+      lun-vie 09:00-14:00, 17:00-20:00. Sáb-dom cerrado.
+      lun 09-20, mar cerrado, mié 10-14, 16-20...  (caso general irregular)
+
+    Considera múltiples franjas por día. Si todos los días abiertos tienen la
+    misma lista de franjas, colapsa a un solo rango "L-V ...".
     """
     if not business_hours:
         return ""
-    # Extrae rangos por día
-    rangos = {}
-    for k, v in business_hours.items():
-        if not v or v == ["closed"] or (isinstance(v, list) and v and v[0] == "closed"):
-            rangos[k] = None
-        elif isinstance(v, list) and len(v) >= 2:
-            rangos[k] = (v[0], v[1])
-    abiertos = [(k, r) for k, r in rangos.items() if r is not None]
-    cerrados = [k for k, r in rangos.items() if r is None]
+
+    def _fmt_ranges(ranges: list[tuple]) -> str:
+        return ", ".join(f"{o.strftime('%H:%M')}-{c.strftime('%H:%M')}" for o, c in ranges)
+
+    dias_orden = list(_DAY_KEYS)
+    rangos_por_dia = {d: ranges_for_weekday(business_hours, i) for i, d in enumerate(dias_orden)}
+    abiertos = [d for d in dias_orden if rangos_por_dia[d]]
+    cerrados = [d for d in dias_orden if not rangos_por_dia[d]]
+
     if not abiertos:
         return "Cerrado toda la semana."
-    # ¿Todos los abiertos con mismo rango y consecutivos?
-    dias_orden = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-    dias_abiertos_ordenados = [d for d in dias_orden if rangos.get(d) is not None]
-    rangos_unicos = {r for _, r in abiertos}
-    if len(rangos_unicos) == 1 and len(dias_abiertos_ordenados) >= 2:
-        r = next(iter(rangos_unicos))
-        primero = _WEEKDAY_ES[dias_orden.index(dias_abiertos_ordenados[0])]
-        ultimo = _WEEKDAY_ES[dias_orden.index(dias_abiertos_ordenados[-1])]
+
+    # ¿Todos los abiertos con la misma lista de franjas? (comparando strings)
+    firmas = {_fmt_ranges(rangos_por_dia[d]) for d in abiertos}
+    if len(firmas) == 1 and len(abiertos) >= 2:
+        primero = _WEEKDAY_ES[dias_orden.index(abiertos[0])]
+        ultimo = _WEEKDAY_ES[dias_orden.index(abiertos[-1])]
+        rango_comun = next(iter(firmas))
         cerrado_frase = ""
         if cerrados:
             if len(cerrados) == 1 and cerrados[0] == "sun":
                 cerrado_frase = " Domingo cerrado."
             else:
                 cerrado_frase = " Cerrado: " + ", ".join(_WEEKDAY_ES[dias_orden.index(d)] for d in cerrados) + "."
-        return f"{primero}-{ultimo} {r[0]}-{r[1]}.{cerrado_frase}"
-    # Caso general: día por día
+        return f"{primero}-{ultimo} {rango_comun}.{cerrado_frase}"
+
+    # Caso irregular: día por día
     partes = []
     for d in dias_orden:
-        r = rangos.get(d)
         lbl = _WEEKDAY_ES[dias_orden.index(d)]
-        if r is None:
+        if not rangos_por_dia[d]:
             partes.append(f"{lbl} cerrado")
         else:
-            partes.append(f"{lbl} {r[0]}-{r[1]}")
+            partes.append(f"{lbl} {_fmt_ranges(rangos_por_dia[d])}")
     return ". ".join(partes) + "."
 
 

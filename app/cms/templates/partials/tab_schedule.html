@@ -1,33 +1,68 @@
+{# Horario del negocio con múltiples franjas por día.
+
+   Formato JSON guardado:
+     {"mon": ["09:00", "12:00", "14:00", "20:00"]}  → dos franjas 09-12 y 14-20
+     {"mon": ["09:00", "20:00"]}                     → una franja continua
+     {"mon": ["closed"]}                             → cerrado
+
+   Pares consecutivos de strings HH:MM = una franja. Cerrado si ["closed"] o
+   ausente. El helper Python `ranges_for_weekday` en app/db.py canoniza este
+   formato para los consumers (listar_huecos_*, render_voice_prompt, etc).
+#}
+
 {% set day_labels = {'mon':'Lunes','tue':'Martes','wed':'Miércoles','thu':'Jueves','fri':'Viernes','sat':'Sábado','sun':'Domingo'} %}
 {% set hours = t.business_hours %}
 
 <form method="post" action="/admin/clientes/{{ t.id }}/horarios" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6">
     <h2 class="text-sm font-semibold mb-1">Horario de atención</h2>
-    <p class="text-xs text-slate-500 mb-4">El bot solo propondrá huecos dentro de este horario.</p>
+    <p class="text-xs text-slate-500 mb-4">El bot solo propondrá huecos dentro de estas franjas. Puedes añadir turnos partidos (p.ej. 09-14 y 17-21).</p>
 
     <div class="divide-y divide-slate-100">
       {% for key, label in day_labels.items() %}
         {% set h = hours.get(key) %}
         {% set closed = (not h) or (h[0] == 'closed') %}
-        {% set open_v = (h[0] if (h and not closed) else '09:00') %}
-        {% set close_v = (h[1] if (h and not closed and h|length > 1) else '20:00') %}
-        <div class="flex items-center gap-4 py-3">
-          <div class="w-24 text-sm font-medium">{{ label }}</div>
+        {# Construye lista de pares [(open,close), ...] para iterar. Si el día
+           está abierto pero sin rangos válidos, mostramos uno por defecto. #}
+        {% set pairs = [] %}
+        {% if not closed and h and h|length >= 2 %}
+          {% for i in range(0, (h|length) - 1, 2) %}
+            {% set _ = pairs.append((h[i], h[i+1])) %}
+          {% endfor %}
+        {% endif %}
+        {% if pairs|length == 0 %}
+          {% set pairs = [('09:00', '20:00')] %}
+        {% endif %}
 
-          <label class="inline-flex items-center gap-2 cursor-pointer">
-            <div class="relative">
-              <input type="checkbox" name="{{ key }}_enabled" {% if not closed %}checked{% endif %} class="sr-only peer day-toggle" data-day="{{ key }}"/>
-              <div class="w-9 h-5 rounded-full bg-slate-200 peer-checked:bg-brand-500 transition"></div>
-              <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition peer-checked:translate-x-4"></div>
+        <div class="py-3 day-row" data-day="{{ key }}">
+          <div class="flex items-start gap-4">
+            <div class="w-24 text-sm font-medium pt-1">{{ label }}</div>
+
+            <label class="inline-flex items-center gap-2 cursor-pointer pt-1">
+              <div class="relative">
+                <input type="checkbox" name="{{ key }}_enabled" {% if not closed %}checked{% endif %} class="sr-only peer day-toggle"/>
+                <div class="w-9 h-5 rounded-full bg-slate-200 peer-checked:bg-brand-500 transition"></div>
+                <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition peer-checked:translate-x-4"></div>
+              </div>
+            </label>
+
+            <div class="flex-1 day-ranges {% if closed %}opacity-50{% endif %}">
+              {% for open_v, close_v in pairs %}
+                <div class="flex items-center gap-2 mb-2 range-row">
+                  <input type="time" name="{{ key }}_open"  value="{{ open_v }}"  class="range-input px-2 py-1 rounded border border-slate-200 text-sm" {% if closed %}disabled{% endif %}/>
+                  <span class="text-slate-400 text-sm">–</span>
+                  <input type="time" name="{{ key }}_close" value="{{ close_v }}" class="range-input px-2 py-1 rounded border border-slate-200 text-sm" {% if closed %}disabled{% endif %}/>
+                  <button type="button" class="remove-range p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-rose-600" title="Quitar franja" {% if closed %}disabled{% endif %}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              {% endfor %}
+              <button type="button" class="add-range text-xs text-brand-600 hover:text-brand-700 font-medium inline-flex items-center gap-1 mt-1" {% if closed %}disabled{% endif %}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path d="M12 5v14M5 12h14"/></svg>
+                Añadir franja
+              </button>
+              {% if closed %}<span class="text-xs text-slate-400 ml-2">Cerrado</span>{% endif %}
             </div>
-          </label>
-
-          <div class="flex items-center gap-2 flex-1">
-            <input type="time" name="{{ key }}_open"  value="{{ open_v }}"  class="px-2 py-1 rounded border border-slate-200 text-sm {% if closed %}bg-slate-50 text-slate-400{% endif %}" {% if closed %}disabled{% endif %}/>
-            <span class="text-slate-400 text-sm">–</span>
-            <input type="time" name="{{ key }}_close" value="{{ close_v }}" class="px-2 py-1 rounded border border-slate-200 text-sm {% if closed %}bg-slate-50 text-slate-400{% endif %}" {% if closed %}disabled{% endif %}/>
-            {% if closed %}<span class="text-xs text-slate-400 ml-2">Cerrado</span>{% endif %}
           </div>
         </div>
       {% endfor %}
@@ -39,18 +74,72 @@
   </div>
 
   <div class="bg-white rounded-xl border border-slate-200 p-6">
-    <h2 class="text-sm font-semibold mb-3">Consejo</h2>
-    <p class="text-sm text-slate-600">El horario se envía al prompt del bot como parte del contexto, para que proponga huecos coherentes. Si tienes turnos partidos puedes dejar solo el tramo principal: la función <code class="text-xs bg-slate-100 rounded px-1">consultar_disponibilidad</code> devuelve los huecos reales del calendario, respetando eventos existentes.</p>
+    <h2 class="text-sm font-semibold mb-3">Cómo funciona</h2>
+    <p class="text-sm text-slate-600">
+      Cada día puede tener una o varias franjas. Si el negocio tiene horario
+      partido, añade dos (p.ej. <code class="text-xs bg-slate-100 rounded px-1">09:00–14:00</code> y
+      <code class="text-xs bg-slate-100 rounded px-1">17:00–21:00</code>) y el
+      bot ofrecerá huecos solo dentro de esas franjas, respetando los
+      <code class="text-xs bg-slate-100 rounded px-1">dias_trabajo</code> de
+      cada peluquero.
+    </p>
   </div>
 </form>
 
+<template id="range-tpl">
+  <div class="flex items-center gap-2 mb-2 range-row">
+    <input type="time" name="__open__" value="09:00" class="range-input px-2 py-1 rounded border border-slate-200 text-sm"/>
+    <span class="text-slate-400 text-sm">–</span>
+    <input type="time" name="__close__" value="20:00" class="range-input px-2 py-1 rounded border border-slate-200 text-sm"/>
+    <button type="button" class="remove-range p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-rose-600" title="Quitar franja">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+</template>
+
 <script>
-document.querySelectorAll('.day-toggle').forEach(cb => {
-  cb.addEventListener('change', () => {
-    const day = cb.dataset.day;
-    const open = document.querySelector(`input[name="${day}_open"]`);
-    const close = document.querySelector(`input[name="${day}_close"]`);
-    [open, close].forEach(el => { el.disabled = !cb.checked; el.classList.toggle('bg-slate-50', !cb.checked); el.classList.toggle('text-slate-400', !cb.checked); });
+(function () {
+  function applyDisabled(dayRow, disabled) {
+    dayRow.querySelector('.day-ranges').classList.toggle('opacity-50', disabled);
+    dayRow.querySelectorAll('.range-input, .remove-range, .add-range').forEach(el => { el.disabled = disabled; });
+  }
+
+  // Toggle día abierto/cerrado
+  document.querySelectorAll('.day-toggle').forEach(cb => {
+    cb.addEventListener('change', () => {
+      applyDisabled(cb.closest('.day-row'), !cb.checked);
+    });
   });
-});
+
+  // Quitar franja (mantiene siempre al menos 1 — si quitas la última, el día
+  // queda visualmente con una por defecto; el handler del backend guardará
+  // ["closed"] si realmente no hay franja válida y el toggle está off).
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.remove-range');
+    if (!btn) return;
+    const row = btn.closest('.range-row');
+    const dayRanges = btn.closest('.day-ranges');
+    if (dayRanges.querySelectorAll('.range-row').length <= 1) {
+      // Si es la última, vaciar inputs pero no borrar el DOM (evita que el día
+      // abierto acabe sin inputs, lo que confundiría al usuario).
+      row.querySelectorAll('input[type="time"]').forEach(i => i.value = '');
+      return;
+    }
+    row.remove();
+  });
+
+  // Añadir franja: clona el template y ajusta los names al day key correcto.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.add-range');
+    if (!btn) return;
+    const dayRow = btn.closest('.day-row');
+    const day = dayRow.dataset.day;
+    const tpl = document.getElementById('range-tpl');
+    const frag = tpl.content.cloneNode(true);
+    frag.querySelector('input[name="__open__"]').name = `${day}_open`;
+    frag.querySelector('input[name="__close__"]').name = `${day}_close`;
+    // Inserta justo antes del botón "Añadir franja"
+    btn.parentNode.insertBefore(frag, btn);
+  });
+})();
 </script>

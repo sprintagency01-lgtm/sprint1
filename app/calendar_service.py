@@ -198,6 +198,24 @@ def authorize_interactive(tenant_id: str = "default") -> None:
 
 # ---------- Operaciones de calendario ----------
 
+def _ranges_for_day(
+    business_hours: dict | None,
+    fallback: tuple[time, time],
+    weekday_py: int,
+) -> list[tuple[time, time]]:
+    """Devuelve las franjas del día `weekday_py` usando el dict business_hours
+    si viene, o `fallback` (una sola franja) si no.
+
+    Devuelve [] si el día está cerrado según business_hours. Si business_hours
+    es None, siempre devuelve [fallback] (comportamiento legacy).
+    """
+    if business_hours is None:
+        return [fallback]
+    # Import local para evitar ciclos (db importa config/settings)
+    from . import db as _db
+    return _db.ranges_for_weekday(business_hours, weekday_py)
+
+
 def listar_huecos_libres(
     fecha_desde: datetime,
     fecha_hasta: datetime,
@@ -205,10 +223,13 @@ def listar_huecos_libres(
     calendar_id: str | None = None,
     tenant_id: str = "default",
     horario_apertura: tuple[time, time] = (time(9, 0), time(20, 0)),
+    business_hours: dict | None = None,
 ) -> list[Slot]:
     """Busca huecos libres con la duración pedida en el rango dado.
 
-    Simple heurística: free/busy + rellenar con slots contiguos dentro del horario.
+    Si se pasa `business_hours`, respeta las franjas por día (soporta turnos
+    partidos tipo 09-12 + 14-20). Si no, se usa `horario_apertura` como franja
+    única para todos los días (legacy).
     """
     svc = _service(tenant_id)
     cal = calendar_id or settings.default_calendar_id
@@ -231,23 +252,24 @@ def listar_huecos_libres(
     slots: list[Slot] = []
     delta = timedelta(minutes=duracion_minutos)
 
-    # Recorrido por días dentro del rango
+    # Recorrido por días dentro del rango, iterando cada franja por día.
     day = fecha_desde.astimezone(TZ).date()
     end_day = fecha_hasta.astimezone(TZ).date()
     while day <= end_day:
-        start_dt = datetime.combine(day, horario_apertura[0], tzinfo=TZ)
-        end_dt = datetime.combine(day, horario_apertura[1], tzinfo=TZ)
-        cursor = start_dt
-        while cursor + delta <= end_dt:
-            # ¿colisiona con algún busy? Comparación tz-aware directa.
-            slot_end = cursor + delta
-            collision = any(
-                not (slot_end <= b_start or cursor >= b_end)
-                for b_start, b_end in busy
-            )
-            if not collision:
-                slots.append(Slot(cursor, slot_end))
-            cursor += delta
+        day_ranges = _ranges_for_day(business_hours, horario_apertura, day.weekday())
+        for open_t, close_t in day_ranges:
+            start_dt = datetime.combine(day, open_t, tzinfo=TZ)
+            end_dt = datetime.combine(day, close_t, tzinfo=TZ)
+            cursor = start_dt
+            while cursor + delta <= end_dt:
+                slot_end = cursor + delta
+                collision = any(
+                    not (slot_end <= b_start or cursor >= b_end)
+                    for b_start, b_end in busy
+                )
+                if not collision:
+                    slots.append(Slot(cursor, slot_end))
+                cursor += delta
         day += timedelta(days=1)
 
     return slots
@@ -260,6 +282,7 @@ def listar_huecos_por_peluqueros(
     peluqueros: list[dict],
     tenant_id: str = "default",
     horario_apertura: tuple[time, time] = (time(9, 0), time(20, 0)),
+    business_hours: dict | None = None,
 ) -> list[dict]:
     """Huecos libres teniendo en cuenta varios peluqueros a la vez.
 
@@ -306,34 +329,36 @@ def listar_huecos_por_peluqueros(
     day = fecha_desde_local.date()
     end_day = fecha_hasta_local.date()
     while day <= end_day:
-        open_dt = datetime.combine(day, horario_apertura[0], tzinfo=TZ)
-        close_dt = datetime.combine(day, horario_apertura[1], tzinfo=TZ)
-        # Recortamos por la ventana pedida en el primer y último día.
-        start_dt = max(open_dt, fecha_desde_local) if day == fecha_desde_local.date() else open_dt
-        end_dt = min(close_dt, fecha_hasta_local) if day == fecha_hasta_local.date() else close_dt
-        cursor = start_dt
-        while cursor + delta <= end_dt:
-            slot_end = cursor + delta
-            for p in peluqueros:
-                dias = p.get("dias_trabajo") or list(range(7))
-                if day.weekday() not in dias:
-                    continue
-                busy = busy_por_cal.get(p["calendar_id"], [])
-                # Comparación tz-aware directa: cursor/slot_end llevan TZ y
-                # b_start/b_end llegan con offset +00:00 desde Google. Python
-                # convierte automáticamente al comparar si ambos son tz-aware.
-                collision = any(
-                    not (slot_end <= b_start or cursor >= b_end)
-                    for b_start, b_end in busy
-                )
-                if not collision:
-                    resultados.append({
-                        "inicio": cursor,
-                        "fin": slot_end,
-                        "peluquero": p["nombre"],
-                        "calendar_id": p["calendar_id"],
-                    })
-            cursor += delta
+        # Respeta todas las franjas del día si business_hours viene con varias
+        # (turnos partidos). En caso contrario, una única franja con
+        # horario_apertura como antes.
+        day_ranges = _ranges_for_day(business_hours, horario_apertura, day.weekday())
+        for open_t, close_t in day_ranges:
+            open_dt = datetime.combine(day, open_t, tzinfo=TZ)
+            close_dt = datetime.combine(day, close_t, tzinfo=TZ)
+            # Recortamos por la ventana pedida en el primer y último día.
+            start_dt = max(open_dt, fecha_desde_local) if day == fecha_desde_local.date() else open_dt
+            end_dt = min(close_dt, fecha_hasta_local) if day == fecha_hasta_local.date() else close_dt
+            cursor = start_dt
+            while cursor + delta <= end_dt:
+                slot_end = cursor + delta
+                for p in peluqueros:
+                    dias = p.get("dias_trabajo") or list(range(7))
+                    if day.weekday() not in dias:
+                        continue
+                    busy = busy_por_cal.get(p["calendar_id"], [])
+                    collision = any(
+                        not (slot_end <= b_start or cursor >= b_end)
+                        for b_start, b_end in busy
+                    )
+                    if not collision:
+                        resultados.append({
+                            "inicio": cursor,
+                            "fin": slot_end,
+                            "peluquero": p["nombre"],
+                            "calendar_id": p["calendar_id"],
+                        })
+                cursor += delta
         day += timedelta(days=1)
 
     return resultados

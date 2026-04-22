@@ -173,11 +173,15 @@ def _horario(tenant: dict):
         return (_p(bh.get("open", "09:00"), _time(9, 0)),
                 _p(bh.get("close", "20:00"), _time(20, 0)))
 
-    # Schema por día — primer día no cerrado
+    # Schema por día — primer día no cerrado. Si ese día tiene múltiples
+    # franjas (turnos partidos: 09-12,14-20) devolvemos (primera apertura,
+    # última cierre). En la práctica este cálculo solo se usa como fallback
+    # si al caller no le pasamos también `business_hours`; el loop real en
+    # calendar_service ya respeta las franjas por día cuando hay dict.
     for day_key in ("mon", "tue", "wed", "thu", "fri", "sat", "sun"):
         h = bh.get(day_key)
         if h and h != ["closed"] and h[0] != "closed" and len(h) >= 2:
-            return (_p(h[0], _time(9, 0)), _p(h[1], _time(20, 0)))
+            return (_p(h[0], _time(9, 0)), _p(h[-1], _time(20, 0)))
 
     return (_time(9, 0), _time(20, 0))
 
@@ -238,6 +242,7 @@ def consultar_disponibilidad(
                     peluqueros=pelus,
                     tenant_id=tenant.get("id", "default"),
                     horario_apertura=horario,
+                    business_hours=tenant.get("business_hours"),
                 ),
                 "listar_huecos_por_peluqueros",
             )
@@ -287,6 +292,7 @@ def consultar_disponibilidad(
                 calendar_id=tenant.get("calendar_id") or settings.default_calendar_id,
                 tenant_id=tenant.get("id", "default"),
                 horario_apertura=horario,
+                business_hours=tenant.get("business_hours"),
             ),
             "listar_huecos_libres",
         )

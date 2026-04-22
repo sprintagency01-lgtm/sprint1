@@ -626,16 +626,41 @@ async def client_save_schedule(
     request: Request, tenant_id: str,
     uid: int = Depends(auth.current_user_id),
 ):
+    """Guarda el horario admitiendo múltiples franjas por día.
+
+    Formato del form:
+      - `{day}_enabled` = "on" si el día está abierto.
+      - `{day}_open` y `{day}_close` son LISTAS paralelas (usar getlist): una
+        entrada por franja, ordenadas. UI recorta/valida antes de enviar.
+
+    Se descartan franjas con open/close vacíos o inválidos. Si después de
+    limpiar no queda ninguna franja para un día abierto, el día cae a
+    ["closed"].
+    """
     form = await request.form()
-    hours = {}
-    for day in ("mon","tue","wed","thu","fri","sat","sun"):
-        open_ = form.get(f"{day}_open", "").strip()
-        close_ = form.get(f"{day}_close", "").strip()
+    hours: dict[str, list[str]] = {}
+    for day in ("mon", "tue", "wed", "thu", "fri", "sat", "sun"):
         enabled = form.get(f"{day}_enabled") == "on"
-        if enabled and open_ and close_:
-            hours[day] = [open_, close_]
-        else:
+        if not enabled:
             hours[day] = ["closed"]
+            continue
+        opens = [x.strip() for x in form.getlist(f"{day}_open")]
+        closes = [x.strip() for x in form.getlist(f"{day}_close")]
+        flat: list[str] = []
+        for o, c in zip(opens, closes):
+            if not o or not c:
+                continue
+            # Validación mínima de formato HH:MM — si es inválido, salta.
+            try:
+                oh, om = o.split(":"); ch, cm = c.split(":")
+                int(oh); int(om); int(ch); int(cm)
+            except ValueError:
+                continue
+            if o >= c:  # ignora rangos no crecientes
+                continue
+            flat.extend([o, c])
+        hours[day] = flat if flat else ["closed"]
+
     with Session(db_module.engine) as s:
         t = s.get(db_module.Tenant, tenant_id)
         if t is None:
