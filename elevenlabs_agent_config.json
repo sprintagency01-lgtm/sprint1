@@ -80,7 +80,7 @@
         "reasoning_effort": null,
         "thinking_budget": 0,
         "temperature": 0.3,
-        "max_tokens": -1,
+        "max_tokens": 300,
         "tool_ids": [
           "tool_3701kps2kvg6eszafaph1xssyqcg",
           "tool_4201kpt8p6gefxb9smwg41ay7gkz",
@@ -483,7 +483,7 @@
   },
   "metadata": {
     "created_at_unix_secs": 1776798882,
-    "updated_at_unix_secs": 1776874394
+    "updated_at_unix_secs": 1776875755
   },
   "platform_settings": {
     "evaluation": {

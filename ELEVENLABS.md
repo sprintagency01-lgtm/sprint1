@@ -26,7 +26,7 @@ LLM (Gemini Flash con thinking OFF para bajar latencia):
 - `llm`: `gemini-2.5-flash`
 - `thinking_budget`: `0`
 - `temperature`: `0.3`
-- `max_tokens`: `-1`
+- `max_tokens`: `300`  (cap para evitar respuestas largas accidentales)
 
 Turn-taking (agente responde rápido):
 - `turn_eagerness`: `eager`
