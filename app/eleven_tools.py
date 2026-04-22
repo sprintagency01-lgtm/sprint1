@@ -166,15 +166,25 @@ def consultar_disponibilidad(
     peluqueros = tenant.get("peluqueros") or []
 
     if peluqueros:
-        pelus = _peluqueros_filtrados(tenant, req.peluquero_preferido)
-        if not pelus:
-            return {
-                "huecos": [],
-                "aviso": (
-                    f"No tengo peluquero con nombre '{req.peluquero_preferido}'. "
-                    + "Peluqueros: " + ", ".join(p["nombre"] for p in peluqueros)
-                ),
-            }
+        # Caso 1: el cliente pidió un peluquero concreto pero NO existe.
+        # Antes _peluqueros_filtrados caía a "todos los peluqueros" cuando no
+        # encontraba match, así que Ana ofrecía huecos de Mario al pedir "Pepa".
+        # Ahora devolvemos aviso explícito con la lista real.
+        preferido_norm = (req.peluquero_preferido or "").strip().lower()
+        if preferido_norm:
+            match = [p for p in peluqueros if p["nombre"].strip().lower() == preferido_norm]
+            if not match:
+                return {
+                    "huecos": [],
+                    "aviso": (
+                        f"No tengo peluquero con nombre '{req.peluquero_preferido}'. "
+                        "Peluqueros: " + ", ".join(p["nombre"] for p in peluqueros)
+                    ),
+                }
+            pelus = match
+        else:
+            pelus = peluqueros
+
         huecos = cal.listar_huecos_por_peluqueros(
             desde, hasta, req.duracion_minutos,
             peluqueros=pelus,
@@ -182,7 +192,22 @@ def consultar_disponibilidad(
             horario_apertura=horario,
         )
         huecos.sort(key=lambda h: h["inicio"])
-        return {
+
+        # Caso 2: el cliente pidió peluquero concreto y no hay huecos, típicamente
+        # porque ese día no trabaja (Marcos solo miércoles, por ejemplo). Sin
+        # aviso Ana diría "no hay huecos" a secas y el cliente se queda perdido.
+        aviso = None
+        if preferido_norm and not huecos:
+            p = pelus[0]
+            dias = p.get("dias_trabajo") or list(range(7))
+            dias_es = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+            dias_nombre = [dias_es[d] for d in dias if 0 <= d <= 6]
+            aviso = (
+                f"{p['nombre']} no tiene huecos en ese rango. "
+                f"Días que trabaja: {', '.join(dias_nombre)}."
+            )
+
+        resp: dict[str, Any] = {
             "huecos": [
                 {
                     "inicio": h["inicio"].isoformat(),
@@ -192,6 +217,9 @@ def consultar_disponibilidad(
                 for h in huecos[:limit]
             ]
         }
+        if aviso:
+            resp["aviso"] = aviso
+        return resp
 
     # Fallback: modo calendario único
     slots = cal.listar_huecos_libres(
@@ -224,7 +252,12 @@ def crear_reserva(
                        f"Opciones: " + ", ".join(p["nombre"] for p in peluqueros),
             )
 
+    # Algunos LLMs serializan Python None como la string literal "None" cuando
+    # no deberían enviar nada. Normalizamos para que no acabemos poniendo
+    # "None" / "null" en la descripción del evento de calendario.
     tel = (req.telefono_cliente or "").strip()
+    if tel.lower() in ("none", "null", "n/a", "na", "sin telefono", "sin teléfono", "-"):
+        tel = ""
     ev = cal.crear_evento(
         titulo=req.titulo,
         inicio=datetime.fromisoformat(req.inicio_iso),
