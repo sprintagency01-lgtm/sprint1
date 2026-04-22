@@ -25,10 +25,10 @@
       "turn_model": "turn_v2"
     },
     "tts": {
-      "model_id": "eleven_flash_v2_5",
+      "model_id": "eleven_v3_conversational",
       "voice_id": "1eHrpOW5l98cxiSRjbzJ",
       "supported_voices": [],
-      "expressive_mode": false,
+      "expressive_mode": true,
       "suggested_audio_tags": [],
       "agent_output_audio_format": "ulaw_8000",
       "optimize_streaming_latency": 4,
@@ -483,7 +483,7 @@
   },
   "metadata": {
     "created_at_unix_secs": 1776798882,
-    "updated_at_unix_secs": 1776881571
+    "updated_at_unix_secs": 1776888181
   },
   "platform_settings": {
     "evaluation": {
