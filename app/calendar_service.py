@@ -106,14 +106,34 @@ def _save_creds(creds: Credentials, tenant_id: str = "default") -> None:
     path.write_text(creds.to_json())
 
 
+# Cache por tenant_id. El objeto Credentials se auto-refresca con su propio
+# refresh_token, así que podemos reutilizar el `service` construido. Reconstruirlo
+# en cada tool call cuesta ~100-300ms (lectura de disco + discovery). En voz
+# cualquier milisegundo importa.
+_SERVICE_CACHE: dict[str, object] = {}
+
+
 def _service(tenant_id: str = "default"):
+    cached = _SERVICE_CACHE.get(tenant_id)
+    if cached is not None:
+        return cached
     creds = _load_creds(tenant_id)
     if not creds:
         raise RuntimeError(
             f"Sin credenciales para tenant '{tenant_id}'. "
             "Ejecuta: python -m app.calendar_service authorize"
         )
-    return build("calendar", "v3", credentials=creds, cache_discovery=False)
+    svc = build("calendar", "v3", credentials=creds, cache_discovery=False)
+    _SERVICE_CACHE[tenant_id] = svc
+    return svc
+
+
+def _invalidate_service_cache(tenant_id: str | None = None) -> None:
+    """Limpia el cache de servicios. Útil si se re-autoriza un tenant."""
+    if tenant_id:
+        _SERVICE_CACHE.pop(tenant_id, None)
+    else:
+        _SERVICE_CACHE.clear()
 
 
 def authorize_interactive(tenant_id: str = "default") -> None:

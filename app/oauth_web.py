@@ -101,6 +101,13 @@ async def oauth_callback(request: Request):
     pathlib.Path(TOKENS_DIR).mkdir(parents=True, exist_ok=True)
     path = pathlib.Path(TOKENS_DIR) / f"{tenant_id}.json"
     path.write_text(creds.to_json())
+    # Si el tenant ya tenía un servicio cacheado con un token viejo, invalídalo
+    # para que la próxima tool call lea el nuevo token refrescado.
+    try:
+        from . import calendar_service as _cal
+        _cal._invalidate_service_cache(tenant_id)
+    except Exception:  # pragma: no cover
+        log.warning("No pude invalidar cache de calendar_service para %s", tenant_id)
     log.info("oauth OK tenant=%s tokens_path=%s", tenant_id, path)
 
     body = f"""<!doctype html>
