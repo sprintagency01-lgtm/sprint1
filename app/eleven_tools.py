@@ -190,8 +190,20 @@ def consultar_disponibilidad(
     _check_secret(x_tool_secret)
     tenant = _resolve_tenant(tenant_id)
 
-    desde = datetime.fromisoformat(req.fecha_desde_iso)
-    hasta = datetime.fromisoformat(req.fecha_hasta_iso)
+    # Parseo defensivo: si el LLM nos manda una fecha con formato raro, no
+    # queremos explotar con 500 — preferimos que Ana reciba un mensaje legible.
+    try:
+        desde = datetime.fromisoformat(req.fecha_desde_iso)
+        hasta = datetime.fromisoformat(req.fecha_hasta_iso)
+    except ValueError as e:
+        log.warning("consultar_disponibilidad: fechas inválidas %s / %s: %s",
+                    req.fecha_desde_iso, req.fecha_hasta_iso, e)
+        return {
+            "huecos": [],
+            "error": f"No entiendo la fecha. Prueba de nuevo con un formato claro.",
+            "retryable": False,
+            "detail": str(e)[:200],
+        }
     horario = _horario(tenant)
     limit = max(1, min(req.max_resultados, 15))
     peluqueros = tenant.get("peluqueros") or []
@@ -297,6 +309,20 @@ def crear_reserva(
     tenant = _resolve_tenant(tenant_id)
     peluqueros = tenant.get("peluqueros") or []
 
+    # Parseo defensivo de fechas (evita reintentos inútiles contra Google)
+    try:
+        inicio_dt = datetime.fromisoformat(req.inicio_iso)
+        fin_dt = datetime.fromisoformat(req.fin_iso)
+    except ValueError as e:
+        log.warning("crear_reserva: fechas inválidas %s / %s: %s",
+                    req.inicio_iso, req.fin_iso, e)
+        return {
+            "ok": False,
+            "error": "No entiendo la fecha/hora de la cita. Vuelve a confirmar con el cliente.",
+            "retryable": False,
+            "detail": str(e)[:200],
+        }
+
     destino_cal = _calendar_id_for_booking(tenant, req.peluquero)
     peluquero = (req.peluquero or "").strip()
     if peluqueros and peluquero and peluquero.lower() != "sin preferencia":
@@ -328,8 +354,8 @@ def crear_reserva(
         ev = _retry_google(
             lambda: cal.crear_evento(
                 titulo=req.titulo,
-                inicio=datetime.fromisoformat(req.inicio_iso),
-                fin=datetime.fromisoformat(req.fin_iso),
+                inicio=inicio_dt,
+                fin=fin_dt,
                 descripcion=req.notas,
                 telefono_cliente=tel,
                 calendar_id=destino_cal,
