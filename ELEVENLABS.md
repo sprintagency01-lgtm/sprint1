@@ -23,10 +23,11 @@ TTS (voz más natural que la inicial):
 - `optimize_streaming_latency`: `4`
 
 LLM (Gemini Flash con thinking OFF para bajar latencia):
-- `llm`: `gemini-2.5-flash`
+- `llm`: `gemini-2.5-flash`  (único que pasa reliability en tool-calls; gemini-2.0-flash, claude-haiku-4-5 y gpt-4.1-nano todos hallucinan huecos o se saltan tools)
 - `thinking_budget`: `0`
 - `temperature`: `0.3`
 - `max_tokens`: `300`  (cap para evitar respuestas largas accidentales)
+- Prompt: comprimido a ~3.8 KB (antes 5.7 KB) para bajar prefill time cada turno.
 
 Turn-taking (agente responde rápido):
 - `turn_eagerness`: `eager`
