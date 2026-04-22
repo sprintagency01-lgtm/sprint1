@@ -175,11 +175,10 @@ def listar_huecos_libres(
         end_dt = datetime.combine(day, horario_apertura[1], tzinfo=TZ)
         cursor = start_dt
         while cursor + delta <= end_dt:
-            # ¿colisiona con algún busy?
+            # ¿colisiona con algún busy? Comparación tz-aware directa.
             slot_end = cursor + delta
             collision = any(
-                not (slot_end <= b_start.replace(tzinfo=None)
-                     or cursor >= b_end.replace(tzinfo=None))
+                not (slot_end <= b_start or cursor >= b_end)
                 for b_start, b_end in busy
             )
             if not collision:
@@ -256,9 +255,11 @@ def listar_huecos_por_peluqueros(
                 if day.weekday() not in dias:
                     continue
                 busy = busy_por_cal.get(p["calendar_id"], [])
+                # Comparación tz-aware directa: cursor/slot_end llevan TZ y
+                # b_start/b_end llegan con offset +00:00 desde Google. Python
+                # convierte automáticamente al comparar si ambos son tz-aware.
                 collision = any(
-                    not (slot_end <= b_start.replace(tzinfo=None)
-                         or cursor >= b_end.replace(tzinfo=None))
+                    not (slot_end <= b_start or cursor >= b_end)
                     for b_start, b_end in busy
                 )
                 if not collision:
