@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from .config import settings
 from . import whatsapp
+from . import twilio_wa
 from . import db
 from . import tenants
 from . import agent
@@ -239,6 +240,148 @@ async def handle_incoming_text(from_phone: str, text: str, phone_number_id: str)
                 from_phone,
                 "Vaya, ha habido un problema técnico. Vuelve a intentarlo en un rato.",
                 phone_number_id,
+            )
+        except Exception:
+            pass
+
+
+# ---------- Webhook WhatsApp via Twilio (sandbox o número real) ----------
+#
+# Convive con /whatsapp (Meta). Útil mientras Meta for Developers no está
+# verificada: el sandbox de Twilio permite probar el bot sin Meta Business.
+
+@app.post("/whatsapp/twilio")
+async def whatsapp_twilio_webhook(request: Request, background_tasks: BackgroundTasks):
+    """Recibe un mensaje de WhatsApp vía Twilio (form-encoded) y responde async."""
+    raw = await request.body()
+    form_raw = await request.form()
+    form: dict[str, str] = {k: str(v) for k, v in form_raw.items()}
+
+    # Valida firma de Twilio (X-Twilio-Signature es HMAC-SHA1 de URL+params).
+    # Reconstruye la URL tal y como Twilio la firma (incluye query string si hay).
+    sig = request.headers.get("x-twilio-signature")
+    # Twilio firma con la URL *pública* tal y como la tiene configurada; si está
+    # detrás de proxy/Railway, respetamos el header X-Forwarded-Proto.
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.url.netloc
+    url = f"{proto}://{host}{request.url.path}"
+    if request.url.query:
+        url += f"?{request.url.query}"
+
+    if not twilio_wa.verify_signature(url, form, sig):
+        raise HTTPException(status_code=401, detail="Bad Twilio signature")
+
+    msg = twilio_wa.extract_message(form)
+    if not msg:
+        return Response(status_code=204)
+
+    if msg["type"] == "text":
+        background_tasks.add_task(
+            handle_incoming_text_twilio,
+            msg["from"],
+            msg["text"],
+            msg["to"],
+            msg.get("profile_name", ""),
+        )
+    elif msg["type"] == "audio":
+        background_tasks.add_task(
+            handle_incoming_audio_twilio,
+            msg["from"],
+            msg["media_url"],
+            msg.get("media_content_type", "audio/ogg"),
+            msg["to"],
+            msg.get("profile_name", ""),
+        )
+    return Response(status_code=204)
+
+
+async def handle_incoming_text_twilio(
+    from_phone: str,
+    text: str,
+    to_number: str,
+    profile_name: str,
+) -> None:
+    """Pipeline de texto para mensajes entrantes por Twilio."""
+    try:
+        tenant = tenants.find_tenant_for_twilio(to_number)
+        tenant_id = tenant.get("id", "default")
+
+        log.info("twilio in  [%s] %s (%s): %s", tenant_id, from_phone, profile_name or "-", text)
+        db.save_message(tenant_id, from_phone, "user", text)
+
+        history = db.load_history(tenant_id, from_phone)
+        history = [m for m in history[:-1]] if history and history[-1]["role"] == "user" else history
+
+        reply_text = agent.reply(
+            user_message=text,
+            history=history,
+            tenant=tenant,
+            caller_phone=from_phone,
+        )
+
+        db.save_message(tenant_id, from_phone, "assistant", reply_text)
+        log.info("twilio out [%s] %s: %s", tenant_id, from_phone, reply_text)
+
+        await twilio_wa.send_text(to_phone=from_phone, body=reply_text)
+    except Exception:
+        log.exception("Error procesando mensaje Twilio")
+        try:
+            await twilio_wa.send_text(
+                to_phone=from_phone,
+                body="Vaya, ha habido un problema técnico. Vuelve a intentarlo en un rato.",
+            )
+        except Exception:
+            pass
+
+
+async def handle_incoming_audio_twilio(
+    from_phone: str,
+    media_url: str,
+    media_content_type: str,
+    to_number: str,
+    profile_name: str,
+) -> None:
+    """Procesa una nota de voz entrante por Twilio: descarga → STT → agente → texto.
+
+    Nota: por ahora respondemos en texto (no subimos TTS a un hosting público).
+    Fase siguiente: servir el mp3 generado desde un endpoint público de Railway.
+    """
+    try:
+        tenant = tenants.find_tenant_for_twilio(to_number)
+        tenant_id = tenant.get("id", "default")
+
+        log.info("twilio voz in [%s] %s: %s", tenant_id, from_phone, media_url)
+        audio_in = await twilio_wa.download_media(media_url)
+        text_in = await voice.transcribe(audio_in, mime_type=media_content_type or "audio/ogg")
+        log.info("twilio voz transcrita: %s", text_in)
+
+        if not text_in:
+            await twilio_wa.send_text(
+                to_phone=from_phone,
+                body="Perdona, no he podido entender el audio. ¿Puedes escribirlo o volver a grabarlo?",
+            )
+            return
+
+        db.save_message(tenant_id, from_phone, "user", f"[voz] {text_in}")
+        history = db.load_history(tenant_id, from_phone)
+        history = [m for m in history[:-1]] if history and history[-1]["role"] == "user" else history
+
+        reply_text = agent.reply(
+            user_message=text_in,
+            history=history,
+            tenant=tenant,
+            caller_phone=from_phone,
+        )
+        db.save_message(tenant_id, from_phone, "assistant", reply_text)
+        log.info("twilio voz out [%s] %s: %s", tenant_id, from_phone, reply_text)
+
+        await twilio_wa.send_text(to_phone=from_phone, body=reply_text)
+    except Exception:
+        log.exception("Error procesando voz Twilio")
+        try:
+            await twilio_wa.send_text(
+                to_phone=from_phone,
+                body="Ha habido un problema procesando tu audio. Vuelve a intentarlo en un rato.",
             )
         except Exception:
             pass

@@ -131,6 +131,35 @@ def find_tenant_by_phone_number_id(phone_number_id: str) -> dict[str, Any]:
     return tenants[0]
 
 
+def find_tenant_for_twilio(to_number: str) -> dict[str, Any]:
+    """Resuelve el tenant para un mensaje entrante de Twilio.
+
+    Estrategia:
+    1. Si algún tenant en BD/YAML tiene `twilio_whatsapp_from` == to_number → ese.
+    2. Si hay un `TWILIO_DEFAULT_TENANT_ID` en env y existe → ese (caso sandbox).
+    3. Último recurso: primer tenant disponible.
+
+    Nota: de momento el campo `twilio_whatsapp_from` no existe como columna en
+    BD; se lee si está presente en el dict (YAML). La ruta principal en fase
+    sandbox es el default tenant por env.
+    """
+    tenants_list = load_tenants()
+    to_clean = (to_number or "").strip()
+    if to_clean:
+        for t in tenants_list:
+            tfrom = (t.get("twilio_whatsapp_from") or "").strip()
+            if tfrom and tfrom == to_clean:
+                return t
+
+    default_id = settings.twilio_default_tenant_id
+    if default_id:
+        for t in tenants_list:
+            if t.get("id") == default_id:
+                return t
+
+    return tenants_list[0]
+
+
 def get_tenant(tenant_id: str) -> dict[str, Any] | None:
     """Busca un tenant por id. Devuelve dict o None (enriquecido con YAML)."""
     yaml_by_id = _load_yaml_by_id()

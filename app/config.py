@@ -46,5 +46,14 @@ class Settings:
     # ID del agente en ElevenLabs (se guarda tras crear con scripts/setup_elevenlabs_agent.py).
     elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
 
+    # Twilio (WhatsApp sandbox / producción) — adaptador alternativo a Meta
+    twilio_account_sid: str = os.getenv("TWILIO_ACCOUNT_SID", "")
+    twilio_auth_token: str = os.getenv("TWILIO_AUTH_TOKEN", "")
+    # Número saliente en E.164 (ej. "+14155238886" del sandbox, o tu número real).
+    twilio_whatsapp_from: str = os.getenv("TWILIO_WHATSAPP_FROM", "")
+    # Tenant por defecto para tráfico que entra por el sandbox compartido.
+    # En producción, cada tenant tendrá su propio número y routeamos por To.
+    twilio_default_tenant_id: str = os.getenv("TWILIO_DEFAULT_TENANT_ID", "pelu_demo")
+
 
 settings = Settings()
