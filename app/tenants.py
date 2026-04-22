@@ -39,21 +39,71 @@ _DEFAULT_TENANT_TEMPLATE = {
 }
 
 
+def _load_yaml_by_id() -> dict[str, dict[str, Any]]:
+    """Lee tenants.yaml y devuelve un dict indexado por id.
+
+    Se usa como fuente complementaria: hay campos operativos (peluqueros,
+    calendarios por peluquero, dias_trabajo) que todavía no existen como
+    columna en la BD del CMS. Si falla la lectura, devolvemos vacío para no
+    tumbar el arranque.
+    """
+    path = pathlib.Path(settings.tenants_file)
+    if not path.exists():
+        return {}
+    try:
+        data = yaml.safe_load(path.read_text()) or {}
+    except Exception:  # pragma: no cover - YAML mal formado no puede romper
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for t in (data.get("tenants") or []):
+        tid = t.get("id")
+        if tid:
+            result[tid] = t
+    return result
+
+
+# Campos que sólo existen en el YAML de momento y que mergeamos sobre los
+# tenants de la BD cuando comparten id.
+_YAML_ONLY_FIELDS = ("peluqueros",)
+
+
+def _merge_yaml_into_db(db_tenant: dict[str, Any], yaml_tenant: dict[str, Any]) -> dict[str, Any]:
+    """Añade al dict de BD los campos que sólo viven en el YAML.
+
+    No pisa nada que la BD ya tenga con valor; sólo rellena los vacíos.
+    """
+    for key in _YAML_ONLY_FIELDS:
+        if not db_tenant.get(key) and yaml_tenant.get(key):
+            db_tenant[key] = yaml_tenant[key]
+    return db_tenant
+
+
 def load_tenants() -> list[dict[str, Any]]:
-    """Devuelve todos los tenants como lista de dicts."""
-    # 1) Intenta la BD
+    """Devuelve todos los tenants como lista de dicts.
+
+    La BD (panel CMS) es la fuente principal; el YAML sirve para dos cosas:
+    - Fallback cuando la tabla está vacía (primer arranque sin CMS).
+    - Fuente complementaria de los campos operativos que aún no existen como
+      columna (p.ej. `peluqueros`).
+    """
+    yaml_by_id = _load_yaml_by_id()
+
+    # 1) Intenta la BD (enriquecida con YAML)
     with Session(db_module.engine) as session:
         rows = session.query(db_module.Tenant).all()
         if rows:
-            return [t.to_dict() for t in rows]
+            result = []
+            for t in rows:
+                td = t.to_dict()
+                yt = yaml_by_id.get(td.get("id"))
+                if yt:
+                    _merge_yaml_into_db(td, yt)
+                result.append(td)
+            return result
 
     # 2) Fallback al YAML si la tabla está vacía
-    path = pathlib.Path(settings.tenants_file)
-    if path.exists():
-        data = yaml.safe_load(path.read_text()) or {}
-        tenants = data.get("tenants")
-        if tenants:
-            return tenants
+    if yaml_by_id:
+        return list(yaml_by_id.values())
 
     # 3) Último recurso: tenant demo
     return [_DEFAULT_TENANT_TEMPLATE]
@@ -79,11 +129,16 @@ def find_tenant_by_phone_number_id(phone_number_id: str) -> dict[str, Any]:
 
 
 def get_tenant(tenant_id: str) -> dict[str, Any] | None:
-    """Busca un tenant por id. Devuelve dict o None."""
+    """Busca un tenant por id. Devuelve dict o None (enriquecido con YAML)."""
+    yaml_by_id = _load_yaml_by_id()
     with Session(db_module.engine) as session:
         t = session.get(db_module.Tenant, tenant_id)
         if t is not None:
-            return t.to_dict()
+            td = t.to_dict()
+            yt = yaml_by_id.get(tenant_id)
+            if yt:
+                _merge_yaml_into_db(td, yt)
+            return td
     for t in load_tenants():
         if t.get("id") == tenant_id:
             return t
