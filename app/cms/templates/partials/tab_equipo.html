@@ -1,8 +1,8 @@
 {# Pestaña "Equipo": edita las personas que atienden reservas. Cada miembro
-   tiene su propio calendario secundario de Google (para descansos/vacaciones)
-   y sus días laborables. La disponibilidad se calcula respetando ambas
-   cosas; las reservas de voz se crean en el calendario principal del tenant
-   (regla del MVP). #}
+   conecta su propia cuenta Google; la disponibilidad respeta los huecos de
+   su calendario, los días que trabaja, y los horarios del negocio. Las
+   reservas de voz se crean en el calendario principal del tenant (regla
+   del MVP). #}
 
 {% set dias = [('0','L'),('1','M'),('2','X'),('3','J'),('4','V'),('5','S'),('6','D')] %}
 
@@ -12,7 +12,7 @@
       <div>
         <h2 class="text-sm font-semibold">Equipo</h2>
         <p class="text-xs text-slate-500 mt-0.5">
-          Cada miembro tiene su calendario Google (para descansos) y sus días de trabajo. El bot ofrece huecos según esto.
+          Cada miembro conecta su Google para que el bot respete sus descansos y cierres. Guarda primero si añades un miembro nuevo antes de conectarlo.
         </p>
       </div>
       <button type="button" onclick="addMiembro()" class="flex items-center gap-2 text-sm px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-medium">
@@ -24,7 +24,8 @@
     <div id="equipo-list" class="divide-y divide-slate-100">
       {% for m in t.equipo %}
         {% set dt = m.dias_trabajo %}
-        <div class="p-6 miembro-row">
+        {% set connected = equipo_conectados.get(m.id, False) %}
+        <div class="p-6 miembro-row" data-member-id="{{ m.id }}">
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             <div class="lg:col-span-3">
               <label class="text-xs font-medium text-slate-700 mb-1 block">Nombre</label>
@@ -32,9 +33,39 @@
                      class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-brand-500"/>
             </div>
             <div class="lg:col-span-6">
-              <label class="text-xs font-medium text-slate-700 mb-1 block">Calendar ID (Google)</label>
-              <input name="calendar_id" value="{{ m.calendar_id }}" placeholder="xxxxxx@group.calendar.google.com"
-                     class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs font-mono focus:outline-none focus:border-brand-500"/>
+              <label class="text-xs font-medium text-slate-700 mb-1 block">Google Calendar del miembro</label>
+              {% if connected %}
+                <div class="calendar-picker space-y-2" data-tenant="{{ t.id }}" data-member="{{ m.id }}" data-current="{{ m.calendar_id }}">
+                  <div class="flex gap-2">
+                    <select name="calendar_id" class="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white calendar-select">
+                      {# Opción actual siempre presente para que el select no
+                         quede vacío mientras el fetch carga. #}
+                      <option value="{{ m.calendar_id }}">{% if m.calendar_id %}{{ m.calendar_id }}{% else %}— sin seleccionar —{% endif %}</option>
+                    </select>
+                    <button type="button" class="btn-create-cal text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 whitespace-nowrap" title="Crear calendario nuevo para este miembro">+ Nuevo</button>
+                  </div>
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-emerald-700 flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                      Google conectado
+                    </span>
+                    <form method="post" action="/admin/clientes/{{ t.id }}/equipo/{{ m.id }}/disconnect" class="inline" onclick="event.stopPropagation()">
+                      <button class="text-slate-400 hover:text-rose-600">Desconectar</button>
+                    </form>
+                  </div>
+                </div>
+              {% else %}
+                <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50">
+                  <span class="text-sm text-amber-700 flex items-center gap-2">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    Google no conectado
+                  </span>
+                  <a href="/oauth/start?tenant_id={{ t.id }}&member_id={{ m.id }}" class="text-xs px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium whitespace-nowrap">Conectar Google</a>
+                </div>
+                {# Mantener un hidden para que el POST /equipo conserve el valor
+                   anterior del calendar_id aunque no esté conectado. #}
+                <input type="hidden" name="calendar_id" value="{{ m.calendar_id }}"/>
+              {% endif %}
             </div>
             <div class="lg:col-span-3 flex flex-col">
               <label class="text-xs font-medium text-slate-700 mb-1 block">Días laborables</label>
@@ -76,14 +107,15 @@
         <input name="nombre" placeholder="Nombre" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-brand-500"/>
       </div>
       <div class="lg:col-span-6">
-        <label class="text-xs font-medium text-slate-700 mb-1 block">Calendar ID (Google)</label>
-        <input name="calendar_id" placeholder="xxxxxx@group.calendar.google.com" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs font-mono focus:outline-none focus:border-brand-500"/>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Google Calendar del miembro</label>
+        <div class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500">
+          Guarda primero para poder conectar Google con este miembro.
+        </div>
+        <input type="hidden" name="calendar_id" value=""/>
       </div>
       <div class="lg:col-span-3 flex flex-col">
         <label class="text-xs font-medium text-slate-700 mb-1 block">Días laborables</label>
-        <div class="flex gap-1 miembro-days">
-          <!-- rellenado por JS para poder asignar el índice correcto -->
-        </div>
+        <div class="flex gap-1 miembro-days"></div>
       </div>
     </div>
     <div class="mt-3 flex justify-end">
@@ -97,7 +129,7 @@
 
 <script>
 const DIAS = [['0','L'],['1','M'],['2','X'],['3','J'],['4','V'],['5','S'],['6','D']];
-const DEFAULT_DIAS = ['0','1','2','3','4','5']; // lun-sáb
+const DEFAULT_DIAS = ['0','1','2','3','4','5'];
 
 function addMiembro() {
   const list = document.getElementById('equipo-list');
@@ -125,4 +157,63 @@ function addMiembro() {
   });
   list.appendChild(frag);
 }
+
+// Cargar calendarios del miembro conectado al abrir la pestaña.
+document.querySelectorAll('.calendar-picker').forEach(async (picker) => {
+  const tenant = picker.dataset.tenant;
+  const member = picker.dataset.member;
+  const current = picker.dataset.current;
+  const select = picker.querySelector('.calendar-select');
+  try {
+    const resp = await fetch(`/admin/clientes/${tenant}/equipo/${member}/calendars`);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    select.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.innerText = '— elige un calendario —';
+    select.appendChild(placeholder);
+    (data.calendars || []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.innerText = c.summary + (c.primary ? ' (principal)' : '');
+      if (c.id === current) opt.selected = true;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    console.error('No pude cargar calendarios para miembro ' + member, e);
+  }
+});
+
+// Botón "Crear calendario nuevo" por miembro
+document.querySelectorAll('.btn-create-cal').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const picker = btn.closest('.calendar-picker');
+    const tenant = picker.dataset.tenant;
+    const member = picker.dataset.member;
+    const summary = prompt('Nombre del calendario nuevo:', 'Trabajo');
+    if (!summary) return;
+    btn.disabled = true; btn.innerText = 'Creando...';
+    try {
+      const fd = new FormData();
+      fd.append('summary', summary);
+      const resp = await fetch(`/admin/clientes/${tenant}/equipo/${member}/calendars/create`, {
+        method: 'POST', body: fd,
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.detail || 'error');
+      // Añadir la opción nueva al select y seleccionarla
+      const select = picker.querySelector('.calendar-select');
+      const opt = document.createElement('option');
+      opt.value = data.id;
+      opt.innerText = data.summary;
+      opt.selected = true;
+      select.appendChild(opt);
+    } catch (e) {
+      alert('No se pudo crear el calendario: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.innerText = '+ Nuevo';
+    }
+  });
+});
 </script>

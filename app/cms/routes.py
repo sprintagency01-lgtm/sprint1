@@ -213,6 +213,48 @@ def _google_calendar_connected(tenant_id: str) -> bool:
         return False
 
 
+def _member_token_path(tenant_id: str, member_id: int):
+    """Path del token OAuth del miembro del equipo (separado del tenant)."""
+    from .. import calendar_service as _cal
+    return _cal.TOKENS_DIR / f"{tenant_id}_member_{int(member_id)}.json"
+
+
+def _google_member_connected(tenant_id: str, member_id: int) -> bool:
+    try:
+        return _member_token_path(tenant_id, member_id).exists()
+    except Exception:
+        return False
+
+
+def _member_google_service(tenant_id: str, member_id: int):
+    """Construye un Service de Google Calendar API usando el token del miembro.
+
+    Lanza HTTPException 400 si no hay token (= miembro no conectado).
+    """
+    import json as _json
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request as _GRequest
+    from googleapiclient.discovery import build as _build
+
+    path = _member_token_path(tenant_id, member_id)
+    if not path.exists():
+        raise HTTPException(
+            400,
+            f"Este miembro aún no ha conectado su cuenta Google. "
+            f"Pulsa 'Conectar Google' en la pestaña Equipo.",
+        )
+    data = _json.loads(path.read_text())
+    creds = Credentials.from_authorized_user_info(data)
+    # Refresca el access_token si caducó (refresh_token está guardado)
+    if not creds.valid and creds.refresh_token:
+        try:
+            creds.refresh(_GRequest())
+            path.write_text(creds.to_json())
+        except Exception as e:  # pragma: no cover
+            raise HTTPException(500, f"No se pudo refrescar el token del miembro: {e}")
+    return _build("calendar", "v3", credentials=creds, cache_discovery=False)
+
+
 def _seed_voice_defaults_if_empty(s: Session, t: db_module.Tenant) -> None:
     """Rellena voice_prompt y voice_voice_id la primera vez si están vacíos.
 
@@ -533,6 +575,11 @@ async def client_detail(
         # Expandir el tenant — el template sigue usando el objeto SQLAlchemy
         # pero necesitamos la lista de servicios también pre-cargada para Jinja.
         _ = t.services  # fuerza carga
+        # Estado de conexión Google por miembro (solo relevante en tab=equipo)
+        equipo_conectados: dict[int, bool] = {}
+        if tab == "equipo":
+            for m in t.equipo:
+                equipo_conectados[m.id] = _google_member_connected(tenant_id, m.id)
 
         return templates.TemplateResponse("client_detail.html", {
             "request": request,
@@ -550,6 +597,7 @@ async def client_detail(
             "conversations": conversations,
             "prompt_preview": prompt_preview,
             "google_connected": _google_calendar_connected(tenant_id),
+            "equipo_conectados": equipo_conectados,
         })
 
 
@@ -668,6 +716,90 @@ async def client_save_schedule(
         t.business_hours = hours
         s.commit()
     return RedirectResponse(url=f"/admin/clientes/{tenant_id}/horarios", status_code=303)
+
+
+@router.get("/admin/clientes/{tenant_id}/equipo/{member_id}/calendars")
+async def member_list_calendars(
+    tenant_id: str, member_id: int,
+    uid: int = Depends(auth.current_user_id),
+):
+    """JSON: calendarios accesibles desde el token OAuth del miembro.
+
+    La UI llama aquí al abrir la fila del miembro para poblar el desplegable.
+    Devuelve 400 si el miembro no está conectado todavía.
+    """
+    from fastapi.responses import JSONResponse
+    svc = _member_google_service(tenant_id, member_id)
+    try:
+        res = svc.calendarList().list(maxResults=250, showHidden=False).execute()
+    except Exception as e:
+        raise HTTPException(502, f"Google Calendar: {e}")
+    items = []
+    for c in res.get("items", []):
+        items.append({
+            "id": c.get("id"),
+            "summary": c.get("summary") or "(sin nombre)",
+            "primary": bool(c.get("primary")),
+            "accessRole": c.get("accessRole"),
+        })
+    # Primario arriba, resto por nombre.
+    items.sort(key=lambda x: (0 if x["primary"] else 1, x["summary"].lower()))
+    return JSONResponse({"calendars": items, "connected": True})
+
+
+@router.post("/admin/clientes/{tenant_id}/equipo/{member_id}/calendars/create")
+async def member_create_calendar(
+    tenant_id: str, member_id: int,
+    summary: str = Form(""),
+    uid: int = Depends(auth.current_user_id),
+):
+    """Crea un calendario nuevo en la cuenta del miembro y lo asigna a él.
+
+    Por defecto el summary es "Trabajo — <nombre_miembro>" si no se pasa uno.
+    Devuelve el id del calendario recién creado (ya guardado en
+    MiembroEquipo.calendar_id).
+    """
+    from fastapi.responses import JSONResponse
+    summary = (summary or "").strip()
+
+    with Session(db_module.engine) as s:
+        m = s.get(db_module.MiembroEquipo, member_id)
+        if m is None or m.tenant_id != tenant_id:
+            raise HTTPException(404, "Miembro no encontrado en este tenant")
+        if not summary:
+            summary = f"Trabajo — {m.nombre or 'Miembro'}"
+
+        svc = _member_google_service(tenant_id, member_id)
+        try:
+            body = {"summary": summary, "timeZone": "Europe/Madrid"}
+            created = svc.calendars().insert(body=body).execute()
+        except Exception as e:
+            raise HTTPException(502, f"Google Calendar: {e}")
+
+        cal_id = created.get("id") or ""
+        m.calendar_id = cal_id
+        s.commit()
+
+    return JSONResponse({
+        "ok": True,
+        "id": cal_id,
+        "summary": created.get("summary", summary),
+    })
+
+
+@router.post("/admin/clientes/{tenant_id}/equipo/{member_id}/disconnect")
+async def member_disconnect_google(
+    tenant_id: str, member_id: int,
+    uid: int = Depends(auth.current_user_id),
+):
+    """Borra el token del miembro (no revoca en Google, solo olvida local)."""
+    path = _member_token_path(tenant_id, member_id)
+    try:
+        if path.exists():
+            path.unlink()
+    except Exception:  # pragma: no cover
+        pass
+    return RedirectResponse(url=f"/admin/clientes/{tenant_id}/equipo", status_code=303)
 
 
 @router.post("/admin/clientes/{tenant_id}/equipo")

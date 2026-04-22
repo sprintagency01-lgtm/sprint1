@@ -54,20 +54,35 @@ def _build_flow(state: str | None = None) -> Flow:
 @router.get("/start", response_class=RedirectResponse)
 async def oauth_start(
     tenant_id: str = "default",
+    member_id: int | None = None,
     _user_id: int = Depends(current_user_id),
 ):
-    """Arranca el flujo de OAuth para `tenant_id`.
+    """Arranca el flujo de OAuth.
 
-    Firma `tenant_id` dentro del parámetro state. En el callback se verifica.
+    Dos modos:
+      - sin `member_id`: el token se guarda para el tenant entero, en
+        `TOKENS_DIR/{tenant_id}.json`. Es el que usa el bot (agent.py y
+        eleven_tools) para leer/escribir en el calendario principal.
+      - con `member_id`: el token se guarda para un miembro específico del
+        equipo, en `TOKENS_DIR/{tenant_id}_member_{member_id}.json`. Solo lo
+        usa el CMS para listar/crear calendarios bajo la cuenta Google propia
+        de ese miembro.
+    Firma `tenant_id` + (opcional) `member_id` dentro de `state`.
     """
-    state = _state_serializer.dumps({"tenant_id": tenant_id})
+    payload: dict = {"tenant_id": tenant_id}
+    if member_id is not None:
+        payload["member_id"] = int(member_id)
+    state = _state_serializer.dumps(payload)
     flow = _build_flow(state=state)
     auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
         prompt="consent",  # fuerza refresh_token la primera vez
     )
-    log.info("oauth start tenant=%s redirect=%s", tenant_id, settings.google_redirect_uri)
+    log.info(
+        "oauth start tenant=%s member=%s redirect=%s",
+        tenant_id, member_id, settings.google_redirect_uri,
+    )
     return RedirectResponse(auth_url, status_code=302)
 
 
@@ -92,23 +107,34 @@ async def oauth_callback(request: Request):
     except BadSignature:
         raise HTTPException(status_code=400, detail="State inválido — posible CSRF")
     tenant_id = str(data.get("tenant_id") or "default")
+    member_id = data.get("member_id")
 
     flow = _build_flow(state=state)
     flow.fetch_token(code=code)
     creds = flow.credentials
 
-    # Persistir tokens bajo TOKENS_DIR/{tenant_id}.json.
+    # Persistir tokens. Si es un miembro del equipo, el token vive con un
+    # sufijo "_member_{id}" para no colisionar con el del tenant entero.
     pathlib.Path(TOKENS_DIR).mkdir(parents=True, exist_ok=True)
-    path = pathlib.Path(TOKENS_DIR) / f"{tenant_id}.json"
+    if member_id is not None:
+        path = pathlib.Path(TOKENS_DIR) / f"{tenant_id}_member_{int(member_id)}.json"
+        redirect_back = f"/admin/clientes/{tenant_id}/equipo"
+        scope_label = f"tenant={tenant_id} miembro={member_id}"
+    else:
+        path = pathlib.Path(TOKENS_DIR) / f"{tenant_id}.json"
+        redirect_back = f"/admin/clientes/{tenant_id}/general"
+        scope_label = f"tenant={tenant_id}"
     path.write_text(creds.to_json())
-    # Si el tenant ya tenía un servicio cacheado con un token viejo, invalídalo
-    # para que la próxima tool call lea el nuevo token refrescado.
-    try:
-        from . import calendar_service as _cal
-        _cal._invalidate_service_cache(tenant_id)
-    except Exception:  # pragma: no cover
-        log.warning("No pude invalidar cache de calendar_service para %s", tenant_id)
-    log.info("oauth OK tenant=%s tokens_path=%s", tenant_id, path)
+
+    # Solo invalida el cache de calendar_service si es un token de tenant
+    # (el del miembro no lo usa ese módulo, solo el CMS).
+    if member_id is None:
+        try:
+            from . import calendar_service as _cal
+            _cal._invalidate_service_cache(tenant_id)
+        except Exception:  # pragma: no cover
+            log.warning("No pude invalidar cache de calendar_service para %s", tenant_id)
+    log.info("oauth OK %s tokens_path=%s", scope_label, path)
 
     body = f"""<!doctype html>
 <html lang=\"es\"><head><meta charset=\"utf-8\">
@@ -120,10 +146,10 @@ async def oauth_callback(request: Request):
   a {{ color: #38bdf8; }}
 </style></head>
 <body>
-  <h1>Autorizacion completada</h1>
-  <p>Tokens guardados para el tenant <code>{tenant_id}</code>.</p>
-  <p>Ruta en el contenedor: <code>{path}</code></p>
-  <p><a href=\"/admin\">Volver al panel</a></p>
+  <h1>Autorización completada</h1>
+  <p>Cuenta conectada para <code>{scope_label}</code>.</p>
+  <p><a href=\"{redirect_back}\">Volver al panel</a></p>
+  <script>setTimeout(function(){{ window.location='{redirect_back}'; }}, 800);</script>
 </body></html>
 """
     return HTMLResponse(body)
