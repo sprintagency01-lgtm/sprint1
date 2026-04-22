@@ -15,8 +15,10 @@ from __future__ import annotations
 
 import json
 import logging
+import time
+import traceback
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -28,6 +30,35 @@ from . import tenants as tn
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tools", tags=["voice-agent-tools"])
+
+
+# ---------- Retry helper ----------
+
+def _retry_google(fn: Callable[[], Any], op_name: str, attempts: int = 2, sleep_s: float = 0.8):
+    """Ejecuta `fn` reintentando ante errores transitorios de Google Calendar.
+
+    Google a veces tira 500/503/429 puntuales (rate-limits, hiccups). En un
+    flujo de voz hay que reintentar AL MENOS una vez antes de tirar a mano: si
+    no, el cliente oye "llame al 910" cuando el siguiente segundo todo funciona.
+    """
+    last_exc = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except Exception as e:  # pragma: no cover - incluye HttpError, ConnectionError, etc.
+            msg = str(e)
+            last_exc = e
+            transient = any(tok in msg for tok in ("500", "502", "503", "504",
+                                                     "rateLimit", "quotaExceeded",
+                                                     "Internal Server Error",
+                                                     "backendError", "timeout"))
+            log.warning("[%s] intento %d/%d falló (transient=%s): %s",
+                         op_name, i + 1, attempts, transient, msg)
+            if not transient or i == attempts - 1:
+                raise
+            time.sleep(sleep_s * (i + 1))
+    # no debería llegar aquí
+    raise last_exc  # type: ignore[misc]
 
 
 # ---------- Auth helper ----------
@@ -185,12 +216,24 @@ def consultar_disponibilidad(
         else:
             pelus = peluqueros
 
-        huecos = cal.listar_huecos_por_peluqueros(
-            desde, hasta, req.duracion_minutos,
-            peluqueros=pelus,
-            tenant_id=tenant.get("id", "default"),
-            horario_apertura=horario,
-        )
+        try:
+            huecos = _retry_google(
+                lambda: cal.listar_huecos_por_peluqueros(
+                    desde, hasta, req.duracion_minutos,
+                    peluqueros=pelus,
+                    tenant_id=tenant.get("id", "default"),
+                    horario_apertura=horario,
+                ),
+                "listar_huecos_por_peluqueros",
+            )
+        except Exception as e:  # noqa: BLE001
+            log.error("consultar_disponibilidad falló: %s\n%s", e, traceback.format_exc())
+            return {
+                "huecos": [],
+                "error": "No he podido consultar la agenda ahora mismo. Vuélvelo a intentar en un momento.",
+                "retryable": True,
+                "detail": str(e)[:200],
+            }
         huecos.sort(key=lambda h: h["inicio"])
 
         # Caso 2: el cliente pidió peluquero concreto y no hay huecos, típicamente
@@ -222,12 +265,24 @@ def consultar_disponibilidad(
         return resp
 
     # Fallback: modo calendario único
-    slots = cal.listar_huecos_libres(
-        desde, hasta, req.duracion_minutos,
-        calendar_id=tenant.get("calendar_id") or settings.default_calendar_id,
-        tenant_id=tenant.get("id", "default"),
-        horario_apertura=horario,
-    )
+    try:
+        slots = _retry_google(
+            lambda: cal.listar_huecos_libres(
+                desde, hasta, req.duracion_minutos,
+                calendar_id=tenant.get("calendar_id") or settings.default_calendar_id,
+                tenant_id=tenant.get("id", "default"),
+                horario_apertura=horario,
+            ),
+            "listar_huecos_libres",
+        )
+    except Exception as e:  # noqa: BLE001
+        log.error("consultar_disponibilidad (single cal) falló: %s\n%s", e, traceback.format_exc())
+        return {
+            "huecos": [],
+            "error": "No he podido consultar la agenda ahora mismo. Vuélvelo a intentar en un momento.",
+            "retryable": True,
+            "detail": str(e)[:200],
+        }
     return {"huecos": [{"inicio": s.start.isoformat(), "fin": s.end.isoformat()} for s in slots[:limit]]}
 
 
@@ -266,15 +321,35 @@ def crear_reserva(
         cid = caller_id.strip()
         if cid.lower() not in ("none", "null", "n/a", "na", "-", "unknown", "anonymous", ""):
             tel = cid
-    ev = cal.crear_evento(
-        titulo=req.titulo,
-        inicio=datetime.fromisoformat(req.inicio_iso),
-        fin=datetime.fromisoformat(req.fin_iso),
-        descripcion=req.notas,
-        telefono_cliente=tel,
-        calendar_id=destino_cal,
-        tenant_id=tenant.get("id", "default"),
-    )
+    # Reintenta ante errores transitorios de Google. Si aun así falla,
+    # devolvemos 200 con ok:false + mensaje legible para que Ana pueda decidir
+    # si reintenta o deriva al número de tienda, en vez de oír un 500 mudo.
+    try:
+        ev = _retry_google(
+            lambda: cal.crear_evento(
+                titulo=req.titulo,
+                inicio=datetime.fromisoformat(req.inicio_iso),
+                fin=datetime.fromisoformat(req.fin_iso),
+                descripcion=req.notas,
+                telefono_cliente=tel,
+                calendar_id=destino_cal,
+                tenant_id=tenant.get("id", "default"),
+            ),
+            "crear_evento",
+        )
+    except Exception as e:  # noqa: BLE001 - queremos cualquier excepción
+        log.error("crear_reserva falló tras reintentos: %s\n%s",
+                  e, traceback.format_exc())
+        return {
+            "ok": False,
+            "error": (
+                "No se ha podido guardar la cita en el calendario ahora mismo. "
+                "Puede ser un pequeño corte del servicio de Google. "
+                "Intenta de nuevo en unos segundos."
+            ),
+            "retryable": True,
+            "detail": str(e)[:200],
+        }
     log.info("Reserva creada por voz: %s (%s)", ev.get("id"), peluquero or "sin preferencia")
     return {
         "ok": True,
