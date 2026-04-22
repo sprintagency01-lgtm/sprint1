@@ -609,7 +609,16 @@ async def client_calendar_test(
     with Session(db_module.engine) as s:
         t = s.get(db_module.Tenant, tenant_id)
         if t is None:
-            raise HTTPException(404)
+            # Lista los ids existentes para orientar al usuario si escribió
+            # mal el slug o si está esperando otro id.
+            existing = [row.id for row in s.query(db_module.Tenant).all()]
+            raise HTTPException(
+                404,
+                detail=(
+                    f"No existe tenant con id '{tenant_id}'. "
+                    f"Tenants en BD: {existing}"
+                ),
+            )
         calendar_id = t.calendar_id or "primary"
         tenant_name = t.name
 
