@@ -418,11 +418,13 @@ def buscar_reserva_cliente(
     if main_cal not in calendars_to_check:
         calendars_to_check.append(main_cal)
 
-    # Reintenta ante errores transitorios de Google. Si aun así falla,
-    # devolvemos 200 con encontrada:false + retryable para que Ana pueda
-    # decidir si reintenta o deriva al número de tienda, en vez de oír un 500.
-    try:
-        for cal_id in calendars_to_check:
+    # Recorremos calendario a calendario. Cada uno tiene su propio try/except:
+    # si uno 404 (calendario mal compartido) o tiene un hipido transitorio,
+    # no queremos abortar toda la búsqueda — seguimos con los otros. Sólo si
+    # TODOS fallan devolvemos error graceful (retryable) a Ana para que decida.
+    errors: list[str] = []
+    for cal_id in calendars_to_check:
+        try:
             ev = _retry_google(
                 lambda cal_id=cal_id: cal.buscar_evento_por_telefono(
                     tel, desde, hasta,
@@ -440,9 +442,16 @@ def buscar_reserva_cliente(
                     "fin": ev["end"].get("dateTime"),
                     "calendar_id": cal_id,
                 }
-    except Exception as e:  # noqa: BLE001
-        log.error("buscar_reserva_cliente falló tras reintentos: %s\n%s",
-                  e, traceback.format_exc())
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{cal_id[:20]}…: {str(e)[:120]}")
+            log.warning("buscar_reserva_cliente: fallo en cal %s: %s", cal_id, e)
+            continue
+
+    # Si todos los calendarios fallaron (no sólo "no había cita"), devolvemos
+    # graceful con retryable. Si sólo algunos 404aron pero otros respondieron
+    # OK sin encontrar nada, es un "no encontrada" legítimo, no un error.
+    if errors and len(errors) == len(calendars_to_check):
+        log.error("buscar_reserva_cliente: todos los calendarios fallaron: %s", errors)
         return {
             "encontrada": False,
             "error": (
@@ -451,7 +460,7 @@ def buscar_reserva_cliente(
                 "Intenta de nuevo en unos segundos."
             ),
             "retryable": True,
-            "detail": str(e)[:200],
+            "detail": "; ".join(errors)[:200],
         }
     return {"encontrada": False}
 
