@@ -82,6 +82,27 @@ async def health() -> dict:
     return {"ok": True, "service": "bot_reservas", "version": "0.3.0"}
 
 
+@app.get("/_diag/tenant")
+async def _diag_tenant(tenant_id: str = "pelu_demo", x_tool_secret: str | None = None) -> dict:
+    """Diag temporal: devuelve cómo ve el runtime un tenant (horario, peluqueros)."""
+    if not settings.tool_secret or x_tool_secret != settings.tool_secret:
+        raise HTTPException(status_code=401, detail="Bad x_tool_secret")
+    from . import tenants as tn
+    from .eleven_tools import _horario
+    t = tn.get_tenant(tenant_id)
+    if not t:
+        return {"found": False}
+    horario = _horario(t)
+    return {
+        "found": True,
+        "id": t.get("id"),
+        "business_hours": t.get("business_hours"),
+        "horario_used": [str(horario[0]), str(horario[1])],
+        "peluqueros": [{"nombre": p.get("nombre"), "dias": p.get("dias_trabajo")} for p in (t.get("peluqueros") or [])],
+        "calendar_id": t.get("calendar_id"),
+    }
+
+
 # ---------- Captura de leads desde la landing ----------
 
 # Valida el teléfono: admite +, espacios, guiones, paréntesis y dígitos.
