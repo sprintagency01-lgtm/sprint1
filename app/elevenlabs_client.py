@@ -74,11 +74,22 @@ def _raise_for_status(r: httpx.Response, context: str) -> None:
         )
 
 
+def _prop(type_: str, description: str) -> dict:
+    """Construye una propiedad del request_body_schema compatible con ElevenLabs.
+
+    ElevenLabs API exige que cada propiedad tenga al menos uno de:
+    description, dynamic_variable, is_system_provided, constant_value. Con
+    solo `type` la creación del agente falla con 422.
+    """
+    return {"type": type_, "description": description}
+
+
 def _build_tools(tool_base_url: str, tool_secret: str, tenant_id: str) -> list[dict]:
     """Definición de los 5 server tools que registramos en el agente.
 
-    Mismo shape que el script `scripts/setup_elevenlabs_agent.py`; duplicado
-    aquí para no forzar dependencia inversa del script desde el runtime.
+    Mismo shape que el script `scripts/setup_elevenlabs_agent.py` y que el
+    snapshot versionado en `elevenlabs_agent_config.json`. Duplicado aquí para
+    no forzar dependencia inversa del script desde el runtime.
     """
     base_headers = {"X-Tool-Secret": tool_secret, "Content-Type": "application/json"}
     base = tool_base_url.rstrip("/")
@@ -97,52 +108,79 @@ def _build_tools(tool_base_url: str, tool_secret: str, tenant_id: str) -> list[d
         }
 
     return [
-        wh("consultar_disponibilidad",
-           "Devuelve huecos libres del negocio para la duración pedida dentro de un rango.",
-           "/tools/consultar_disponibilidad",
-           {"type": "object", "required": ["fecha_desde_iso", "fecha_hasta_iso", "duracion_minutos"],
-            "properties": {
-                "fecha_desde_iso": {"type": "string"},
-                "fecha_hasta_iso": {"type": "string"},
-                "duracion_minutos": {"type": "integer"},
-                "peluquero_preferido": {"type": "string"},
-                "max_resultados": {"type": "integer"},
-            }}),
-        wh("crear_reserva",
-           "Crea una reserva en el calendario. Confirma SIEMPRE la hora antes.",
-           "/tools/crear_reserva",
-           {"type": "object", "required": ["titulo", "inicio_iso", "fin_iso"],
-            "properties": {
-                "titulo": {"type": "string"},
-                "inicio_iso": {"type": "string"},
-                "fin_iso": {"type": "string"},
-                "telefono_cliente": {"type": "string"},
-                "peluquero": {"type": "string"},
-                "notas": {"type": "string"},
-            }}),
-        wh("buscar_reserva_cliente",
-           "Busca reservas futuras de un cliente por su teléfono.",
-           "/tools/buscar_reserva_cliente",
-           {"type": "object",
-            "properties": {
-                "telefono_cliente": {"type": "string"},
-                "dias_adelante": {"type": "integer"},
-            }}),
-        wh("mover_reserva",
-           "Mueve una reserva existente a otra hora. Usa event_id obtenido de buscar_reserva_cliente.",
-           "/tools/mover_reserva",
-           {"type": "object", "required": ["event_id", "nuevo_inicio_iso", "nuevo_fin_iso"],
-            "properties": {
-                "event_id": {"type": "string"},
-                "nuevo_inicio_iso": {"type": "string"},
-                "nuevo_fin_iso": {"type": "string"},
-                "peluquero": {"type": "string"},
-            }}),
-        wh("cancelar_reserva",
-           "Cancela una reserva existente. Usa event_id obtenido de buscar_reserva_cliente.",
-           "/tools/cancelar_reserva",
-           {"type": "object", "required": ["event_id"],
-            "properties": {"event_id": {"type": "string"}}}),
+        wh(
+            "consultar_disponibilidad",
+            "Consulta huecos libres en los calendarios del equipo. USA SIEMPRE esta función antes de proponer una hora al cliente. Si el cliente tiene preferencia, pásalo en peluquero_preferido; si no, déjalo vacío.",
+            "/tools/consultar_disponibilidad",
+            {
+                "type": "object",
+                "required": ["fecha_desde_iso", "fecha_hasta_iso", "duracion_minutos"],
+                "properties": {
+                    "fecha_desde_iso": _prop("string", "Inicio del rango, ISO 8601. Ej: 2026-04-22T09:30:00"),
+                    "fecha_hasta_iso": _prop("string", "Fin del rango, ISO 8601."),
+                    "duracion_minutos": _prop("integer", "Duración del servicio (30, 45, 90...)."),
+                    "peluquero_preferido": _prop("string", "Nombre del miembro del equipo si hay preferencia. Vacío = cualquiera."),
+                    "max_resultados": _prop("integer", "Máximo de huecos a devolver. Por defecto 5."),
+                },
+            },
+        ),
+        wh(
+            "crear_reserva",
+            "Crea una reserva en el calendario. Confirma SIEMPRE la hora antes. No llamarla sin haber usado consultar_disponibilidad primero.",
+            "/tools/crear_reserva",
+            {
+                "type": "object",
+                "required": ["titulo", "inicio_iso", "fin_iso", "peluquero"],
+                "properties": {
+                    "titulo": _prop("string", "Título del evento. FORMATO EXACTO: 'Nombre — Servicio (Peluquero)'. Ejemplos: 'Lucía — Corte mujer (Mario)', 'Juan — Asesoría (sin preferencia)'. El NOMBRE DEL CLIENTE va PRIMERO."),
+                    "inicio_iso": _prop("string", "Fecha/hora de inicio, ISO 8601."),
+                    "fin_iso": _prop("string", "Fecha/hora de fin, ISO 8601."),
+                    "telefono_cliente": _prop("string", "Teléfono del cliente. Normalmente es {{system__caller_id}} (el de la llamada)."),
+                    "peluquero": _prop("string", "Nombre del miembro del equipo asignado o 'sin preferencia'."),
+                    "notas": _prop("string", "Notas extra (alergias, detalles). Puede estar vacío."),
+                },
+            },
+        ),
+        wh(
+            "buscar_reserva_cliente",
+            "Busca reservas futuras de un cliente por su teléfono. Úsala antes de mover/cancelar para obtener el event_id.",
+            "/tools/buscar_reserva_cliente",
+            {
+                "type": "object",
+                "required": [],
+                "properties": {
+                    "telefono_cliente": _prop("string", "Teléfono del cliente a buscar. Normalmente es {{system__caller_id}}."),
+                    "dias_adelante": _prop("integer", "Cuántos días mirar hacia adelante. Por defecto 30."),
+                },
+            },
+        ),
+        wh(
+            "mover_reserva",
+            "Mueve una reserva existente a otra hora. Usa event_id obtenido de buscar_reserva_cliente.",
+            "/tools/mover_reserva",
+            {
+                "type": "object",
+                "required": ["event_id", "nuevo_inicio_iso", "nuevo_fin_iso"],
+                "properties": {
+                    "event_id": _prop("string", "ID del evento devuelto por buscar_reserva_cliente."),
+                    "nuevo_inicio_iso": _prop("string", "Nuevo inicio, ISO 8601."),
+                    "nuevo_fin_iso": _prop("string", "Nuevo fin, ISO 8601."),
+                    "peluquero": _prop("string", "Nombre del miembro si se mueve a otro peluquero/profesional. Vacío = no cambia."),
+                },
+            },
+        ),
+        wh(
+            "cancelar_reserva",
+            "Cancela una reserva existente. Usa event_id obtenido de buscar_reserva_cliente.",
+            "/tools/cancelar_reserva",
+            {
+                "type": "object",
+                "required": ["event_id"],
+                "properties": {
+                    "event_id": _prop("string", "ID del evento a cancelar."),
+                },
+            },
+        ),
     ]
 
 
