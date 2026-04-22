@@ -199,6 +199,77 @@ def _delta_pct(curr, prev) -> int:
 _DEFAULT_VOICE_ID = "1eHrpOW5l98cxiSRjbzJ"
 
 
+def _diag_calendar_connection(tenant_id: str, calendar_id: str) -> dict:
+    """Ejecuta una batería de chequeos contra Google Calendar para un tenant
+    y devuelve un dict con el resultado de cada paso. Útil para depurar sin
+    tener que mirar logs de Railway.
+    """
+    from .. import calendar_service as _cal
+    from datetime import datetime, timedelta
+
+    result: dict = {"steps": [], "ok": True, "cause": None}
+
+    def add(name: str, ok: bool, detail: str = ""):
+        result["steps"].append({"name": name, "ok": ok, "detail": detail})
+        if not ok and result["ok"]:
+            result["ok"] = False
+            result["cause"] = name
+
+    # 1) ¿Hay archivo de token para este tenant?
+    path = _cal.TOKENS_DIR / f"{tenant_id}.json"
+    token_exists = path.exists()
+    add("Token file", token_exists,
+        str(path) if token_exists else f"No existe {path}. Pulsa 'Conectar' en General.")
+
+    # 2) ¿Se puede cargar y refrescar?
+    try:
+        _cal._invalidate_service_cache(tenant_id)  # forzar recarga
+        svc = _cal._service(tenant_id)
+        add("Load service", True, "Credenciales cargadas y service construido")
+    except Exception as e:
+        add("Load service", False, f"{type(e).__name__}: {str(e)[:240]}")
+        return result
+
+    # 3) calendarList().list — confirma que el token tiene scope suficiente
+    try:
+        cl = svc.calendarList().list(maxResults=50, showHidden=False).execute()
+        cals = cl.get("items", [])
+        add("calendarList", True, f"{len(cals)} calendarios accesibles")
+        result["calendar_options"] = [
+            {"id": c.get("id"), "summary": c.get("summary"), "primary": bool(c.get("primary"))}
+            for c in cals
+        ]
+    except Exception as e:
+        add("calendarList", False, f"{type(e).__name__}: {str(e)[:240]}")
+
+    # 4) ¿El calendar_id objetivo responde?
+    target = calendar_id or "primary"
+    try:
+        got = svc.calendars().get(calendarId=target).execute()
+        add(f"calendars.get({target})", True, f"summary='{got.get('summary')}'")
+    except Exception as e:
+        add(f"calendars.get({target})", False, f"{type(e).__name__}: {str(e)[:240]}")
+
+    # 5) Una freeBusy.query de verdad
+    try:
+        now = datetime.utcnow()
+        tmin = now.replace(microsecond=0).isoformat() + "Z"
+        tmax = (now + timedelta(days=1)).replace(microsecond=0).isoformat() + "Z"
+        fb = svc.freebusy().query(body={
+            "timeMin": tmin, "timeMax": tmax, "items": [{"id": target}],
+        }).execute()
+        cal_entry = (fb.get("calendars") or {}).get(target) or {}
+        if "errors" in cal_entry:
+            add("freeBusy", False, f"Google devolvió errors: {cal_entry['errors']}")
+        else:
+            busy = cal_entry.get("busy", [])
+            add("freeBusy", True, f"{len(busy)} periodos ocupados en las próximas 24h")
+    except Exception as e:
+        add("freeBusy", False, f"{type(e).__name__}: {str(e)[:240]}")
+
+    return result
+
+
 def _google_calendar_connected(tenant_id: str) -> bool:
     """True si hay un token OAuth guardado para este tenant.
 
@@ -602,6 +673,75 @@ async def client_detail(
 
 
 # ---- Guardar cambios (una ruta POST por pestaña) ------------------------
+
+@router.get("/admin/clientes/{tenant_id}/calendar_test", response_class=HTMLResponse)
+async def client_calendar_test(
+    tenant_id: str, request: Request,
+    uid: int = Depends(auth.current_user_id),
+):
+    """Página de diagnóstico de la integración Google Calendar para un tenant.
+
+    Muestra paso a paso qué funciona y qué no (token, scopes, calendar_id
+    objetivo, freeBusy). Pensado para depurar problemas del tipo "Ana dice
+    que tiene problemas del sistema" sin tener que mirar los logs de Railway.
+    """
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tenant_id)
+        if t is None:
+            raise HTTPException(404)
+        calendar_id = t.calendar_id or "primary"
+        tenant_name = t.name
+
+    diag = _diag_calendar_connection(tenant_id, calendar_id)
+
+    rows_html = []
+    for step in diag["steps"]:
+        color = "#16a34a" if step["ok"] else "#dc2626"
+        icon = "✓" if step["ok"] else "✗"
+        rows_html.append(
+            f'<tr><td style="padding:8px;color:{color};font-weight:bold">{icon}</td>'
+            f'<td style="padding:8px"><b>{step["name"]}</b></td>'
+            f'<td style="padding:8px;font-family:monospace;font-size:13px">{step["detail"]}</td></tr>'
+        )
+
+    cals_html = ""
+    if diag.get("calendar_options"):
+        items = "".join(
+            f'<li><code>{c["id"]}</code> — {c["summary"]}{" <b>(primary)</b>" if c["primary"] else ""}</li>'
+            for c in diag["calendar_options"]
+        )
+        cals_html = f"<h3>Calendarios accesibles con este token</h3><ul>{items}</ul>"
+
+    summary_color = "#16a34a" if diag["ok"] else "#dc2626"
+    summary_text = "Todo bien" if diag["ok"] else f"Falló en: {diag['cause']}"
+
+    body = f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Diagnóstico calendar · {tenant_name}</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto;
+          padding: 2rem; background: #f8fafc; color: #0f172a; }}
+  .card {{ background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+           padding: 24px; margin-bottom: 16px; }}
+  h1 {{ margin: 0 0 8px; font-size: 20px; }}
+  h3 {{ margin: 16px 0 8px; font-size: 14px; }}
+  table {{ width: 100%; border-collapse: collapse; }}
+  td {{ border-bottom: 1px solid #f1f5f9; vertical-align: top; }}
+  code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; }}
+  .summary {{ color: {summary_color}; font-weight: 600; }}
+  a {{ color: #2563eb; }}
+</style></head>
+<body>
+  <div class="card">
+    <h1>Diagnóstico Google Calendar — {tenant_name}</h1>
+    <p>Tenant <code>{tenant_id}</code> · calendar_id objetivo: <code>{calendar_id}</code></p>
+    <p class="summary">{summary_text}</p>
+    <table>{"".join(rows_html)}</table>
+    {cals_html}
+    <p style="margin-top:24px"><a href="/admin/clientes/{tenant_id}/general">← Volver al panel</a></p>
+  </div>
+</body></html>"""
+    return HTMLResponse(body)
+
 
 @router.post("/admin/clientes/{tenant_id}/general")
 async def client_save_general(

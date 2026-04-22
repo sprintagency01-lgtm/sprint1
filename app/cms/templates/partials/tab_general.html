@@ -66,7 +66,10 @@
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
               Conectado — el bot puede leer/escribir en el calendario.
             </span>
-            <a href="/oauth/start?tenant_id={{ t.id }}" class="text-xs text-emerald-700 hover:underline">Reautorizar</a>
+            <div class="flex gap-3 text-xs">
+              <a href="/admin/clientes/{{ t.id }}/calendar_test" class="text-emerald-700 hover:underline">Probar conexión</a>
+              <a href="/oauth/start?tenant_id={{ t.id }}" class="text-emerald-700 hover:underline">Reautorizar</a>
+            </div>
           </div>
         {% else %}
           <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50">
