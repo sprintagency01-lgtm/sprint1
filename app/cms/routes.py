@@ -484,7 +484,7 @@ async def client_detail(
     tenant_id: str, tab: str, request: Request,
     uid: int = Depends(auth.current_user_id),
 ):
-    if tab not in ("general", "servicios", "horarios", "peluqueros", "personalizacion", "voz", "conversaciones", "metricas"):
+    if tab not in ("general", "servicios", "horarios", "equipo", "personalizacion", "voz", "conversaciones", "metricas"):
         raise HTTPException(404, "Pestaña desconocida")
 
     with Session(db_module.engine) as s:
@@ -670,17 +670,17 @@ async def client_save_schedule(
     return RedirectResponse(url=f"/admin/clientes/{tenant_id}/horarios", status_code=303)
 
 
-@router.post("/admin/clientes/{tenant_id}/peluqueros")
-async def client_save_peluqueros(
+@router.post("/admin/clientes/{tenant_id}/equipo")
+async def client_save_equipo(
     request: Request, tenant_id: str,
     uid: int = Depends(auth.current_user_id),
 ):
-    """Reescribe el equipo de peluqueros del tenant de forma atómica.
+    """Reescribe el equipo del tenant de forma atómica.
 
     El form envía listas paralelas `nombre[]` y `calendar_id[]` (tantas como
-    peluqueros haya en la UI), más un campo `dias_trabajo_{i}` por cada índice
+    miembros haya en la UI), más un campo `dias_trabajo_{i}` por cada índice
     con los días seleccionados (0-6). Si el nombre está vacío la fila se
-    descarta — es cómo el usuario "quita" un peluquero sin botón extra.
+    descarta — así se "quita" un miembro sin botón extra.
     """
     form = await request.form()
     nombres = form.getlist("nombre")
@@ -692,7 +692,7 @@ async def client_save_peluqueros(
             raise HTTPException(404)
         # Reemplazo completo: borramos y reinsertamos. Es sencillo y coherente
         # con cómo tab_services maneja el catálogo.
-        t.peluqueros.clear()
+        t.equipo.clear()
         s.flush()
         for i, nombre in enumerate(nombres):
             nombre = (nombre or "").strip()
@@ -704,16 +704,16 @@ async def client_save_peluqueros(
                 dias = [int(d) for d in dias_raw if str(d).isdigit()]
             except ValueError:
                 dias = [0, 1, 2, 3, 4, 5]
-            row = db_module.Peluquero(
+            row = db_module.MiembroEquipo(
                 tenant_id=tenant_id,
                 nombre=nombre,
                 calendar_id=calendar_id,
                 orden=i,
             )
             row.dias_trabajo = dias
-            t.peluqueros.append(row)
+            t.equipo.append(row)
         s.commit()
-    return RedirectResponse(url=f"/admin/clientes/{tenant_id}/peluqueros", status_code=303)
+    return RedirectResponse(url=f"/admin/clientes/{tenant_id}/equipo", status_code=303)
 
 
 @router.post("/admin/clientes/{tenant_id}/personalizacion")

@@ -45,7 +45,7 @@
       ('general', 'General'),
       ('servicios', 'Servicios'),
       ('horarios', 'Horarios'),
-      ('peluqueros', 'Peluqueros'),
+      ('equipo', 'Equipo'),
       ('personalizacion', 'Personalización del bot'),
       ('voz', 'Voz (ElevenLabs)'),
       ('conversaciones', 'Conversaciones'),
@@ -67,8 +67,8 @@
     {% include "partials/tab_services.html" %}
   {% elif tab == 'horarios' %}
     {% include "partials/tab_schedule.html" %}
-  {% elif tab == 'peluqueros' %}
-    {% include "partials/tab_peluqueros.html" %}
+  {% elif tab == 'equipo' %}
+    {% include "partials/tab_equipo.html" %}
   {% elif tab == 'personalizacion' %}
     {% include "partials/tab_personalization.html" %}
   {% elif tab == 'voz' %}

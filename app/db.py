@@ -131,8 +131,8 @@ class Tenant(Base):
     services: Mapped[list["Service"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan", order_by="Service.orden"
     )
-    peluqueros: Mapped[list["Peluquero"]] = relationship(
-        back_populates="tenant", cascade="all, delete-orphan", order_by="Peluquero.orden"
+    equipo: Mapped[list["MiembroEquipo"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan", order_by="MiembroEquipo.orden"
     )
 
     # ----- helpers para (de)serializar los campos JSON -----
@@ -178,7 +178,12 @@ class Tenant(Base):
             "contact_email": self.contact_email,
             "business_hours": self.business_hours,
             "services": [s.to_dict() for s in self.services],
-            "peluqueros": [p.to_dict() for p in self.peluqueros],
+            # `equipo` es el nombre canónico. `peluqueros` se mantiene como
+            # alias de compatibilidad mientras eleven_tools y calendar_service
+            # siguen usando esa clave (y las tools expuestas a ElevenLabs
+            # también, para no romper el agente remoto ya registrado).
+            "equipo": [m.to_dict() for m in self.equipo],
+            "peluqueros": [m.to_dict() for m in self.equipo],
             "assistant": {
                 "name": self.assistant_name,
                 "tone": self.assistant_tone,
@@ -221,11 +226,16 @@ class Service(Base):
 
 
 # ---------------------------------------------------------------------
-#  PELUQUEROS  (antes en tenants.yaml; ahora editables desde el CMS)
+#  EQUIPO  (miembros que atienden reservas del tenant)
+#
+#  Anteriormente se llamaba `peluqueros`. Se renombró a "equipo" para que
+#  cubra verticales más allá de peluquería (clínicas, consultas, etc.).
+#  Datos equivalentes: cada miembro tiene un calendario Google donde se
+#  pintan sus descansos/vacaciones, y una lista de días laborables.
 # ---------------------------------------------------------------------
 
-class Peluquero(Base):
-    __tablename__ = "peluqueros"
+class MiembroEquipo(Base):
+    __tablename__ = "equipo"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
@@ -239,7 +249,7 @@ class Peluquero(Base):
     dias_trabajo_json: Mapped[str] = mapped_column(Text, default="[0,1,2,3,4,5]")
     orden: Mapped[int] = mapped_column(Integer, default=0)
 
-    tenant: Mapped["Tenant"] = relationship(back_populates="peluqueros")
+    tenant: Mapped["Tenant"] = relationship(back_populates="equipo")
 
     @property
     def dias_trabajo(self) -> list[int]:
@@ -257,9 +267,12 @@ class Peluquero(Base):
     def to_dict(self) -> dict[str, Any]:
         """Formato que consumen `eleven_tools.py` y `calendar_service.py`.
 
-        No renombrar keys sin migrar también esos módulos.
+        Las keys se mantienen ("nombre", "calendar_id", "dias_trabajo")
+        aunque la clase se llame MiembroEquipo, para no romper esos módulos
+        ni las tools expuestas a ElevenLabs.
         """
         return {
+            "id": self.id,
             "nombre": self.nombre,
             "calendar_id": self.calendar_id,
             "dias_trabajo": self.dias_trabajo,
@@ -831,13 +844,43 @@ Base.metadata.create_all(engine)
 # ---------------------------------------------------------------------
 
 def _auto_migrate_sqlite() -> None:
-    """Añade columnas nuevas a tablas existentes cuando faltan.
+    """Añade columnas nuevas a tablas existentes cuando faltan, y aplica
+    renombrados de tabla que conserven los datos.
 
     Solo aplica a SQLite (el único motor que usamos hoy). Se ejecuta
     una vez al importar el módulo.
     """
     if not settings.database_url.startswith("sqlite"):
         return
+
+    # Renombrado de tabla `peluqueros` → `equipo` (mantiene filas existentes).
+    # Si la tabla nueva ya existe (porque create_all() la acabó de crear en un
+    # arranque limpio), no hace nada. Si ambas existen por un deploy raro,
+    # dejamos `equipo` y dropeamos `peluqueros` tras mover datos.
+    try:
+        with engine.begin() as conn:
+            names = {
+                r[0] for r in conn.execute(text(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )).fetchall()
+            }
+            if "peluqueros" in names and "equipo" not in names:
+                conn.execute(text("ALTER TABLE peluqueros RENAME TO equipo"))
+            elif "peluqueros" in names and "equipo" in names:
+                # Caso raro: ambas. Mover filas de peluqueros a equipo solo si
+                # equipo está vacío, y dropear la vieja.
+                existing = conn.execute(text("SELECT COUNT(*) FROM equipo")).scalar() or 0
+                if existing == 0:
+                    conn.execute(text(
+                        "INSERT INTO equipo (id, tenant_id, nombre, calendar_id, dias_trabajo_json, orden) "
+                        "SELECT id, tenant_id, nombre, calendar_id, dias_trabajo_json, orden FROM peluqueros"
+                    ))
+                conn.execute(text("DROP TABLE peluqueros"))
+    except Exception as exc:  # pragma: no cover - best-effort
+        import logging
+        logging.getLogger(__name__).warning(
+            "rename peluqueros→equipo falló (%s). Se continúa.", exc,
+        )
 
     # (tabla, columna, DDL para ADD COLUMN)
     migrations: list[tuple[str, str, str]] = [
@@ -896,7 +939,10 @@ _auto_migrate_sqlite()
 #  arranque siguiente no hace nada.
 # ---------------------------------------------------------------------
 
-def _seed_peluqueros_from_yaml() -> None:
+def _seed_equipo_from_yaml() -> None:
+    """Copia los 'peluqueros' del YAML legacy a la tabla `equipo` si el tenant
+    aún no tiene miembros. Idempotente: una vez copiados, no se vuelven a
+    tocar."""
     import logging
     log = logging.getLogger(__name__)
     try:
@@ -912,29 +958,29 @@ def _seed_peluqueros_from_yaml() -> None:
         with Session(engine) as s:
             for yt in tenants_yaml:
                 tid = yt.get("id")
-                pelus = yt.get("peluqueros") or []
+                # El YAML antiguo usa la clave "peluqueros"; lo respetamos.
+                pelus = yt.get("peluqueros") or yt.get("equipo") or []
                 if not tid or not pelus:
                     continue
-                # Solo seed si el tenant existe en BD y aún no tiene peluqueros
                 t = s.get(Tenant, tid)
                 if t is None:
                     continue
-                existing = s.query(Peluquero).filter(Peluquero.tenant_id == tid).count()
+                existing = s.query(MiembroEquipo).filter(MiembroEquipo.tenant_id == tid).count()
                 if existing > 0:
                     continue
                 for i, p in enumerate(pelus):
-                    row = Peluquero(
+                    row = MiembroEquipo(
                         tenant_id=tid,
-                        nombre=(p.get("nombre") or "").strip() or f"Peluquero {i+1}",
+                        nombre=(p.get("nombre") or "").strip() or f"Miembro {i+1}",
                         calendar_id=(p.get("calendar_id") or "").strip(),
                         orden=i,
                     )
                     row.dias_trabajo = p.get("dias_trabajo") or [0, 1, 2, 3, 4, 5]
                     s.add(row)
-                log.info("seed peluqueros desde YAML: tenant=%s insertados=%d", tid, len(pelus))
+                log.info("seed equipo desde YAML: tenant=%s insertados=%d", tid, len(pelus))
             s.commit()
     except Exception as exc:  # pragma: no cover - best-effort
-        log.warning("seed peluqueros desde YAML falló (%s). Arranque continúa.", exc)
+        log.warning("seed equipo desde YAML falló (%s). Arranque continúa.", exc)
 
 
-_seed_peluqueros_from_yaml()
+_seed_equipo_from_yaml()
