@@ -82,6 +82,74 @@ async def health() -> dict:
     return {"ok": True, "service": "bot_reservas", "version": "0.3.0"}
 
 
+@app.post("/_diag/consultar")
+async def _diag_consultar(request: Request) -> dict:
+    """Diag temporal: ejecuta consultar_disponibilidad y devuelve traceback si peta.
+
+    Protegido por el mismo TOOL_SECRET. Desactivar cuando terminemos.
+    """
+    import traceback
+    from datetime import datetime
+    from . import calendar_service as cal, tenants as tn
+    if request.headers.get("x-tool-secret") != settings.tool_secret:
+        raise HTTPException(401, "bad secret")
+    body = await request.json()
+    tenant_id = body.get("tenant_id") or "pelu_demo"
+    try:
+        all_t = tn.load_tenants()
+        tenant = next((t for t in all_t if t.get("id") == tenant_id), all_t[0])
+        peluqueros = tenant.get("peluqueros") or []
+        bh = tenant.get("business_hours") or {}
+        from datetime import time as _time
+        def _p(s, d):
+            try:
+                h, m = s.split(":"); return _time(int(h), int(m))
+            except Exception:
+                return d
+        if "open" in bh or "close" in bh:
+            horario = (_p(bh.get("open","09:00"), _time(9,0)), _p(bh.get("close","20:00"), _time(20,0)))
+        else:
+            horario = None
+            for dk in ("mon","tue","wed","thu","fri","sat","sun"):
+                h = bh.get(dk)
+                if h and h != ["closed"] and h[0] != "closed" and len(h) >= 2:
+                    horario = (_p(h[0], _time(9,0)), _p(h[1], _time(20,0)))
+                    break
+            if horario is None:
+                horario = (_time(9,0), _time(20,0))
+        desde = datetime.fromisoformat(body["fecha_desde_iso"])
+        hasta = datetime.fromisoformat(body["fecha_hasta_iso"])
+        if peluqueros:
+            huecos = cal.listar_huecos_por_peluqueros(
+                desde, hasta, body["duracion_minutos"],
+                peluqueros=peluqueros,
+                tenant_id=tenant.get("id","default"),
+                horario_apertura=horario,
+            )
+            return {
+                "ok": True, "tenant_id": tenant.get("id"),
+                "peluqueros_count": len(peluqueros),
+                "peluqueros": [p.get("nombre") for p in peluqueros],
+                "horario": [horario[0].isoformat(), horario[1].isoformat()],
+                "huecos_count": len(huecos),
+                "huecos_sample": [
+                    {"inicio": h["inicio"].isoformat(), "fin": h["fin"].isoformat(), "peluquero": h.get("peluquero")}
+                    for h in huecos[:3]
+                ],
+            }
+        return {"ok": True, "peluqueros_count": 0, "msg": "no peluqueros"}
+    except Exception as e:
+        return {
+            "ok": False,
+            "error_type": type(e).__name__,
+            "error_msg": str(e),
+            "traceback": traceback.format_exc(),
+            "tenant_loaded": bool(locals().get("tenant")),
+            "peluqueros_loaded": locals().get("peluqueros"),
+            "horario": str(locals().get("horario")),
+        }
+
+
 
 
 # ---------- Captura de leads desde la landing ----------
