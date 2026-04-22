@@ -16,6 +16,7 @@ from . import agent
 from . import voice
 from . import eleven_tools
 from . import oauth_web
+from . import diag
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
 
@@ -48,6 +49,9 @@ app.include_router(eleven_tools.router)
 # autorizar un calendario desde el navegador en producción (Railway), en vez
 # del `InstalledAppFlow` que sólo funciona en local.
 app.include_router(oauth_web.router)
+# Endpoints /_diag/* de mantenimiento (listar/crear calendarios, verificar ids).
+# Protegidos con X-Tool-Secret igual que /tools/*.
+app.include_router(diag.router)
 
 
 # ---------- Landing pública ----------
