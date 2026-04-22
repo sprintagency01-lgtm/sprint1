@@ -592,6 +592,78 @@ async def client_detail_root(tenant_id: str, uid: int = Depends(auth.current_use
     return RedirectResponse(url=f"/admin/clientes/{tenant_id}/general", status_code=303)
 
 
+# OJO: esta ruta DEBE ir antes que `/admin/clientes/{tenant_id}/{tab}` para
+# que FastAPI no intente matchear "calendar_test" como el parámetro `tab` y
+# devuelva 404 "Pestaña desconocida".
+@router.get("/admin/clientes/{tenant_id}/calendar_test", response_class=HTMLResponse)
+async def client_calendar_test(
+    tenant_id: str, request: Request,
+    uid: int = Depends(auth.current_user_id),
+):
+    """Página de diagnóstico de la integración Google Calendar para un tenant.
+
+    Muestra paso a paso qué funciona y qué no (token, scopes, calendar_id
+    objetivo, freeBusy). Pensado para depurar problemas del tipo "Ana dice
+    que tiene problemas del sistema" sin tener que mirar los logs de Railway.
+    """
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tenant_id)
+        if t is None:
+            raise HTTPException(404)
+        calendar_id = t.calendar_id or "primary"
+        tenant_name = t.name
+
+    diag = _diag_calendar_connection(tenant_id, calendar_id)
+
+    rows_html = []
+    for step in diag["steps"]:
+        color = "#16a34a" if step["ok"] else "#dc2626"
+        icon = "✓" if step["ok"] else "✗"
+        rows_html.append(
+            f'<tr><td style="padding:8px;color:{color};font-weight:bold">{icon}</td>'
+            f'<td style="padding:8px"><b>{step["name"]}</b></td>'
+            f'<td style="padding:8px;font-family:monospace;font-size:13px">{step["detail"]}</td></tr>'
+        )
+
+    cals_html = ""
+    if diag.get("calendar_options"):
+        items = "".join(
+            f'<li><code>{c["id"]}</code> — {c["summary"]}{" <b>(primary)</b>" if c["primary"] else ""}</li>'
+            for c in diag["calendar_options"]
+        )
+        cals_html = f"<h3>Calendarios accesibles con este token</h3><ul>{items}</ul>"
+
+    summary_color = "#16a34a" if diag["ok"] else "#dc2626"
+    summary_text = "Todo bien" if diag["ok"] else f"Falló en: {diag['cause']}"
+
+    body = f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Diagnóstico calendar · {tenant_name}</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto;
+          padding: 2rem; background: #f8fafc; color: #0f172a; }}
+  .card {{ background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+           padding: 24px; margin-bottom: 16px; }}
+  h1 {{ margin: 0 0 8px; font-size: 20px; }}
+  h3 {{ margin: 16px 0 8px; font-size: 14px; }}
+  table {{ width: 100%; border-collapse: collapse; }}
+  td {{ border-bottom: 1px solid #f1f5f9; vertical-align: top; }}
+  code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; }}
+  .summary {{ color: {summary_color}; font-weight: 600; }}
+  a {{ color: #2563eb; }}
+</style></head>
+<body>
+  <div class="card">
+    <h1>Diagnóstico Google Calendar — {tenant_name}</h1>
+    <p>Tenant <code>{tenant_id}</code> · calendar_id objetivo: <code>{calendar_id}</code></p>
+    <p class="summary">{summary_text}</p>
+    <table>{"".join(rows_html)}</table>
+    {cals_html}
+    <p style="margin-top:24px"><a href="/admin/clientes/{tenant_id}/general">← Volver al panel</a></p>
+  </div>
+</body></html>"""
+    return HTMLResponse(body)
+
+
 @router.get("/admin/clientes/{tenant_id}/{tab}", response_class=HTMLResponse)
 async def client_detail(
     tenant_id: str, tab: str, request: Request,
@@ -673,75 +745,6 @@ async def client_detail(
 
 
 # ---- Guardar cambios (una ruta POST por pestaña) ------------------------
-
-@router.get("/admin/clientes/{tenant_id}/calendar_test", response_class=HTMLResponse)
-async def client_calendar_test(
-    tenant_id: str, request: Request,
-    uid: int = Depends(auth.current_user_id),
-):
-    """Página de diagnóstico de la integración Google Calendar para un tenant.
-
-    Muestra paso a paso qué funciona y qué no (token, scopes, calendar_id
-    objetivo, freeBusy). Pensado para depurar problemas del tipo "Ana dice
-    que tiene problemas del sistema" sin tener que mirar los logs de Railway.
-    """
-    with Session(db_module.engine) as s:
-        t = s.get(db_module.Tenant, tenant_id)
-        if t is None:
-            raise HTTPException(404)
-        calendar_id = t.calendar_id or "primary"
-        tenant_name = t.name
-
-    diag = _diag_calendar_connection(tenant_id, calendar_id)
-
-    rows_html = []
-    for step in diag["steps"]:
-        color = "#16a34a" if step["ok"] else "#dc2626"
-        icon = "✓" if step["ok"] else "✗"
-        rows_html.append(
-            f'<tr><td style="padding:8px;color:{color};font-weight:bold">{icon}</td>'
-            f'<td style="padding:8px"><b>{step["name"]}</b></td>'
-            f'<td style="padding:8px;font-family:monospace;font-size:13px">{step["detail"]}</td></tr>'
-        )
-
-    cals_html = ""
-    if diag.get("calendar_options"):
-        items = "".join(
-            f'<li><code>{c["id"]}</code> — {c["summary"]}{" <b>(primary)</b>" if c["primary"] else ""}</li>'
-            for c in diag["calendar_options"]
-        )
-        cals_html = f"<h3>Calendarios accesibles con este token</h3><ul>{items}</ul>"
-
-    summary_color = "#16a34a" if diag["ok"] else "#dc2626"
-    summary_text = "Todo bien" if diag["ok"] else f"Falló en: {diag['cause']}"
-
-    body = f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
-<title>Diagnóstico calendar · {tenant_name}</title>
-<style>
-  body {{ font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto;
-          padding: 2rem; background: #f8fafc; color: #0f172a; }}
-  .card {{ background: white; border: 1px solid #e2e8f0; border-radius: 12px;
-           padding: 24px; margin-bottom: 16px; }}
-  h1 {{ margin: 0 0 8px; font-size: 20px; }}
-  h3 {{ margin: 16px 0 8px; font-size: 14px; }}
-  table {{ width: 100%; border-collapse: collapse; }}
-  td {{ border-bottom: 1px solid #f1f5f9; vertical-align: top; }}
-  code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; }}
-  .summary {{ color: {summary_color}; font-weight: 600; }}
-  a {{ color: #2563eb; }}
-</style></head>
-<body>
-  <div class="card">
-    <h1>Diagnóstico Google Calendar — {tenant_name}</h1>
-    <p>Tenant <code>{tenant_id}</code> · calendar_id objetivo: <code>{calendar_id}</code></p>
-    <p class="summary">{summary_text}</p>
-    <table>{"".join(rows_html)}</table>
-    {cals_html}
-    <p style="margin-top:24px"><a href="/admin/clientes/{tenant_id}/general">← Volver al panel</a></p>
-  </div>
-</body></html>"""
-    return HTMLResponse(body)
-
 
 @router.post("/admin/clientes/{tenant_id}/general")
 async def client_save_general(
