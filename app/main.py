@@ -131,6 +131,37 @@ async def _diag_tokens(x_tool_secret: str | None = None) -> dict:
         }
     except Exception as e:
         out["pelu_demo_load"] = {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
+
+    # Try the actual failing code path
+    try:
+        from . import tenants as tn
+        from . import calendar_service as cal
+        from datetime import datetime
+        all_t = tn.load_tenants()
+        out["tenants_loaded"] = [t.get("id") for t in all_t]
+        tenant = next((t for t in all_t if t.get("id") == "pelu_demo"), None)
+        out["tenant_found"] = bool(tenant)
+        if tenant:
+            out["tenant_calendar_id"] = tenant.get("calendar_id")
+            out["tenant_peluqueros"] = [{"nombre": p.get("nombre"), "cal": p.get("calendar_id")} for p in (tenant.get("peluqueros") or [])]
+            desde = datetime.fromisoformat("2026-04-23T09:30:00")
+            hasta = datetime.fromisoformat("2026-04-23T20:30:00")
+            try:
+                huecos = cal.listar_huecos_por_peluqueros(
+                    desde, hasta, 30,
+                    peluqueros=tenant.get("peluqueros") or [],
+                    tenant_id="pelu_demo",
+                )
+                out["listar_ok"] = True
+                out["listar_count"] = len(huecos)
+            except Exception as e:
+                import traceback
+                out["listar_ok"] = False
+                out["listar_error"] = f"{type(e).__name__}: {str(e)[:400]}"
+                out["listar_tb"] = traceback.format_exc()[-1500:]
+    except Exception as e:
+        out["pipeline_error"] = f"{type(e).__name__}: {str(e)[:300]}"
+
     return out
 
 
