@@ -136,6 +136,50 @@ def _invalidate_service_cache(tenant_id: str | None = None) -> None:
         _SERVICE_CACHE.clear()
 
 
+# -------- Freebusy short-TTL cache --------
+# Objetivo: cortar latencia cuando Ana llama consultar_disponibilidad varias
+# veces en segundos (p.ej. reintento, cambio de duración, prueba con otro
+# peluquero). Un TTL muy corto evita problemas de consistencia con reservas
+# recientes: _FREEBUSY_TTL = 8s y cualquier crear/mover/cancelar invalida.
+import time as _time_mod  # evita chocar con datetime.time importado arriba
+_FREEBUSY_TTL = 8.0
+_FREEBUSY_CACHE: dict[tuple, tuple[float, dict]] = {}
+
+
+def _freebusy_query(svc, tenant_id: str, body: dict) -> dict:
+    """Llama a svc.freebusy().query con caché de ~8s por (tenant, ventana, cals)."""
+    items = body.get("items") or []
+    key = (
+        tenant_id,
+        body.get("timeMin"),
+        body.get("timeMax"),
+        body.get("timeZone"),
+        tuple(sorted(i["id"] for i in items if "id" in i)),
+    )
+    now = _time_mod.monotonic()
+    hit = _FREEBUSY_CACHE.get(key)
+    if hit and (now - hit[0]) < _FREEBUSY_TTL:
+        return hit[1]
+    fb = svc.freebusy().query(body=body).execute()
+    _FREEBUSY_CACHE[key] = (now, fb)
+    # Limpieza oportunista: si el cache crece mucho, descarta entradas viejas.
+    if len(_FREEBUSY_CACHE) > 64:
+        for k, (ts, _v) in list(_FREEBUSY_CACHE.items()):
+            if (now - ts) >= _FREEBUSY_TTL:
+                _FREEBUSY_CACHE.pop(k, None)
+    return fb
+
+
+def _invalidate_freebusy_cache(tenant_id: str | None = None) -> None:
+    """Invalida el cache de freebusy. Úsalo al crear/mover/cancelar eventos."""
+    if tenant_id is None:
+        _FREEBUSY_CACHE.clear()
+        return
+    for k in list(_FREEBUSY_CACHE.keys()):
+        if k[0] == tenant_id:
+            _FREEBUSY_CACHE.pop(k, None)
+
+
 def authorize_interactive(tenant_id: str = "default") -> None:
     """Abre el flujo OAuth en el navegador (solo para desarrollo local).
 
@@ -176,7 +220,7 @@ def listar_huecos_libres(
         "timeZone": settings.default_timezone,
         "items": [{"id": cal}],
     }
-    fb = svc.freebusy().query(body=body).execute()
+    fb = _freebusy_query(svc, tenant_id, body)
     busy = [
         (datetime.fromisoformat(p["start"].replace("Z", "+00:00")),
          datetime.fromisoformat(p["end"].replace("Z", "+00:00")))
@@ -238,7 +282,7 @@ def listar_huecos_por_peluqueros(
         "timeZone": settings.default_timezone,
         "items": [{"id": p["calendar_id"]} for p in peluqueros],
     }
-    fb = svc.freebusy().query(body=body).execute()
+    fb = _freebusy_query(svc, tenant_id, body)
     busy_por_cal: dict[str, list[tuple[datetime, datetime]]] = {}
     for cal_id, info in fb["calendars"].items():
         periodos = [
@@ -317,7 +361,9 @@ def crear_evento(
             "private": {"phone": telefono_cliente, "created_by": "bot"}
         },
     }
-    return svc.events().insert(calendarId=cal, body=event).execute()
+    res = svc.events().insert(calendarId=cal, body=event).execute()
+    _invalidate_freebusy_cache(tenant_id)
+    return res
 
 
 def mover_evento(
@@ -335,7 +381,9 @@ def mover_evento(
         "start": {"dateTime": nuevo_inicio.isoformat(), "timeZone": settings.default_timezone},
         "end": {"dateTime": nuevo_fin.isoformat(), "timeZone": settings.default_timezone},
     }
-    return svc.events().patch(calendarId=cal, eventId=event_id, body=patch).execute()
+    res = svc.events().patch(calendarId=cal, eventId=event_id, body=patch).execute()
+    _invalidate_freebusy_cache(tenant_id)
+    return res
 
 
 def cancelar_evento(
@@ -346,6 +394,7 @@ def cancelar_evento(
     svc = _service(tenant_id)
     cal = calendar_id or settings.default_calendar_id
     svc.events().delete(calendarId=cal, eventId=event_id).execute()
+    _invalidate_freebusy_cache(tenant_id)
 
 
 def buscar_evento_por_telefono(
