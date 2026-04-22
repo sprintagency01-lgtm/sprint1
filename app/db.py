@@ -18,7 +18,7 @@ from typing import Any, Optional
 
 from sqlalchemy import (
     String, Text, DateTime, Integer, Float, Boolean, ForeignKey,
-    create_engine, select,
+    create_engine, select, text,
 )
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column, Session, relationship,
@@ -479,3 +479,51 @@ Reglas operativas (siempre):
 # ---------------------------------------------------------------------
 
 Base.metadata.create_all(engine)
+
+
+# ---------------------------------------------------------------------
+#  Auto-migraciones sencillas (SQLite).
+#
+#  create_all() sólo añade tablas nuevas; NO altera tablas existentes
+#  cuando añadimos columnas al modelo. Aquí parcheamos a mano las
+#  columnas que sabemos que pueden faltar en despliegues antiguos.
+#
+#  Cada bloque es idempotente: si la columna ya existe, no hace nada.
+# ---------------------------------------------------------------------
+
+def _auto_migrate_sqlite() -> None:
+    """Añade columnas nuevas a tablas existentes cuando faltan.
+
+    Solo aplica a SQLite (el único motor que usamos hoy). Se ejecuta
+    una vez al importar el módulo.
+    """
+    if not settings.database_url.startswith("sqlite"):
+        return
+
+    # (tabla, columna, DDL para ADD COLUMN)
+    migrations: list[tuple[str, str, str]] = [
+        ("tenants", "kind",
+         "ALTER TABLE tenants ADD COLUMN kind VARCHAR(20) DEFAULT 'contracted'"),
+    ]
+
+    try:
+        with engine.begin() as conn:
+            for table, column, ddl in migrations:
+                # PRAGMA devuelve (cid, name, type, notnull, dflt_value, pk)
+                rows = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+                cols = {r[1] for r in rows}
+                if not rows:
+                    # La tabla no existe todavía (p.ej. primer arranque
+                    # limpio). create_all la acaba de crear con esquema
+                    # completo, así que no hay nada que migrar.
+                    continue
+                if column not in cols:
+                    conn.execute(text(ddl))
+    except Exception as exc:  # pragma: no cover - best-effort
+        import logging
+        logging.getLogger(__name__).warning(
+            "auto-migrate falló (%s). Se continúa con el esquema actual.", exc,
+        )
+
+
+_auto_migrate_sqlite()
