@@ -30,8 +30,16 @@ LLM (Gemini Flash con thinking OFF para bajar latencia):
 
 Turn-taking (agente responde rápido):
 - `turn_eagerness`: `eager`
-- `turn_timeout`: `5.0`
+- `turn_timeout`: `1.0`  (mínimo permitido por ElevenLabs; 5s era el default)
 - `speculative_turn`: `true`
+
+Audio formato:
+- `tts.agent_output_audio_format`: `ulaw_8000`  (match Twilio nativo, evita transcode)
+- `asr.user_input_audio_format`: `pcm_16000`
+- `asr.quality`: `high`  (obligatorio por la API; no se puede bajar)
+
+Tools:
+- `tool_call_sound`: `typing` en las 5 tools. Suena tecleo mientras Ana consulta Google Calendar, enmascara latencia del tool audiblemente.
 
 Tools asociadas (`tool_ids` en el agente):
 - `consultar_disponibilidad`
