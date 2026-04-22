@@ -59,6 +59,26 @@
         <input name="calendar_id" value="{{ t.calendar_id }}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"/>
       </div>
       <div>
+        <label class="text-xs font-medium text-slate-700 mb-1 block">Estado de Google Calendar</label>
+        {% if google_connected %}
+          <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50">
+            <span class="text-sm text-emerald-700 flex items-center gap-2">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+              Conectado — el bot puede leer/escribir en el calendario.
+            </span>
+            <a href="/oauth/start?tenant_id={{ t.id }}" class="text-xs text-emerald-700 hover:underline">Reautorizar</a>
+          </div>
+        {% else %}
+          <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50">
+            <span class="text-sm text-amber-700 flex items-center gap-2">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              No conectado. Sin esto, el bot no puede crear reservas.
+            </span>
+            <a href="/oauth/start?tenant_id={{ t.id }}" class="text-xs px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium whitespace-nowrap">Conectar</a>
+          </div>
+        {% endif %}
+      </div>
+      <div>
         <label class="text-xs font-medium text-slate-700 mb-1 block">Zona horaria</label>
         <select name="timezone" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
           {% for tz in ['Europe/Madrid','Europe/Lisbon','Europe/London','America/Mexico_City','America/Argentina/Buenos_Aires'] %}

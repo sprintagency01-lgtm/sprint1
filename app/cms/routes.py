@@ -42,6 +42,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import db as db_module
+from .. import elevenlabs_client
 from . import auth
 
 router = APIRouter()
@@ -187,6 +188,53 @@ def _delta_pct(curr, prev) -> int:
     if not prev:
         return 0
     return round(((curr - prev) / prev) * 100)
+
+
+# --------------------------------------------------------------------------
+#  Seed perezoso del prompt de voz
+# --------------------------------------------------------------------------
+
+# Voz del snapshot actual de ElevenLabs (ver ELEVENLABS.md). Solo se usa como
+# valor por defecto si el tenant no tiene uno.
+_DEFAULT_VOICE_ID = "1eHrpOW5l98cxiSRjbzJ"
+
+
+def _google_calendar_connected(tenant_id: str) -> bool:
+    """True si hay un token OAuth guardado para este tenant.
+
+    `TOKENS_DIR` lo resuelve el env var (Railway usa `/app/data/.tokens`) —
+    importamos calendar_service para que el path sea siempre el mismo que usa
+    el backend en runtime.
+    """
+    try:
+        from .. import calendar_service as _cal
+        return (_cal.TOKENS_DIR / f"{tenant_id}.json").exists()
+    except Exception:
+        return False
+
+
+def _seed_voice_defaults_if_empty(s: Session, t: db_module.Tenant) -> None:
+    """Rellena voice_prompt y voice_voice_id la primera vez si están vacíos.
+
+    El prompt se compone con `render_voice_prompt(tenant_dict)` a partir de los
+    datos del tenant (nombre, servicios, horario, peluqueros, fallback phone),
+    así que el onboarding de un cliente nuevo no requiere editar el prompt a
+    mano. Idempotente: si ya hay valor, no toca nada.
+    """
+    touched = False
+    if not (t.voice_prompt or "").strip():
+        try:
+            t.voice_prompt = db_module.render_voice_prompt(t.to_dict())
+            touched = True
+        except Exception:
+            # Si falla la composición por cualquier motivo (datos raros),
+            # preferimos no romper la vista; el usuario podrá escribirlo a mano.
+            pass
+    if not (t.voice_voice_id or "").strip():
+        t.voice_voice_id = _DEFAULT_VOICE_ID
+        touched = True
+    if touched:
+        s.commit()
 
 
 # ==========================================================================
@@ -436,13 +484,20 @@ async def client_detail(
     tenant_id: str, tab: str, request: Request,
     uid: int = Depends(auth.current_user_id),
 ):
-    if tab not in ("general", "servicios", "horarios", "personalizacion", "conversaciones", "metricas"):
+    if tab not in ("general", "servicios", "horarios", "peluqueros", "personalizacion", "voz", "conversaciones", "metricas"):
         raise HTTPException(404, "Pestaña desconocida")
 
     with Session(db_module.engine) as s:
         t = s.get(db_module.Tenant, tenant_id)
         if t is None:
             raise HTTPException(404, "Cliente no encontrado")
+
+        # Seed perezoso del prompt de voz la primera vez que se abre la pestaña:
+        # si el tenant aún no tiene voice_prompt guardado, se carga el
+        # `ana_prompt_new.txt` del repo como punto de partida editable. A
+        # partir de ahí, la fuente de verdad es la BD.
+        if tab == "voz":
+            _seed_voice_defaults_if_empty(s, t)
 
         metrics = _metrics_for_tenant(s, tenant_id) if tab in ("metricas", "general", "conversaciones") else None
 
@@ -494,6 +549,7 @@ async def client_detail(
             } if metrics else None,
             "conversations": conversations,
             "prompt_preview": prompt_preview,
+            "google_connected": _google_calendar_connected(tenant_id),
         })
 
 
@@ -589,6 +645,52 @@ async def client_save_schedule(
     return RedirectResponse(url=f"/admin/clientes/{tenant_id}/horarios", status_code=303)
 
 
+@router.post("/admin/clientes/{tenant_id}/peluqueros")
+async def client_save_peluqueros(
+    request: Request, tenant_id: str,
+    uid: int = Depends(auth.current_user_id),
+):
+    """Reescribe el equipo de peluqueros del tenant de forma atómica.
+
+    El form envía listas paralelas `nombre[]` y `calendar_id[]` (tantas como
+    peluqueros haya en la UI), más un campo `dias_trabajo_{i}` por cada índice
+    con los días seleccionados (0-6). Si el nombre está vacío la fila se
+    descarta — es cómo el usuario "quita" un peluquero sin botón extra.
+    """
+    form = await request.form()
+    nombres = form.getlist("nombre")
+    calendar_ids = form.getlist("calendar_id")
+
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tenant_id)
+        if t is None:
+            raise HTTPException(404)
+        # Reemplazo completo: borramos y reinsertamos. Es sencillo y coherente
+        # con cómo tab_services maneja el catálogo.
+        t.peluqueros.clear()
+        s.flush()
+        for i, nombre in enumerate(nombres):
+            nombre = (nombre or "").strip()
+            if not nombre:
+                continue
+            calendar_id = (calendar_ids[i] if i < len(calendar_ids) else "").strip()
+            dias_raw = form.getlist(f"dias_trabajo_{i}")
+            try:
+                dias = [int(d) for d in dias_raw if str(d).isdigit()]
+            except ValueError:
+                dias = [0, 1, 2, 3, 4, 5]
+            row = db_module.Peluquero(
+                tenant_id=tenant_id,
+                nombre=nombre,
+                calendar_id=calendar_id,
+                orden=i,
+            )
+            row.dias_trabajo = dias
+            t.peluqueros.append(row)
+        s.commit()
+    return RedirectResponse(url=f"/admin/clientes/{tenant_id}/peluqueros", status_code=303)
+
+
 @router.post("/admin/clientes/{tenant_id}/personalizacion")
 async def client_save_personalization(
     tenant_id: str,
@@ -618,6 +720,205 @@ async def client_save_personalization(
         t.system_prompt_override = system_prompt_override
         s.commit()
     return RedirectResponse(url=f"/admin/clientes/{tenant_id}/personalizacion", status_code=303)
+
+
+# --------------------------------------------------------------------------
+#  VOZ  — edición y sincronización del agente ElevenLabs
+# --------------------------------------------------------------------------
+
+def _save_voice_fields(
+    s: Session, t: db_module.Tenant, *,
+    voice_agent_id: str,
+    voice_prompt: str,
+    voice_voice_id: str,
+    voice_stability: float,
+    voice_similarity_boost: float,
+    voice_speed: float,
+) -> None:
+    """Escribe los campos de voz en el tenant. No sincroniza con ElevenLabs."""
+    t.voice_agent_id = (voice_agent_id or "").strip()
+    t.voice_prompt = voice_prompt or ""
+    t.voice_voice_id = (voice_voice_id or "").strip()
+    # Clamps defensivos por si el navegador envía algo fuera de rango.
+    t.voice_stability = max(0.0, min(1.0, float(voice_stability or 0.0)))
+    t.voice_similarity_boost = max(0.0, min(1.0, float(voice_similarity_boost or 0.0)))
+    t.voice_speed = max(0.5, min(1.5, float(voice_speed or 1.0)))
+    s.commit()
+
+
+@router.post("/admin/clientes/{tenant_id}/voz")
+async def client_save_voice(
+    tenant_id: str,
+    voice_agent_id: str = Form(""),
+    voice_prompt: str = Form(""),
+    voice_voice_id: str = Form(""),
+    voice_stability: float = Form(0.67),
+    voice_similarity_boost: float = Form(0.8),
+    voice_speed: float = Form(1.04),
+    uid: int = Depends(auth.current_user_id),
+):
+    """Guarda los campos de voz en la BD. No toca ElevenLabs."""
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tenant_id)
+        if t is None:
+            raise HTTPException(404)
+        _save_voice_fields(
+            s, t,
+            voice_agent_id=voice_agent_id,
+            voice_prompt=voice_prompt,
+            voice_voice_id=voice_voice_id,
+            voice_stability=voice_stability,
+            voice_similarity_boost=voice_similarity_boost,
+            voice_speed=voice_speed,
+        )
+    return RedirectResponse(
+        url=f"/admin/clientes/{tenant_id}/voz?saved=1", status_code=303,
+    )
+
+
+@router.post("/admin/clientes/{tenant_id}/voz/create_agent")
+async def client_create_voice_agent(
+    tenant_id: str,
+    request: Request,
+    uid: int = Depends(auth.current_user_id),
+):
+    """Crea un agente nuevo en ElevenLabs asociado a este tenant y guarda su id.
+
+    No toca el `voice_prompt` ni los parámetros TTS: parte de lo que ya hay en
+    BD (o de los defaults sembrados al abrir la pestaña). Tras la creación, el
+    usuario todavía puede editar el prompt/voz y pulsar Sincronizar.
+    """
+    from datetime import datetime as _dt
+    from urllib.parse import quote
+
+    # La URL pública para registrar las tools = host desde el que nos
+    # llamaron. En Railway esto vale https://<dominio>.up.railway.app.
+    # Si quieres forzar otra (ngrok, dominio custom), define TOOL_BASE_URL.
+    tool_base_url = os.getenv("TOOL_BASE_URL", "").strip() or str(request.base_url).rstrip("/")
+
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tenant_id)
+        if t is None:
+            raise HTTPException(404)
+
+        if (t.voice_agent_id or "").strip():
+            # Ya tiene agente — no creamos uno nuevo sin permiso. El usuario
+            # puede limpiar el campo desde el form y volver a pulsar.
+            msg = "Este tenant ya tiene agent_id. Vacíalo antes de crear uno nuevo."
+            t.voice_last_sync_at = _dt.utcnow()
+            t.voice_last_sync_status = msg
+            s.commit()
+            return RedirectResponse(
+                url=f"/admin/clientes/{tenant_id}/voz?sync=err&msg={quote(msg)}",
+                status_code=303,
+            )
+
+        # Asegura que hay prompt y voice_id (sembrando si hace falta)
+        _seed_voice_defaults_if_empty(s, t)
+
+        try:
+            agent_id = elevenlabs_client.create_agent_for_tenant(
+                tenant=t.to_dict(),
+                tool_base_url=tool_base_url,
+                prompt=t.voice_prompt,
+                voice=elevenlabs_client.VoiceParams(
+                    voice_id=t.voice_voice_id,
+                    stability=t.voice_stability,
+                    similarity_boost=t.voice_similarity_boost,
+                    speed=t.voice_speed,
+                ),
+            )
+            t.voice_agent_id = agent_id
+            t.voice_last_sync_at = _dt.utcnow()
+            t.voice_last_sync_status = "ok"
+            s.commit()
+            return RedirectResponse(
+                url=f"/admin/clientes/{tenant_id}/voz?sync=ok",
+                status_code=303,
+            )
+        except elevenlabs_client.ElevenLabsError as e:
+            msg = str(e)[:380]
+            t.voice_last_sync_at = _dt.utcnow()
+            t.voice_last_sync_status = msg
+            s.commit()
+            return RedirectResponse(
+                url=f"/admin/clientes/{tenant_id}/voz?sync=err&msg={quote(msg)}",
+                status_code=303,
+            )
+
+
+@router.post("/admin/clientes/{tenant_id}/voz/sync")
+async def client_sync_voice(
+    tenant_id: str,
+    voice_agent_id: str = Form(""),
+    voice_prompt: str = Form(""),
+    voice_voice_id: str = Form(""),
+    voice_stability: float = Form(0.67),
+    voice_similarity_boost: float = Form(0.8),
+    voice_speed: float = Form(1.04),
+    uid: int = Depends(auth.current_user_id),
+):
+    """Guarda + envía PATCH al agente remoto en ElevenLabs.
+
+    La estrategia es guardar primero (así el usuario no pierde sus cambios si
+    ElevenLabs falla) y solo después intentar la sincronización. El resultado
+    (ok o mensaje de error) queda persistido en voice_last_sync_* y se muestra
+    en la UI vía query params.
+    """
+    from datetime import datetime as _dt
+
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tenant_id)
+        if t is None:
+            raise HTTPException(404)
+        _save_voice_fields(
+            s, t,
+            voice_agent_id=voice_agent_id,
+            voice_prompt=voice_prompt,
+            voice_voice_id=voice_voice_id,
+            voice_stability=voice_stability,
+            voice_similarity_boost=voice_similarity_boost,
+            voice_speed=voice_speed,
+        )
+
+        # Intento de sincronización. Capturamos cualquier error del cliente
+        # ElevenLabs (HTTP, red, validación) para presentarlo al usuario sin
+        # reventar la request.
+        try:
+            elevenlabs_client.sync_agent(
+                t.voice_agent_id,
+                prompt=t.voice_prompt,
+                voice=elevenlabs_client.VoiceParams(
+                    voice_id=t.voice_voice_id,
+                    stability=t.voice_stability,
+                    similarity_boost=t.voice_similarity_boost,
+                    speed=t.voice_speed,
+                ),
+            )
+            t.voice_last_sync_at = _dt.utcnow()
+            t.voice_last_sync_status = "ok"
+            s.commit()
+            return RedirectResponse(
+                url=f"/admin/clientes/{tenant_id}/voz?sync=ok",
+                status_code=303,
+            )
+        except elevenlabs_client.ElevenLabsError as e:
+            msg = str(e)[:380]
+            t.voice_last_sync_at = _dt.utcnow()
+            t.voice_last_sync_status = msg
+            s.commit()
+        except Exception as e:  # pragma: no cover - red bajo control del cliente
+            msg = f"Error inesperado: {e!r}"[:380]
+            t.voice_last_sync_at = _dt.utcnow()
+            t.voice_last_sync_status = msg
+            s.commit()
+
+    # URL-encodear el mensaje de error para que pase limpio por la query string.
+    from urllib.parse import quote
+    return RedirectResponse(
+        url=f"/admin/clientes/{tenant_id}/voz?sync=err&msg={quote(msg)}",
+        status_code=303,
+    )
 
 
 @router.post("/admin/clientes/{tenant_id}/toggle")

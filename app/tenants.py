@@ -42,9 +42,10 @@ _DEFAULT_TENANT_TEMPLATE = {
 def _load_yaml_by_id() -> dict[str, dict[str, Any]]:
     """Lee tenants.yaml y devuelve un dict indexado por id.
 
-    Se usa como fuente complementaria: hay campos operativos (peluqueros,
-    calendarios por peluquero, dias_trabajo) que todavía no existen como
-    columna en la BD del CMS. Si falla la lectura, devolvemos vacío para no
+    Histórico: se usaba para mergear peluqueros sobre los tenants de la BD.
+    Desde que la tabla `peluqueros` existe, esto ya no se usa por defecto
+    (`_YAML_ONLY_FIELDS` está vacío) pero se deja como fallback por si algún
+    día vuelve a hacer falta. Si falla la lectura, devolvemos vacío para no
     tumbar el arranque.
     """
     path = pathlib.Path(settings.tenants_file)
@@ -62,9 +63,11 @@ def _load_yaml_by_id() -> dict[str, dict[str, Any]]:
     return result
 
 
-# Campos que sólo existen en el YAML de momento (el CMS no los expone aún)
-# y que mergeamos sobre los tenants de la BD cuando comparten id.
-_YAML_ONLY_FIELDS = ("peluqueros",)
+# Campos que sólo existen en el YAML y se mergean sobre los tenants de la BD
+# cuando comparten id. Los peluqueros vivían aquí hasta abril 2026; ahora están
+# en la tabla `peluqueros` de la BD (editable desde el CMS). El mecanismo se
+# mantiene por si vuelve a hacer falta para otros campos operativos.
+_YAML_ONLY_FIELDS: tuple[str, ...] = ()
 
 
 def _merge_yaml_into_db(db_tenant: dict[str, Any], yaml_tenant: dict[str, Any]) -> dict[str, Any]:

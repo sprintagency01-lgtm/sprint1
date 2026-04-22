@@ -1,0 +1,188 @@
+{# Pestaña "Voz": edita el prompt y los parámetros TTS del agente Ana en
+   ElevenLabs, y permite sincronizarlos con el agente remoto con un botón. #}
+
+{% set sync_ok = request.query_params.get('sync') == 'ok' %}
+{% set sync_err = request.query_params.get('sync') == 'err' %}
+{% set sync_msg = request.query_params.get('msg') or t.voice_last_sync_status %}
+{% set saved = request.query_params.get('saved') == '1' %}
+
+{# Tamaños típicos del prompt para contexto de compresión. #}
+{% set prompt_len = (t.voice_prompt or '')|length %}
+
+<div class="space-y-6">
+
+  {# ---------- Banner de feedback ---------- #}
+  {% if sync_ok %}
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-sm flex items-start gap-3">
+      <svg class="w-5 h-5 flex-none mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+      <div>
+        <div class="font-medium">Sincronizado con ElevenLabs</div>
+        <div class="text-xs text-emerald-700">Ana ya usa la configuración nueva. La próxima llamada la oirás actualizada.</div>
+      </div>
+    </div>
+  {% elif sync_err %}
+    <div class="bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-4 text-sm flex items-start gap-3">
+      <svg class="w-5 h-5 flex-none mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+      <div>
+        <div class="font-medium">No se pudo sincronizar</div>
+        <div class="text-xs text-rose-700 font-mono break-all">{{ sync_msg }}</div>
+      </div>
+    </div>
+  {% elif saved %}
+    <div class="bg-slate-50 border border-slate-200 text-slate-700 rounded-xl p-3 text-xs">
+      Cambios guardados. No se ha enviado nada a ElevenLabs todavía — pulsa <b>Sincronizar</b> para aplicarlos en Ana.
+    </div>
+  {% endif %}
+
+  <form method="post" action="/admin/clientes/{{ t.id }}/voz" class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+    {# ---------- Editor principal ---------- #}
+    <div class="lg:col-span-3 space-y-6">
+
+      <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-semibold">Prompt de Ana</h2>
+          <span class="text-xs text-slate-400"><span id="voice_prompt_len">{{ prompt_len }}</span> caracteres</span>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">
+          Sube al agente de voz tal cual lo escribas aquí. Evita expandirlo sin
+          necesidad — cada byte suma al tiempo de respuesta por turno.
+        </p>
+        <textarea name="voice_prompt" id="voice_prompt" rows="22"
+                  class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs font-mono focus:outline-none focus:border-brand-500"
+                  placeholder="Eres Ana, recepcionista de...">{{ t.voice_prompt or '' }}</textarea>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-sm font-semibold mb-4">Voz (TTS)</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-700 mb-1 block">Voice ID</label>
+            <input name="voice_voice_id" value="{{ t.voice_voice_id }}"
+                   placeholder="1eHrpOW5l98cxiSRjbzJ"
+                   class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:border-brand-500"/>
+            <div class="text-xs text-slate-400 mt-1">
+              ID de la voz en <a href="https://elevenlabs.io/app/voice-library" target="_blank" class="text-brand-600 hover:underline">ElevenLabs Voice Library</a>.
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-medium text-slate-700 mb-1 block">Stability — <span id="stability_val">{{ '%.2f'|format(t.voice_stability) }}</span></label>
+            <input type="range" name="voice_stability" id="voice_stability"
+                   min="0" max="1" step="0.01" value="{{ t.voice_stability }}"
+                   oninput="document.getElementById('stability_val').innerText=parseFloat(this.value).toFixed(2)"
+                   class="w-full"/>
+            <div class="text-xs text-slate-400 mt-1">Más alto = más consistente (y más robótico). 0.5–0.7 suele ir bien.</div>
+          </div>
+
+          <div>
+            <label class="text-xs font-medium text-slate-700 mb-1 block">Similarity boost — <span id="similarity_val">{{ '%.2f'|format(t.voice_similarity_boost) }}</span></label>
+            <input type="range" name="voice_similarity_boost" id="voice_similarity_boost"
+                   min="0" max="1" step="0.01" value="{{ t.voice_similarity_boost }}"
+                   oninput="document.getElementById('similarity_val').innerText=parseFloat(this.value).toFixed(2)"
+                   class="w-full"/>
+            <div class="text-xs text-slate-400 mt-1">Cuánto se parece al original. 0.7–0.9 habitual.</div>
+          </div>
+
+          <div>
+            <label class="text-xs font-medium text-slate-700 mb-1 block">Speed — <span id="speed_val">{{ '%.2f'|format(t.voice_speed) }}</span></label>
+            <input type="range" name="voice_speed" id="voice_speed"
+                   min="0.7" max="1.3" step="0.01" value="{{ t.voice_speed }}"
+                   oninput="document.getElementById('speed_val').innerText=parseFloat(this.value).toFixed(2)"
+                   class="w-full"/>
+            <div class="text-xs text-slate-400 mt-1">1.0 = natural. >1 acelera, <1 ralentiza.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-xs text-slate-500">
+          {% if t.voice_last_sync_at %}
+            Última sincronización con ElevenLabs: <span class="font-mono">{{ t.voice_last_sync_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            {% if t.voice_last_sync_status and t.voice_last_sync_status != 'ok' %}
+              <span class="text-rose-600"> — {{ t.voice_last_sync_status }}</span>
+            {% endif %}
+          {% else %}
+            Aún no se ha sincronizado con ElevenLabs.
+          {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="submit"
+                  class="text-sm px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 font-medium">
+            Guardar
+          </button>
+          <button type="submit" formaction="/admin/clientes/{{ t.id }}/voz/sync"
+                  class="text-sm px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium flex items-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 1-9 9M3 12a9 9 0 0 1 9-9"/><path d="m17 8 4-4M7 16l-4 4"/></svg>
+            Guardar y sincronizar
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    {# ---------- Lateral: info del agente ---------- #}
+    <div class="lg:col-span-2 space-y-6">
+
+      <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-sm font-semibold mb-3">Agente ElevenLabs</h2>
+        {% if t.voice_agent_id %}
+          <p class="text-xs text-slate-500 mb-3">
+            Agente remoto al que sincronizar el prompt y la voz.
+          </p>
+          <input name="voice_agent_id" value="{{ t.voice_agent_id }}"
+                 class="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs font-mono focus:outline-none focus:border-brand-500"/>
+          <div class="text-xs text-slate-400 mt-2">
+            <a href="https://elevenlabs.io/app/conversational-ai/agents/{{ t.voice_agent_id }}" target="_blank" class="text-brand-600 hover:underline">Abrir en ElevenLabs ↗</a>
+          </div>
+        {% else %}
+          <p class="text-xs text-slate-500 mb-3">
+            Aún no hay agente en ElevenLabs para este cliente. Pulsa para
+            crearlo: se registrará el prompt, la voz y las 5 tools apuntando a
+            este backend con <code>?tenant_id={{ t.id }}</code>.
+          </p>
+          {# Formulario independiente para no enviar los demás campos (que
+             deberían ir al endpoint de guardar/sincronizar, no al de create). #}
+          <button type="submit" form="create-agent-form"
+                  class="w-full text-sm px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-medium flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M12 5v14M5 12h14"/></svg>
+            Crear agente en ElevenLabs
+          </button>
+          <input type="hidden" name="voice_agent_id" value=""/>
+        {% endif %}
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-sm font-semibold mb-3">Qué se sincroniza</h2>
+        <ul class="text-xs text-slate-600 space-y-2">
+          <li class="flex gap-2"><span class="text-emerald-600">✓</span> Prompt del agente (<code>conversation_config.agent.prompt.prompt</code>)</li>
+          <li class="flex gap-2"><span class="text-emerald-600">✓</span> Voice ID, stability, similarity boost y speed</li>
+          <li class="flex gap-2 text-slate-400"><span>·</span> LLM, turn-taking y tools <b>no</b> se tocan desde aquí.</li>
+        </ul>
+        <div class="text-xs text-slate-400 mt-4">
+          Los horarios, servicios y peluqueros afectan a Ana <b>en tiempo real</b>
+          sin sincronizar (los consulta vía tools), pero el prompt y la voz sí
+          requieren este paso.
+        </div>
+      </div>
+
+    </div>
+  </form>
+
+  {# Form separado para "Crear agente en ElevenLabs": no envía los campos
+     del form principal, dispara POST a un endpoint dedicado que parte del
+     estado ya guardado en BD. #}
+  <form id="create-agent-form" method="post" action="/admin/clientes/{{ t.id }}/voz/create_agent" class="hidden"></form>
+
+</div>
+
+<script>
+  // Contador de caracteres en vivo para el prompt.
+  (function () {
+    const ta = document.getElementById('voice_prompt');
+    const counter = document.getElementById('voice_prompt_len');
+    if (ta && counter) {
+      ta.addEventListener('input', () => { counter.innerText = ta.value.length; });
+    }
+  })();
+</script>

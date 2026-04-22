@@ -106,11 +106,33 @@ class Tenant(Base):
     # Prompt: si override_prompt tiene valor se usa tal cual; si no, se genera.
     system_prompt_override: Mapped[str] = mapped_column(Text, default="")
 
+    # ---- Agente de voz (ElevenLabs Conversational AI) -------------------
+    # El prompt, voz y parámetros TTS del agente Ana en ElevenLabs. Editables
+    # desde /admin/clientes/{id}/voz. Al pulsar "Sincronizar" se hace PATCH al
+    # agente remoto mediante app/elevenlabs_client.py.
+    #
+    # voice_agent_id: si está vacío se cae al ELEVENLABS_AGENT_ID global del
+    # .env (MVP monotenant). Al escalar a multi-tenant, cada tenant tendrá el
+    # suyo.
+    voice_agent_id: Mapped[str] = mapped_column(String(100), default="")
+    voice_prompt: Mapped[str] = mapped_column(Text, default="")
+    voice_voice_id: Mapped[str] = mapped_column(String(100), default="")
+    voice_stability: Mapped[float] = mapped_column(Float, default=0.67)
+    voice_similarity_boost: Mapped[float] = mapped_column(Float, default=0.8)
+    voice_speed: Mapped[float] = mapped_column(Float, default=1.04)
+    # Última sincronización con ElevenLabs (auditoría): null si nunca se ha
+    # hecho; status es "ok" o "error: ..." para pintar el banner de la pestaña.
+    voice_last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
+    voice_last_sync_status: Mapped[str] = mapped_column(String(400), default="")
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     services: Mapped[list["Service"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan", order_by="Service.orden"
+    )
+    peluqueros: Mapped[list["Peluquero"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan", order_by="Peluquero.orden"
     )
 
     # ----- helpers para (de)serializar los campos JSON -----
@@ -156,6 +178,7 @@ class Tenant(Base):
             "contact_email": self.contact_email,
             "business_hours": self.business_hours,
             "services": [s.to_dict() for s in self.services],
+            "peluqueros": [p.to_dict() for p in self.peluqueros],
             "assistant": {
                 "name": self.assistant_name,
                 "tone": self.assistant_tone,
@@ -167,6 +190,16 @@ class Tenant(Base):
             },
             "system_prompt_override": self.system_prompt_override,
             "system_prompt": render_system_prompt(self),
+            "voice": {
+                "agent_id": self.voice_agent_id,
+                "prompt": self.voice_prompt,
+                "voice_id": self.voice_voice_id,
+                "stability": self.voice_stability,
+                "similarity_boost": self.voice_similarity_boost,
+                "speed": self.voice_speed,
+                "last_sync_at": self.voice_last_sync_at.isoformat() if self.voice_last_sync_at else None,
+                "last_sync_status": self.voice_last_sync_status,
+            },
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -185,6 +218,52 @@ class Service(Base):
 
     def to_dict(self) -> dict[str, Any]:
         return {"nombre": self.nombre, "duracion_min": self.duracion_min, "precio": self.precio}
+
+
+# ---------------------------------------------------------------------
+#  PELUQUEROS  (antes en tenants.yaml; ahora editables desde el CMS)
+# ---------------------------------------------------------------------
+
+class Peluquero(Base):
+    __tablename__ = "peluqueros"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    nombre: Mapped[str] = mapped_column(String(120))
+    # Calendar secundario de Google donde se llevan descansos/vacaciones. La
+    # disponibilidad se calcula mirando este calendario; las reservas de voz se
+    # siguen creando en el calendario principal del tenant (regla del MVP).
+    calendar_id: Mapped[str] = mapped_column(String(200), default="")
+    # Días laborables en formato weekday de Python (0=lun ... 6=dom),
+    # serializado como JSON: [0,1,2,3,4,5] = lun-sáb.
+    dias_trabajo_json: Mapped[str] = mapped_column(Text, default="[0,1,2,3,4,5]")
+    orden: Mapped[int] = mapped_column(Integer, default=0)
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="peluqueros")
+
+    @property
+    def dias_trabajo(self) -> list[int]:
+        try:
+            raw = json.loads(self.dias_trabajo_json or "[]")
+            return [int(x) for x in raw if isinstance(x, (int, str)) and str(x).lstrip("-").isdigit()]
+        except json.JSONDecodeError:
+            return []
+
+    @dias_trabajo.setter
+    def dias_trabajo(self, value: list[int]) -> None:
+        clean = sorted({int(x) for x in value if 0 <= int(x) <= 6})
+        self.dias_trabajo_json = json.dumps(clean)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Formato que consumen `eleven_tools.py` y `calendar_service.py`.
+
+        No renombrar keys sin migrar también esos módulos.
+        """
+        return {
+            "nombre": self.nombre,
+            "calendar_id": self.calendar_id,
+            "dias_trabajo": self.dias_trabajo,
+        }
 
 
 # ---------------------------------------------------------------------
@@ -475,6 +554,210 @@ Reglas operativas (siempre):
 
 
 # ---------------------------------------------------------------------
+#  Composición del prompt de VOZ (Ana en ElevenLabs)
+#
+#  El equivalente a render_system_prompt pero para el agente de voz. Tiene una
+#  estructura distinta porque el canal es distinto (teléfono vs WhatsApp) y
+#  porque el prompt está optimizado para latencia: cada byte que añadas sube
+#  el prefill time por turno.
+#
+#  Los placeholders {{system__time_utc}} y {{system__caller_id}} los inyecta
+#  ElevenLabs en runtime — aquí los preservamos escapando las llaves.
+# ---------------------------------------------------------------------
+
+_WEEKDAY_ES = {0: "lun", 1: "mar", 2: "mié", 3: "jue", 4: "vie", 5: "sáb", 6: "dom"}
+_WEEKDAY_ES_LARGO = {0: "lunes", 1: "martes", 2: "miércoles", 3: "jueves", 4: "viernes", 5: "sábado", 6: "domingo"}
+
+
+def _horario_legible(business_hours: dict) -> str:
+    """Resume el horario semanal en una frase corta: 'lun-sáb 09:30-20:30. Domingo cerrado.'
+
+    Si todos los días abiertos tienen el mismo rango, se dice el rango una sola
+    vez. Si no, se lista día por día.
+    """
+    if not business_hours:
+        return ""
+    # Extrae rangos por día
+    rangos = {}
+    for k, v in business_hours.items():
+        if not v or v == ["closed"] or (isinstance(v, list) and v and v[0] == "closed"):
+            rangos[k] = None
+        elif isinstance(v, list) and len(v) >= 2:
+            rangos[k] = (v[0], v[1])
+    abiertos = [(k, r) for k, r in rangos.items() if r is not None]
+    cerrados = [k for k, r in rangos.items() if r is None]
+    if not abiertos:
+        return "Cerrado toda la semana."
+    # ¿Todos los abiertos con mismo rango y consecutivos?
+    dias_orden = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    dias_abiertos_ordenados = [d for d in dias_orden if rangos.get(d) is not None]
+    rangos_unicos = {r for _, r in abiertos}
+    if len(rangos_unicos) == 1 and len(dias_abiertos_ordenados) >= 2:
+        r = next(iter(rangos_unicos))
+        primero = _WEEKDAY_ES[dias_orden.index(dias_abiertos_ordenados[0])]
+        ultimo = _WEEKDAY_ES[dias_orden.index(dias_abiertos_ordenados[-1])]
+        cerrado_frase = ""
+        if cerrados:
+            if len(cerrados) == 1 and cerrados[0] == "sun":
+                cerrado_frase = " Domingo cerrado."
+            else:
+                cerrado_frase = " Cerrado: " + ", ".join(_WEEKDAY_ES[dias_orden.index(d)] for d in cerrados) + "."
+        return f"{primero}-{ultimo} {r[0]}-{r[1]}.{cerrado_frase}"
+    # Caso general: día por día
+    partes = []
+    for d in dias_orden:
+        r = rangos.get(d)
+        lbl = _WEEKDAY_ES[dias_orden.index(d)]
+        if r is None:
+            partes.append(f"{lbl} cerrado")
+        else:
+            partes.append(f"{lbl} {r[0]}-{r[1]}")
+    return ". ".join(partes) + "."
+
+
+def _peluqueros_legible(peluqueros: list[dict]) -> str:
+    """'Mario (lun-sáb), Marcos (solo miércoles).' o '' si no hay."""
+    if not peluqueros:
+        return ""
+    dias_orden = list(range(7))
+    frases = []
+    for p in peluqueros:
+        nombre = p.get("nombre") or "?"
+        dias = sorted(set(p.get("dias_trabajo") or dias_orden))
+        if dias == dias_orden:
+            dias_txt = "todos los días"
+        elif dias == [0, 1, 2, 3, 4, 5]:
+            dias_txt = "lun-sáb"
+        elif dias == [0, 1, 2, 3, 4]:
+            dias_txt = "lun-vie"
+        elif len(dias) == 1:
+            dias_txt = f"solo {_WEEKDAY_ES_LARGO[dias[0]]}"
+        else:
+            # Rango contiguo
+            if dias == list(range(dias[0], dias[-1] + 1)):
+                dias_txt = f"{_WEEKDAY_ES[dias[0]]}-{_WEEKDAY_ES[dias[-1]]}"
+            else:
+                dias_txt = ", ".join(_WEEKDAY_ES[d] for d in dias)
+        frases.append(f"{nombre} ({dias_txt})")
+    return ", ".join(frases) + "."
+
+
+def render_voice_prompt(tenant: dict) -> str:
+    """Construye el prompt de Ana parametrizado desde los datos del tenant.
+
+    Acepta un dict (el formato que devuelve Tenant.to_dict()) para no acoplar
+    este módulo al ORM. Mantiene las reglas duras y el flujo RESERVA que están
+    optimizados para latencia; solo cambian nombre del negocio, servicios,
+    horario, peluqueros y teléfono de fallback.
+    """
+    nombre_negocio = tenant.get("name") or "el negocio"
+    assistant_name = (tenant.get("assistant") or {}).get("name") or "Ana"
+    fallback = ((tenant.get("assistant") or {}).get("fallback_phone") or "").strip()
+
+    # Servicios en línea: "Corte mujer 45min 22€ · Corte hombre 30min 15€"
+    servicios = tenant.get("services") or []
+    servicios_txt = " · ".join(
+        f"{s.get('nombre')} {int(s.get('duracion_min') or 0)}min {_precio_fmt(s.get('precio'))}"
+        for s in servicios if s.get("nombre")
+    ) or "(sin servicios configurados)"
+
+    horario_txt = _horario_legible(tenant.get("business_hours") or {})
+    peluqueros_txt = _peluqueros_legible(tenant.get("peluqueros") or [])
+
+    # Línea de fallback hablable ("nueve uno cero cero cero cero cero cero cero")
+    if fallback:
+        fallback_hablable = " ".join(list(fallback.replace(" ", "")))
+        fallback_frase = f'"me da problemas el sistema, ¿puedes llamar al {fallback_hablable}?"'
+    else:
+        fallback_frase = '"me da problemas el sistema, ¿puedes volver a intentarlo en un rato?"'
+
+    # Pregunta inicial ante "corte" (solo relevante si hay varios cortes)
+    pregunta_corte = ""
+    nombres_serv = [s.get("nombre", "").lower() for s in servicios]
+    if any("corte" in n and ("mujer" in n or "hombre" in n) for n in nombres_serv):
+        pregunta_corte = ' (si "corte" → "¿mujer o hombre?")'
+
+    # Construimos el prompt. Ojo con las llaves: `{{system__...}}` son variables
+    # ElevenLabs, NO Python. En f-strings hay que duplicarlas: `{{{{...}}}}`.
+    prompt = f"""Eres {assistant_name}, recepcionista de {nombre_negocio}. Hablas por teléfono en español de España. Eres una persona, no un bot. Si preguntan: "Soy {assistant_name}, trabajo aquí".
+
+## Negocio
+Horario {horario_txt or 'a confirmar'}
+Servicios: {servicios_txt}.
+{f'Peluqueros: {peluqueros_txt}' if peluqueros_txt else ''}
+Solo recitas precios/horarios si preguntan.
+
+## Contexto
+FECHA: {{{{system__time_utc}}}} (UTC). Zona: {tenant.get('timezone') or 'Europe/Madrid'}.
+Fechas a tools en ISO local SIN "Z": 2026-04-22T10:00:00.
+Teléfono: pasa SIEMPRE {{{{system__caller_id}}}} como `telefono_cliente` en cada tool call, sin decirlo. NUNCA preguntes el teléfono salvo si caller_id es exactamente "unknown"/"anonymous"/"null"/"-"/vacío.
+
+## Estilo
+Frases cortas, tono cercano ("vale", "a ver", "perfecto", "venga"). Varía muletillas. Nunca ISO al hablar — "a las cinco y media". UNA pregunta por turno. Sin listas ni emojis. Gracias → "a ti".
+
+## Fechas al hablar
+- Hoy → "hoy", "esta tarde". Mañana → "mañana". Pasado mañana → "pasado mañana".
+- 3-6 días → solo día ("el jueves").
+- 7+ días → "el [día] [número]" ("el lunes cuatro").
+- **PROHIBIDO combinar término relativo + día de semana**. NUNCA digas "mañana el jueves" ni "pasado mañana el viernes". "Hoy/mañana/pasado mañana" van SOLOS, sin día de semana. Solo nombra día de semana cuando NO uses término relativo (3+ días).
+Ej: "te espero esta tarde a las seis", "te espero mañana a las diez", "venga, el viernes a las cinco y media".
+
+## Fillers antes de tool calls (obligatorio, nunca silencio)
+En el MISMO turno que la tool, varía: "vale, te miro un momento...", "a ver, compruebo la agenda...", "un segundo que lo miro...". Luego sigue: "...pues tengo a las diez, a las once o a la una, ¿cuál te va?"
+
+## Qué puedes hacer
+Solo reservar/mover/cancelar. Nada de WhatsApp/SMS/email.
+
+## Reglas duras
+1. Antes de proponer hora → consultar_disponibilidad SIEMPRE. Nunca inventes.
+2. Antes de confirmar reserva → crear_reserva SIEMPRE.
+3. Mover/cancelar → primero buscar_reserva_cliente.
+4. Tool error retryable:true → UN reintento con filler. Si falla: {fallback_frase} (hablado). Lista vacía SIN error → ofrece otro día/peluquero, no es fallo.
+5. Nombre al final, antes de crear_reserva. Si ya lo dijo, úsalo — nunca repreguntes.
+6. Extrae TODOS los datos del turno. No repreguntes nada ya dicho.
+7. Máximo tres huecos por turno.
+8. Peluquero: si el cliente NO lo menciona, NO preguntes — deja `peluquero_preferido` vacío y ofrece huecos sin nombrar peluquero. Solo nombras si el cliente pregunta o si diferenciar aporta.
+9. Si consultar_disponibilidad devuelve `aviso`, léelo.
+
+## Flujo RESERVA — orden OBLIGATORIO
+Orden: **servicio → cuándo → NOMBRE → consultar → ofrecer → elegir → crear**. El nombre SIEMPRE va ANTES de consultar_disponibilidad. Cuando el cliente elige hueco, vas directo a crear_reserva sin preguntar nada.
+
+1. Servicio{pregunta_corte}.
+2. Cuándo.
+3. **Nombre — OBLIGATORIO antes de consultar**. Si no se presentó, di: "vale, ¿a qué nombre te lo pongo?". Si ya dijo "soy Luis", salta al 4.
+4. Filler + consultar_disponibilidad. Rango: mañana=09:30-14:00, tarde=15:00-20:30. `peluquero_preferido` vacío salvo que lo pidiera. UNA sola llamada, no repitas.
+5. Ofrece máx 3 huecos naturales, sin nombrar peluquero (regla 8).
+6. Cliente elige hueco → MISMO TURNO: "genial, te la dejo apuntada..." + crear_reserva. PROHIBIDO preguntar nombre aquí (ya lo tienes). `telefono_cliente = {{{{system__caller_id}}}}` automático. Título EXACTO: `Nombre — Servicio (Peluquero)` o `Nombre — Servicio (sin preferencia)`. Al ok:true: cierre natural usando Fechas al hablar — "hecho Juan, te espero esta tarde a las seis". Luego "¿algo más?"
+
+## Flujo MOVER
+1. NO pidas teléfono. Filler + buscar_reserva_cliente con `telefono_cliente = {{{{system__caller_id}}}}`.
+2. Lee cita con fecha natural: "tienes cita mañana a las diez con Mario". ¿Para cuándo la mueves?
+3. Nueva franja → filler + consultar_disponibilidad → ofreces.
+4. Elegido → filler + mover_reserva con event_id. Confirma natural.
+
+## Flujo CANCELAR
+1. NO pidas teléfono. Filler + buscar_reserva_cliente con `telefono_cliente = {{{{system__caller_id}}}}`.
+2. Lee cita natural + "¿te la cancelo?".
+3. Sí → filler + cancelar_reserva. "Listo, queda cancelada."
+
+## Cierre
+"Gracias por llamar, hasta luego." o "Venga, hasta luego."
+"""
+    # Quitar líneas vacías que hayan quedado por tener peluqueros_txt vacío
+    return "\n".join(l for l in prompt.split("\n") if l.strip() != "")
+
+
+def _precio_fmt(p) -> str:
+    try:
+        f = float(p or 0)
+        if f == int(f):
+            return f"{int(f)}€"
+        return f"{f:g}€"
+    except (TypeError, ValueError):
+        return "0€"
+
+
+# ---------------------------------------------------------------------
 #  Crear todas las tablas (idempotente). Lo llamamos al arrancar.
 # ---------------------------------------------------------------------
 
@@ -504,6 +787,23 @@ def _auto_migrate_sqlite() -> None:
     migrations: list[tuple[str, str, str]] = [
         ("tenants", "kind",
          "ALTER TABLE tenants ADD COLUMN kind VARCHAR(20) DEFAULT 'contracted'"),
+        # --- Agente de voz ElevenLabs ---
+        ("tenants", "voice_agent_id",
+         "ALTER TABLE tenants ADD COLUMN voice_agent_id VARCHAR(100) DEFAULT ''"),
+        ("tenants", "voice_prompt",
+         "ALTER TABLE tenants ADD COLUMN voice_prompt TEXT DEFAULT ''"),
+        ("tenants", "voice_voice_id",
+         "ALTER TABLE tenants ADD COLUMN voice_voice_id VARCHAR(100) DEFAULT ''"),
+        ("tenants", "voice_stability",
+         "ALTER TABLE tenants ADD COLUMN voice_stability FLOAT DEFAULT 0.67"),
+        ("tenants", "voice_similarity_boost",
+         "ALTER TABLE tenants ADD COLUMN voice_similarity_boost FLOAT DEFAULT 0.8"),
+        ("tenants", "voice_speed",
+         "ALTER TABLE tenants ADD COLUMN voice_speed FLOAT DEFAULT 1.04"),
+        ("tenants", "voice_last_sync_at",
+         "ALTER TABLE tenants ADD COLUMN voice_last_sync_at DATETIME"),
+        ("tenants", "voice_last_sync_status",
+         "ALTER TABLE tenants ADD COLUMN voice_last_sync_status VARCHAR(400) DEFAULT ''"),
     ]
 
     try:
@@ -527,3 +827,58 @@ def _auto_migrate_sqlite() -> None:
 
 
 _auto_migrate_sqlite()
+
+
+# ---------------------------------------------------------------------
+#  Seed one-shot de peluqueros desde tenants.yaml → BD
+#
+#  Hasta ahora los peluqueros se leían siempre del YAML y se mergeaban en
+#  `tenants.py`. Con la tabla `peluqueros` nueva, la BD manda. Para no romper
+#  instalaciones existentes (Railway con pelu_demo ya en vivo), la primera vez
+#  que arranca este código copia los peluqueros del YAML a la tabla para cada
+#  tenant que todavía no tenga ninguno. Idempotente: una vez copiados, el
+#  arranque siguiente no hace nada.
+# ---------------------------------------------------------------------
+
+def _seed_peluqueros_from_yaml() -> None:
+    import logging
+    log = logging.getLogger(__name__)
+    try:
+        import yaml as _yaml
+        yaml_path = pathlib.Path(settings.tenants_file)
+        if not yaml_path.exists():
+            return
+        data = _yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+        tenants_yaml = data.get("tenants") or []
+        if not tenants_yaml:
+            return
+
+        with Session(engine) as s:
+            for yt in tenants_yaml:
+                tid = yt.get("id")
+                pelus = yt.get("peluqueros") or []
+                if not tid or not pelus:
+                    continue
+                # Solo seed si el tenant existe en BD y aún no tiene peluqueros
+                t = s.get(Tenant, tid)
+                if t is None:
+                    continue
+                existing = s.query(Peluquero).filter(Peluquero.tenant_id == tid).count()
+                if existing > 0:
+                    continue
+                for i, p in enumerate(pelus):
+                    row = Peluquero(
+                        tenant_id=tid,
+                        nombre=(p.get("nombre") or "").strip() or f"Peluquero {i+1}",
+                        calendar_id=(p.get("calendar_id") or "").strip(),
+                        orden=i,
+                    )
+                    row.dias_trabajo = p.get("dias_trabajo") or [0, 1, 2, 3, 4, 5]
+                    s.add(row)
+                log.info("seed peluqueros desde YAML: tenant=%s insertados=%d", tid, len(pelus))
+            s.commit()
+    except Exception as exc:  # pragma: no cover - best-effort
+        log.warning("seed peluqueros desde YAML falló (%s). Arranque continúa.", exc)
+
+
+_seed_peluqueros_from_yaml()
