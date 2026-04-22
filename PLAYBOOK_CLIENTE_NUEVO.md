@@ -162,10 +162,15 @@ Lecciones de diseño — respeta estas reglas o el agente se vuelve raro:
    que reiniciar el flujo. El prompt actual marca esto como regla dura.
 2. **El nombre va AL FINAL.** Pedir el nombre al principio es lo más antinatural posible
    en España. Ir servicio → cuándo → peluquero → huecos → teléfono → nombre suena humano.
-3. **Muletillas prohibidas.** "Un momento, estoy comprobando", "déjame mirar": esto mete
-   pausas artificiales y el usuario cree que colgó. Hay que decirle al LLM que llame la
-   herramienta DIRECTA y deje al sistema gestionar el silencio (ElevenLabs tiene voz de
-   typing/filler integrada).
+3. **Fillers OBLIGATORIOS antes de tool calls.** Reversión del criterio anterior: sin
+   muletillas, el silencio mientras corre la tool (1-3s) suena a bot colgado. El prompt
+   ahora EXIGE que Ana, en la misma respuesta que dispara la tool call, diga antes una
+   frase corta de relleno ("a ver, te miro un segundo...", "un momento que lo reviso..."),
+   y varíe la expresión entre turnos. Regla dura nº 8 del prompt: **nunca silencio mayor
+   a un segundo**. Esto aplica a las cinco tools (`consultar_disponibilidad`, `crear_reserva`,
+   `buscar_reserva_cliente`, `mover_reserva`, `cancelar_reserva`).
+   Razón extra: ElevenLabs no tiene filler integrado fiable para voz ES; lo mejor es que
+   el LLM lo escupa como primera frase y acto seguido ejecute la tool.
 4. **Nada de ISO.** "A las diecisiete treinta", no "a las 17:30". Y desde luego no
    "dos puntos". Hay un ejemplo explícito en el prompt.
 5. **Nada de listas con guiones, emojis ni símbolos.** Ana habla, no escribe.
@@ -176,9 +181,15 @@ Lecciones de diseño — respeta estas reglas o el agente se vuelve raro:
 8. **Fallback suave en errores**: si una tool falla, no reintentar. Decir "ha habido
    un problema, llama al 910 000 000" y cerrar. Reintentar en bucle genera llamadas
    infinitas con el mismo error.
+9. **Humanidad activa.** Sección dedicada en el prompt ("Cómo suenas" + "Humanidad").
+   Contracciones, muletillas naturales ("pues", "a ver", "vale", "mmm"), variedad entre
+   turnos (no repetir la misma muletilla), respuestas cálidas a agradecimientos ("a ti"),
+   aceptar bromas con una sonrisa breve, y prohibición explícita de jerga corporativa
+   ("procederé a", "le informo de que", "dispongo de"). Si le preguntan si es un bot,
+   responde "Soy Ana, trabajo aquí en la peluquería" en vez de confirmar que es IA.
 
-Ver archivo `/tmp/ana_prompt.txt` en el workspace local — esa es la última versión que
-se ha PATCHeado al agente.
+Ver archivo `/tmp/ana_prompt_new.txt` en el workspace local — esa es la última versión
+que se ha PATCHeado al agente (9.3 KB; incluye reglas de fillers y humanidad).
 
 ---
 
@@ -296,7 +307,31 @@ A temperatura 0 ese modelo prefiere generar texto antes que tools.
 a function calling. Flash-Lite / Haiku / mini-models son para eco y summarization, no
 para agentes con herramientas.
 
-### 4.7 Desktop vs GitHub desincronizados
+### 4.7 Silencios que sonaban a bot colgado
+
+**Síntoma**: entre que el cliente terminaba una frase y Ana respondía tras una tool call,
+había 1-3 segundos de silencio total. Cliente percibía "ha colgado" o "es un bot roto".
+
+**Causa**: el prompt anterior (`/tmp/ana_prompt.txt`) tenía una regla explícita que decía
+"Nada de muletillas tipo 'un momento', 'déjame mirar', 'estoy comprobando'. Llamas directa
+a la herramienta y el sistema se encarga del silencio". ElevenLabs no rellena ese silencio
+con audio de forma fiable en ES.
+
+**Fix**: reescritura del prompt (versión 9.3 KB en `/tmp/ana_prompt_new.txt`) con:
+- Sección "Nunca dejes silencio" como regla CRÍTICA.
+- Lista de fillers a rotar: "a ver, te miro un segundo...", "un momento que lo reviso...",
+  "espera, que lo compruebo...", etc.
+- Instrucción explícita: el filler va en la MISMA respuesta que la tool call (no dos turnos).
+- Variedad exigida: no repetir el mismo filler dos turnos seguidos.
+- Sección "Humanidad" con contracciones, prohibición de jerga corporativa, y respuesta
+  amable si preguntan "¿eres un bot?" ("Soy Ana, trabajo aquí en la peluquería").
+- PATCHed al agente `agent_3901kprqemrger3rsgky0csea6g0`.
+
+**Lección**: para voz real, el prompt debe explicitar la gestión de silencios. Asumir
+que el motor de voz (ElevenLabs) lo hará genera llamadas que suenan a bot. Esto aplica
+a TODOS los agentes que hagan tool calls, no solo Ana.
+
+### 4.8 Desktop vs GitHub desincronizados
 
 **Síntoma**: cambios locales se perdían al pushear, o features remotas desaparecían al
 editar en Desktop.
