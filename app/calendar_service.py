@@ -233,11 +233,21 @@ def listar_huecos_por_peluqueros(
     delta = timedelta(minutes=duracion_minutos)
     resultados: list[dict] = []
 
-    day = fecha_desde.astimezone(TZ).date()
-    end_day = fecha_hasta.astimezone(TZ).date()
+    # La ventana intra-día que realmente exploramos es la intersección entre
+    # (horario del negocio) y (ventana solicitada fecha_desde–fecha_hasta).
+    # Así, si el cliente pide "por la tarde" (15:00–20:30), no ofrecemos
+    # huecos de la mañana.
+    fecha_desde_local = fecha_desde.astimezone(TZ)
+    fecha_hasta_local = fecha_hasta.astimezone(TZ)
+
+    day = fecha_desde_local.date()
+    end_day = fecha_hasta_local.date()
     while day <= end_day:
-        start_dt = datetime.combine(day, horario_apertura[0], tzinfo=TZ)
-        end_dt = datetime.combine(day, horario_apertura[1], tzinfo=TZ)
+        open_dt = datetime.combine(day, horario_apertura[0], tzinfo=TZ)
+        close_dt = datetime.combine(day, horario_apertura[1], tzinfo=TZ)
+        # Recortamos por la ventana pedida en el primer y último día.
+        start_dt = max(open_dt, fecha_desde_local) if day == fecha_desde_local.date() else open_dt
+        end_dt = min(close_dt, fecha_hasta_local) if day == fecha_hasta_local.date() else close_dt
         cursor = start_dt
         while cursor + delta <= end_dt:
             slot_end = cursor + delta

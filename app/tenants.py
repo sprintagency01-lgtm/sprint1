@@ -62,9 +62,9 @@ def _load_yaml_by_id() -> dict[str, dict[str, Any]]:
     return result
 
 
-# Campos que sólo existen en el YAML de momento y que mergeamos sobre los
-# tenants de la BD cuando comparten id.
-_YAML_ONLY_FIELDS = ("peluqueros",)
+# Campos que sólo existen (o están vacíos) en la BD y que mergeamos desde el
+# YAML cuando coincide el id. El CMS todavía no expone UI para todos.
+_YAML_ONLY_FIELDS = ("peluqueros", "business_hours")
 
 
 def _merge_yaml_into_db(db_tenant: dict[str, Any], yaml_tenant: dict[str, Any]) -> dict[str, Any]:
