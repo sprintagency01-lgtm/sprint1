@@ -6,7 +6,9 @@ from app.main import app
 
 def test_health():
     client = TestClient(app)
-    r = client.get("/")
+    # `/` ahora renderiza la landing pública (HTML), así que el healthcheck
+    # JSON vive en `/health`.
+    r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["ok"] is True
 
