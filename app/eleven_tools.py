@@ -236,6 +236,7 @@ def crear_reserva(
     req: CrearReq,
     x_tool_secret: str | None = Header(None),
     tenant_id: str | None = Query(None),
+    caller_id: str | None = Query(None),
 ) -> dict[str, Any]:
     _check_secret(x_tool_secret)
     tenant = _resolve_tenant(tenant_id)
@@ -258,6 +259,13 @@ def crear_reserva(
     tel = (req.telefono_cliente or "").strip()
     if tel.lower() in ("none", "null", "n/a", "na", "sin telefono", "sin teléfono", "-"):
         tel = ""
+    # Si el LLM no mandó teléfono pero ElevenLabs sí nos dio el caller_id de
+    # la llamada entrante, lo usamos automáticamente. Así Ana no tiene que
+    # pedir el número en llamadas reales.
+    if not tel and caller_id:
+        cid = caller_id.strip()
+        if cid.lower() not in ("none", "null", "n/a", "na", "-", "unknown", "anonymous", ""):
+            tel = cid
     ev = cal.crear_evento(
         titulo=req.titulo,
         inicio=datetime.fromisoformat(req.inicio_iso),
@@ -280,12 +288,25 @@ def buscar_reserva_cliente(
     req: BuscarReq,
     x_tool_secret: str | None = Header(None),
     tenant_id: str | None = Query(None),
+    caller_id: str | None = Query(None),
 ) -> dict[str, Any]:
     _check_secret(x_tool_secret)
     tenant = _resolve_tenant(tenant_id)
     peluqueros = tenant.get("peluqueros") or []
     desde = datetime.utcnow()
     hasta = desde + timedelta(days=req.dias_adelante)
+
+    # Normalizamos teléfono y hacemos fallback al caller_id si el LLM no lo pasó
+    # (o pasó basura tipo "None").
+    tel = (req.telefono_cliente or "").strip()
+    if tel.lower() in ("none", "null", "n/a", "na", "-", "unknown", "anonymous", ""):
+        tel = ""
+    if not tel and caller_id:
+        cid = caller_id.strip()
+        if cid.lower() not in ("none", "null", "n/a", "na", "-", "unknown", "anonymous", ""):
+            tel = cid
+    if not tel:
+        return {"encontrada": False}
 
     # Buscar en todos los calendarios de peluqueros + el principal
     calendars_to_check = [p["calendar_id"] for p in peluqueros]
@@ -295,7 +316,7 @@ def buscar_reserva_cliente(
 
     for cal_id in calendars_to_check:
         ev = cal.buscar_evento_por_telefono(
-            req.telefono_cliente, desde, hasta,
+            tel, desde, hasta,
             calendar_id=cal_id,
             tenant_id=tenant.get("id", "default"),
         )
