@@ -29,7 +29,7 @@ tenants:
         calendar_id: "308711e03f57123e368ccbf0ddead196a0c75ff8099c800c060482b53759d825@group.calendar.google.com"
         dias_trabajo: [0, 1, 2, 3, 4, 5]  # lunes a sábado
       - nombre: "Marcos"
-        calendar_id: "af18da3f95a5d845d3f980329d49501bbb92c6724282945ff084f529c5a41d30@group.calendar.google.com"
+        calendar_id: "7523b64a1d756fd079d9980f3de340355b9c1a410ab0fff5aee526e4c6199bb9@group.calendar.google.com"
         dias_trabajo: [2]  # solo miércoles
     system_prompt: |
       Eres Ana, la recepcionista virtual de la peluquería. Hablas por WhatsApp
