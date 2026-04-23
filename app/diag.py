@@ -64,7 +64,7 @@ def tenant_inspect(
         "phone_number_id": t.get("phone_number_id"),
         "n_services": len(t.get("services") or []),
         "n_peluqueros": len(t.get("peluqueros") or []),
-        "system_prompt_head": (t.get("system_prompt") or "")[:200],
+        "system_prompt": (t.get("system_prompt") or ""),
     }
 
 
