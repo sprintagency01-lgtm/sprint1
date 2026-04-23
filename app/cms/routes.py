@@ -590,11 +590,24 @@ async def client_create(
     calendar_id: str = Form("primary"),
     timezone: str = Form("Europe/Madrid"),
     language: str = Form("Español"),
+    portal_email: str = Form(""),
+    portal_password: str = Form(""),
     uid: int = Depends(auth.current_user_id),
 ):
     tid = (id or "").strip().lower().replace(" ", "_")
     if not tid or not name:
         raise HTTPException(400, "id y nombre son obligatorios")
+
+    # Validación del acceso al portal: si ponen uno, tienen que poner los dos.
+    portal_email_norm = (portal_email or "").strip().lower()
+    portal_pwd = portal_password or ""
+    if portal_email_norm and not portal_pwd:
+        raise HTTPException(400, "Si indicas email de portal, también debes indicar contraseña inicial.")
+    if portal_pwd and not portal_email_norm:
+        raise HTTPException(400, "Si indicas contraseña de portal, también debes indicar el email.")
+    if portal_pwd and len(portal_pwd) < 8:
+        raise HTTPException(400, "La contraseña del portal debe tener al menos 8 caracteres.")
+
     with Session(db_module.engine) as s:
         if s.get(db_module.Tenant, tid) is not None:
             raise HTTPException(400, f"Ya existe un cliente con id={tid}")
@@ -612,6 +625,20 @@ async def client_create(
         }
         t.assistant_rules = []
         s.add(t)
+        s.flush()  # para tener el tenant disponible antes de añadir el owner
+
+        # Crea el owner del portal si se han proporcionado credenciales.
+        # (Si no, ensure_portal_users() generará uno por defecto en el próximo arranque.)
+        if portal_email_norm and portal_pwd:
+            from passlib.hash import bcrypt
+            owner = db_module.TenantUser(
+                tenant_id=tid,
+                email=portal_email_norm,
+                password_hash=bcrypt.hash(portal_pwd),
+                nombre=(contact_name or name),
+                role="owner",
+            )
+            s.add(owner)
         s.commit()
     return RedirectResponse(url=f"/admin/clientes/{tid}/general", status_code=303)
 
