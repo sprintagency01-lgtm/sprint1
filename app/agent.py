@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -42,7 +43,9 @@ TOOLS: list[dict[str, Any]] = [
             "description": (
                 "Devuelve huecos libres en el calendario del negocio para la "
                 "duración pedida, dentro de un rango de fechas. Usa SIEMPRE "
-                "esta función antes de proponer una hora al cliente."
+                "esta función antes de proponer una hora al cliente. NUNCA la "
+                "llames sin haber preguntado antes la preferencia de "
+                "peluquero/a al cliente."
             ),
             "parameters": {
                 "type": "object",
@@ -64,12 +67,29 @@ TOOLS: list[dict[str, Any]] = [
                             "Corte hombre=30, Corte mujer=45, Color=90, Mechas=120."
                         ),
                     },
+                    "peluquero_preferido": {
+                        "type": "string",
+                        "description": (
+                            "Nombre del peluquero/a que el cliente prefiere, o "
+                            "la cadena literal 'sin preferencia' si le da igual. "
+                            "OBLIGATORIO: pregunta al cliente '¿tienes "
+                            "preferencia de peluquero o te da igual?' ANTES de "
+                            "llamar a esta función. No inventes un nombre — si "
+                            "el cliente no ha contestado, haz la pregunta y "
+                            "espera su respuesta."
+                        ),
+                    },
                     "max_resultados": {
                         "type": "integer",
                         "description": "Máximo número de huecos a devolver. Por defecto 5.",
                     },
                 },
-                "required": ["fecha_desde_iso", "fecha_hasta_iso", "duracion_minutos"],
+                "required": [
+                    "fecha_desde_iso",
+                    "fecha_hasta_iso",
+                    "duracion_minutos",
+                    "peluquero_preferido",
+                ],
             },
         },
     },
@@ -79,9 +99,8 @@ TOOLS: list[dict[str, Any]] = [
             "name": "crear_reserva",
             "description": (
                 "Crea una cita en el calendario. SOLO tras confirmación explícita "
-                "del cliente. NUNCA la llames sin tener 'nombre_cliente' — si "
-                "todavía no sabes el nombre, pide '¿a qué nombre pongo la cita?' "
-                "antes de invocar esta función."
+                "del cliente. NUNCA la llames sin tener 'nombre_cliente' ni "
+                "'peluquero_preferido' — si falta alguno, pregúntalo antes."
             ),
             "parameters": {
                 "type": "object",
@@ -90,7 +109,8 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "string",
                         "description": (
                             "Título de la cita en formato 'Servicio — Nombre (con Peluquero)'. "
-                            "Ej: 'Corte hombre — Marcos (con Laura)'."
+                            "Ej: 'Corte hombre — Marcos (con Laura)'. Si no hay "
+                            "preferencia de peluquero: 'Corte hombre — Marcos (sin preferencia)'."
                         ),
                     },
                     "nombre_cliente": {
@@ -98,6 +118,13 @@ TOOLS: list[dict[str, Any]] = [
                         "description": (
                             "Nombre del cliente tal y como lo ha dicho. Obligatorio. "
                             "Si no lo sabes, pregúntalo antes de llamar a esta función."
+                        ),
+                    },
+                    "peluquero_preferido": {
+                        "type": "string",
+                        "description": (
+                            "Mismo valor que se usó en consultar_disponibilidad: "
+                            "nombre del peluquero/a o 'sin preferencia'. Obligatorio."
                         ),
                     },
                     "inicio_iso": {"type": "string"},
@@ -108,6 +135,7 @@ TOOLS: list[dict[str, Any]] = [
                 "required": [
                     "titulo",
                     "nombre_cliente",
+                    "peluquero_preferido",
                     "inicio_iso",
                     "fin_iso",
                     "telefono_cliente",
@@ -171,6 +199,17 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
 
     try:
         if name == "consultar_disponibilidad":
+            peluquero = (args.get("peluquero_preferido") or "").strip()
+            if not peluquero:
+                # Red de seguridad: schema ya lo marca required, pero si el LLM
+                # se salta forzamos la pregunta antes de devolver huecos.
+                return json.dumps({
+                    "error": (
+                        "Falta peluquero_preferido. Pregunta al cliente "
+                        "'¿tienes preferencia de peluquero o te da igual?' "
+                        "ANTES de consultar disponibilidad."
+                    ),
+                })
             desde = datetime.fromisoformat(args["fecha_desde_iso"])
             hasta = datetime.fromisoformat(args["fecha_hasta_iso"])
             dur = int(args["duracion_minutos"])
@@ -182,7 +221,7 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
                 {"inicio": s.start.isoformat(), "fin": s.end.isoformat()}
                 for s in slots[:limit]
             ]
-            return json.dumps({"huecos": out})
+            return json.dumps({"huecos": out, "peluquero_preferido": peluquero})
 
         if name == "crear_reserva":
             nombre_cliente = (args.get("nombre_cliente") or "").strip()
@@ -191,6 +230,14 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
                 # se salta, abortamos con un error claro en vez de crear evento sin nombre.
                 return json.dumps({
                     "error": "Falta nombre_cliente. Pregunta al cliente por su nombre antes de llamar a crear_reserva.",
+                })
+            peluquero = (args.get("peluquero_preferido") or "").strip()
+            if not peluquero:
+                return json.dumps({
+                    "error": (
+                        "Falta peluquero_preferido. Pregunta la preferencia "
+                        "de peluquero antes de crear la reserva."
+                    ),
                 })
             ev = cal.crear_evento(
                 titulo=args["titulo"],
@@ -239,6 +286,86 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
     except Exception as e:
         log.exception("Error ejecutando tool %s", name)
         return json.dumps({"error": str(e)})
+
+
+# ---------- Sanitizer de salida (WhatsApp-friendly) ----------
+
+# Marcadores numéricos/viñeta típicos al inicio de cada línea.
+#   - `1.`, `12)` → decimales seguidos de punto o paréntesis
+#   - `1️⃣ 2️⃣ 3️⃣ …` → dígitos con enclosing keycap (U+20E3) precedidos por el dígito
+#   - `-`, `*`, `•` al inicio de línea
+_RE_LIST_PREFIX = re.compile(
+    r"^\s*(?:"
+    r"(?:\d+[\.\)])"           # "1." o "1)"
+    r"|(?:[0-9]\uFE0F?\u20E3)" # "1️⃣"
+    r"|(?:🥇|🥈|🥉)"            # medallas
+    r"|[-*•·]"                 # guiones/bullets
+    r")\s+",
+    flags=re.UNICODE,
+)
+
+# Markdown: negritas ** **, __ __, cursivas *x* o _x_ (conservadoras: sólo si
+# envuelven contenido sin saltos de línea). Dejamos los asteriscos simples *x*
+# porque WhatsApp sí los renderiza como negrita y a veces son intencionados;
+# pero **x** SIEMPRE queda como ruido en WhatsApp.
+_RE_DOUBLE_STAR = re.compile(r"\*\*(.+?)\*\*", flags=re.DOTALL)
+_RE_DOUBLE_UNDERSCORE = re.compile(r"__(.+?)__", flags=re.DOTALL)
+
+
+def _sanitize_whatsapp(text: str) -> str:
+    """Limpia la salida del LLM para WhatsApp.
+
+    - Elimina markdown de negrita doble (** **, __ __).
+    - Si detecta líneas que empiezan con marcadores de lista (1., 1️⃣, -, *),
+      quita el marcador y une las líneas contiguas con ", " para que el
+      resultado sea una frase continua.
+    - Colapsa saltos de línea múltiples.
+
+    Conservador: si no ve marcadores de lista deja el texto tal cual. El
+    objetivo es respetar el estilo del LLM cuando ya responde bien, y sólo
+    intervenir cuando lo estropea.
+    """
+    if not text:
+        return text
+
+    # 1) quitar negritas markdown dobles
+    text = _RE_DOUBLE_STAR.sub(r"\1", text)
+    text = _RE_DOUBLE_UNDERSCORE.sub(r"\1", text)
+
+    # 2) aplanar listas
+    lines = text.split("\n")
+    # Detectamos bloques consecutivos de líneas-lista
+    out_lines: list[str] = []
+    buffer_items: list[str] = []
+
+    def _flush_buffer() -> None:
+        nonlocal buffer_items
+        if not buffer_items:
+            return
+        if len(buffer_items) == 1:
+            out_lines.append(buffer_items[0])
+        else:
+            # une con ", " y sustituye el penúltimo separador por " o "
+            joined = ", ".join(buffer_items[:-1]) + " o " + buffer_items[-1]
+            out_lines.append(joined)
+        buffer_items = []
+
+    for raw in lines:
+        m = _RE_LIST_PREFIX.match(raw)
+        if m:
+            item = raw[m.end():].strip()
+            if item:
+                buffer_items.append(item)
+            # si la línea sólo era marcador (raro), la ignoramos
+            continue
+        _flush_buffer()
+        out_lines.append(raw)
+    _flush_buffer()
+
+    # 3) colapsar líneas en blanco múltiples
+    result = "\n".join(out_lines)
+    result = re.sub(r"\n{3,}", "\n\n", result)
+    return result.strip()
 
 
 # ---------- Loop principal del agente ----------
@@ -380,6 +507,7 @@ def _reply_openai(user_message: str, history: list[dict], tenant: dict, caller_p
         text = (msg.content or "").strip()
         if choice.finish_reason not in ("stop", "length", None):
             log.warning("finish_reason inesperado: %s", choice.finish_reason)
-        return text or "¿En qué puedo ayudarte?"
+        clean = _sanitize_whatsapp(text)
+        return clean or "¿En qué puedo ayudarte?"
 
     return "Lo siento, no he podido completar la petición. ¿Puedes intentarlo de otra forma?"

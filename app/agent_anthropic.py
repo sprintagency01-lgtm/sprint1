@@ -163,7 +163,8 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
         text = "\n".join(p for p in text_parts if p).strip()
         if stop_reason not in ("end_turn", "max_tokens", "stop_sequence", None):
             log.warning("stop_reason inesperado: %s", stop_reason)
-        return text or "¿En qué puedo ayudarte?"
+        clean = _agent_openai_mod._sanitize_whatsapp(text)
+        return clean or "¿En qué puedo ayudarte?"
 
     return "Lo siento, no he podido completar la petición. ¿Puedes intentarlo de otra forma?"
 
