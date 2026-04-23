@@ -191,12 +191,20 @@ def test_agent(
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
     db_module.save_message(tid, req.phone, "assistant", reply)
+    # Devolver el modelo efectivo del provider activo para distinguir
+    # respuestas cuando conmutamos entre OpenAI y Anthropic en caliente.
+    active_model = (
+        settings.anthropic_model
+        if settings.llm_provider == "anthropic"
+        else settings.openai_model
+    )
     return {
         "ok": True,
         "tenant_id": tid,
         "phone": req.phone,
         "reply": reply,
-        "model": settings.openai_model,
+        "provider": settings.llm_provider,
+        "model": active_model,
     }
 
 
