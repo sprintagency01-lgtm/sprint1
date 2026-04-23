@@ -101,6 +101,33 @@ def services_sync_from_yaml(
     return {"ok": True, "tenant_id": tid, "count": len(added), "services": added}
 
 
+@router.get("/tenant/voice")
+def tenant_voice_config(
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    """Devuelve la config de voz del tenant (agent_id ElevenLabs, prompt, voice_id).
+
+    Útil para comprobar si el `voice_prompt` replica bugs del `system_prompt` —
+    en particular si menciona "PELUQUERO/A OBLIGATORIO" en un tenant sin equipo.
+    """
+    _check_secret(x_tool_secret)
+    tid = _resolve_tenant_id(tenant_id)
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tid)
+        if t is None:
+            raise HTTPException(status_code=404, detail=f"Tenant {tid} no existe en BD")
+        return {
+            "tenant_id": t.id,
+            "tenant_name": t.name,
+            "voice_agent_id": t.voice_agent_id or "",
+            "voice_voice_id": t.voice_voice_id or "",
+            "voice_prompt": t.voice_prompt or "",
+            "voice_last_sync_at": t.voice_last_sync_at.isoformat() if t.voice_last_sync_at else None,
+            "voice_last_sync_status": t.voice_last_sync_status or "",
+        }
+
+
 @router.get("/tenants/list")
 def tenants_list(
     x_tool_secret: str | None = Header(None),
