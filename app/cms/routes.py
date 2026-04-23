@@ -793,6 +793,20 @@ async def client_detail(
             for m in t.equipo:
                 equipo_conectados[m.id] = _google_member_connected(tenant_id, m.id)
 
+        # Usuarios del portal del cliente (sólo relevante en tab=general)
+        portal_users: list[dict] = []
+        if tab == "general":
+            rows = (
+                s.query(db_module.TenantUser)
+                .filter(db_module.TenantUser.tenant_id == tenant_id)
+                .order_by(db_module.TenantUser.id.asc())
+                .all()
+            )
+            portal_users = [
+                {"id": u.id, "email": u.email, "nombre": u.nombre or "", "role": u.role}
+                for u in rows
+            ]
+
         return templates.TemplateResponse("client_detail.html", {
             "request": request,
             "user_email": auth.current_user_email(uid),
@@ -810,6 +824,7 @@ async def client_detail(
             "prompt_preview": prompt_preview,
             "google_connected": _google_calendar_connected(tenant_id),
             "equipo_conectados": equipo_conectados,
+            "portal_users": portal_users,
         })
 
 
@@ -847,6 +862,102 @@ async def client_save_general(
         t.calendar_id = calendar_id or "primary"
         t.timezone = timezone
         t.language = language
+        s.commit()
+    return RedirectResponse(url=f"/admin/clientes/{tenant_id}/general", status_code=303)
+
+
+# ---- Accesos al portal del cliente (tenant_users) -----------------------
+
+@router.post("/admin/clientes/{tenant_id}/portal_access")
+async def client_portal_access_upsert(
+    tenant_id: str,
+    user_id: str = Form(""),            # vacío = crear nuevo; con valor = editar ese
+    email: str = Form(...),
+    password: str = Form(""),           # opcional al editar
+    role: str = Form("owner"),
+    nombre: str = Form(""),
+    uid: int = Depends(auth.current_user_id),
+):
+    email_norm = (email or "").strip().lower()
+    if not email_norm:
+        raise HTTPException(400, "El email es obligatorio.")
+    if role not in ("owner", "manager", "readonly"):
+        role = "manager"
+
+    with Session(db_module.engine) as s:
+        if s.get(db_module.Tenant, tenant_id) is None:
+            raise HTTPException(404, "tenant no encontrado")
+
+        target = None
+        if user_id:
+            try:
+                target = s.get(db_module.TenantUser, int(user_id))
+            except ValueError:
+                target = None
+            if target is None or target.tenant_id != tenant_id:
+                raise HTTPException(404, "usuario no encontrado")
+
+        # Si el email cambió (o es nuevo), comprueba que no colisione con otro
+        # usuario del mismo tenant.
+        conflict = (
+            s.query(db_module.TenantUser)
+            .filter(
+                db_module.TenantUser.tenant_id == tenant_id,
+                db_module.TenantUser.email == email_norm,
+            ).first()
+        )
+        if conflict is not None and (target is None or conflict.id != target.id):
+            raise HTTPException(400, f"Ya hay otro usuario con email {email_norm} en este cliente.")
+
+        if target is None:
+            # Crear — la contraseña es obligatoria
+            if len(password) < 8:
+                raise HTTPException(400, "Contraseña mínimo 8 caracteres para crear un usuario nuevo.")
+            from passlib.hash import bcrypt
+            target = db_module.TenantUser(
+                tenant_id=tenant_id,
+                email=email_norm,
+                password_hash=bcrypt.hash(password),
+                nombre=nombre or "",
+                role=role,
+            )
+            s.add(target)
+        else:
+            # Editar — contraseña opcional
+            target.email = email_norm
+            target.nombre = nombre or target.nombre
+            target.role = role
+            if password:
+                if len(password) < 8:
+                    raise HTTPException(400, "Contraseña mínimo 8 caracteres.")
+                from passlib.hash import bcrypt
+                target.password_hash = bcrypt.hash(password)
+        s.commit()
+    return RedirectResponse(url=f"/admin/clientes/{tenant_id}/general", status_code=303)
+
+
+@router.post("/admin/clientes/{tenant_id}/portal_access/{user_id}/delete")
+async def client_portal_access_delete(
+    tenant_id: str,
+    user_id: int,
+    uid: int = Depends(auth.current_user_id),
+):
+    with Session(db_module.engine) as s:
+        row = s.get(db_module.TenantUser, user_id)
+        if row is None or row.tenant_id != tenant_id:
+            raise HTTPException(404, "usuario no encontrado")
+        # Proteger al último owner del tenant
+        if row.role == "owner":
+            n_owners = (
+                s.query(db_module.TenantUser)
+                .filter(
+                    db_module.TenantUser.tenant_id == tenant_id,
+                    db_module.TenantUser.role == "owner",
+                ).count()
+            )
+            if n_owners <= 1:
+                raise HTTPException(400, "No puedes quitar al último propietario. Crea otro antes.")
+        s.delete(row)
         s.commit()
     return RedirectResponse(url=f"/admin/clientes/{tenant_id}/general", status_code=303)
 

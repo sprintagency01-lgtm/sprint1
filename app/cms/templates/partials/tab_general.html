@@ -105,6 +105,128 @@
   </div>
 </form>
 
+<!-- Accesos al portal del cliente -->
+<div class="mt-6 bg-white rounded-xl border border-slate-200 p-6">
+  <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
+    <div>
+      <h2 class="text-sm font-semibold">Acceso al portal del cliente</h2>
+      <p class="text-xs text-slate-500 mt-1">
+        Personas que pueden entrar en <code class="bg-slate-100 px-1 py-0.5 rounded">/app</code> con las credenciales del cliente.
+        El propietario gestiona sus reservas, servicios, equipo y ajustes.
+      </p>
+    </div>
+    <a href="/app/login" target="_blank" class="text-xs text-brand-700 hover:underline whitespace-nowrap">Abrir portal →</a>
+  </div>
+
+  {% if portal_users %}
+    <div class="border border-slate-200 rounded-lg overflow-hidden mb-5">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs text-slate-500 uppercase tracking-wide">
+          <tr>
+            <th class="text-left px-3 py-2 font-medium">Email</th>
+            <th class="text-left px-3 py-2 font-medium">Nombre</th>
+            <th class="text-left px-3 py-2 font-medium">Rol</th>
+            <th class="px-3 py-2"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for u in portal_users %}
+          <tr>
+            <td class="px-3 py-2 font-mono text-xs">{{ u.email }}</td>
+            <td class="px-3 py-2">{{ u.nombre or '—' }}</td>
+            <td class="px-3 py-2">
+              <span class="text-xs px-2 py-0.5 rounded-full
+                {% if u.role == 'owner' %}bg-brand-50 text-brand-700
+                {% elif u.role == 'manager' %}bg-slate-100 text-slate-600
+                {% else %}bg-slate-50 text-slate-500{% endif %}">
+                {% if u.role == 'owner' %}Propietario
+                {% elif u.role == 'manager' %}Gestor
+                {% else %}Sólo lectura{% endif %}
+              </span>
+            </td>
+            <td class="px-3 py-2 text-right space-x-2 whitespace-nowrap">
+              <button type="button"
+                onclick="document.getElementById('pa-edit-{{ u.id }}').classList.toggle('hidden')"
+                class="text-xs text-slate-600 hover:text-brand-700">Editar</button>
+              <form method="post" action="/admin/clientes/{{ t.id }}/portal_access/{{ u.id }}/delete" class="inline"
+                onsubmit="return confirm('¿Quitar acceso a {{ u.email }}?');">
+                <button type="submit" class="text-xs text-slate-500 hover:text-rose-600">Quitar</button>
+              </form>
+            </td>
+          </tr>
+          <tr id="pa-edit-{{ u.id }}" class="hidden bg-slate-50">
+            <td colspan="4" class="px-3 py-3">
+              <form method="post" action="/admin/clientes/{{ t.id }}/portal_access" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                <input type="hidden" name="user_id" value="{{ u.id }}"/>
+                <label class="block md:col-span-2">
+                  <div class="text-xs text-slate-600 mb-1">Email</div>
+                  <input name="email" type="email" value="{{ u.email }}" required class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white"/>
+                </label>
+                <label class="block">
+                  <div class="text-xs text-slate-600 mb-1">Nombre</div>
+                  <input name="nombre" value="{{ u.nombre }}" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white"/>
+                </label>
+                <label class="block">
+                  <div class="text-xs text-slate-600 mb-1">Rol</div>
+                  <select name="role" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white">
+                    <option value="owner"    {% if u.role=='owner' %}selected{% endif %}>Propietario</option>
+                    <option value="manager"  {% if u.role=='manager' %}selected{% endif %}>Gestor</option>
+                    <option value="readonly" {% if u.role=='readonly' %}selected{% endif %}>Sólo lectura</option>
+                  </select>
+                </label>
+                <label class="block md:col-span-2">
+                  <div class="text-xs text-slate-600 mb-1">Nueva contraseña (opcional)</div>
+                  <input name="password" type="text" minlength="8" placeholder="dejar vacío = no cambiar" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white"/>
+                </label>
+                <div class="md:col-span-3 flex items-center justify-end gap-2">
+                  <button type="button" onclick="document.getElementById('pa-edit-{{ u.id }}').classList.add('hidden')"
+                    class="text-xs px-3 py-2 rounded-lg border border-slate-200 hover:bg-white">Cancelar</button>
+                  <button type="submit" class="text-xs px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white">Guardar cambios</button>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="mb-5 px-3 py-3 text-sm rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
+      Este cliente aún no tiene ningún acceso al portal. Crea uno abajo.
+    </div>
+  {% endif %}
+
+  <!-- Añadir nuevo usuario -->
+  <details class="border border-slate-200 rounded-lg">
+    <summary class="px-3 py-2 text-sm text-brand-700 cursor-pointer select-none hover:bg-slate-50">+ Añadir acceso</summary>
+    <form method="post" action="/admin/clientes/{{ t.id }}/portal_access" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end p-3 border-t border-slate-200">
+      <label class="block md:col-span-2">
+        <div class="text-xs text-slate-600 mb-1">Email</div>
+        <input name="email" type="email" required placeholder="laura@peluqueria-bella.es" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white"/>
+      </label>
+      <label class="block">
+        <div class="text-xs text-slate-600 mb-1">Nombre</div>
+        <input name="nombre" placeholder="Laura García" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white"/>
+      </label>
+      <label class="block">
+        <div class="text-xs text-slate-600 mb-1">Rol</div>
+        <select name="role" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white">
+          <option value="owner">Propietario</option>
+          <option value="manager" selected>Gestor</option>
+          <option value="readonly">Sólo lectura</option>
+        </select>
+      </label>
+      <label class="block md:col-span-2">
+        <div class="text-xs text-slate-600 mb-1">Contraseña inicial</div>
+        <input name="password" type="text" minlength="8" required placeholder="mínimo 8 caracteres" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white"/>
+      </label>
+      <div class="md:col-span-3 flex items-center justify-end">
+        <button type="submit" class="text-xs px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white">Crear acceso</button>
+      </div>
+    </form>
+  </details>
+</div>
+
 <form method="post" action="/admin/clientes/{{ t.id }}/delete" class="mt-6 bg-white rounded-xl border border-rose-200 p-6" onsubmit="return confirm('¿Seguro que quieres eliminar este cliente? Esta acción no se puede deshacer.');">
   <h2 class="text-sm font-semibold text-rose-700 mb-2">Zona de peligro</h2>
   <div class="flex items-center justify-between flex-wrap gap-3">
