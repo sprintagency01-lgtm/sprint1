@@ -83,10 +83,9 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
     )
     system_prompt = (
         tenant["system_prompt"]
-        + "\n\nCONTEXTO TEMPORAL (consulta esta tabla SIEMPRE que el cliente "
-        "diga 'hoy', 'mañana', 'el lunes', etc. — NO calcules fechas tú):\n"
-        + time_ctx
-        + f"\n\nTeléfono del cliente = {caller_phone}."
+        + _agent_openai_mod._build_context_footer(
+            tenant=tenant, time_ctx=time_ctx, caller_phone=caller_phone
+        )
     )
 
     tools_anthropic = _openai_tools_to_anthropic(_agent_openai_mod.TOOLS)

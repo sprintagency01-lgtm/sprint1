@@ -130,7 +130,15 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "inicio_iso": {"type": "string"},
                     "fin_iso": {"type": "string"},
-                    "telefono_cliente": {"type": "string"},
+                    "telefono_cliente": {
+                        "type": "string",
+                        "description": (
+                            "Teléfono del cliente. Úsalo del CONTEXTO del "
+                            "sistema (campo 'Teléfono del cliente = ...'). "
+                            "NUNCA preguntes al cliente su teléfono: ya lo "
+                            "tenemos porque nos escribe desde su WhatsApp."
+                        ),
+                    },
                     "notas": {"type": "string"},
                 },
                 "required": [
@@ -438,6 +446,30 @@ def _build_time_context(now: datetime) -> str:
     return "\n".join(lines)
 
 
+def _build_context_footer(tenant: dict, time_ctx: str, caller_phone: str) -> str:
+    """Footer con datos dinámicos que se anexa al system_prompt.
+
+    Inyecta:
+    - Nombre real del negocio (para evitar que el modelo lo alucine).
+    - Tabla de fechas (vía _build_time_context).
+    - Teléfono del cliente y regla explícita de no preguntarlo.
+    """
+    business_name = tenant.get("name") or "la peluquería"
+    return (
+        f"\n\n════════ DATOS DINÁMICOS DE ESTA CONVERSACIÓN ════════\n"
+        f"\nNEGOCIO: {business_name}.\n"
+        f"Cuando hables del negocio al cliente, usa este nombre EXACTO — "
+        f"no digas 'Peluquería Demo' ni inventes nombres.\n"
+        f"\nCONTEXTO TEMPORAL (consulta esta tabla SIEMPRE que el cliente "
+        f"diga 'hoy', 'mañana', 'el lunes', etc. — NO calcules fechas tú):\n"
+        f"{time_ctx}\n"
+        f"\nTELÉFONO DEL CLIENTE: {caller_phone}\n"
+        f"El cliente nos escribe desde ese número de WhatsApp. Úsalo "
+        f"directamente al crear la reserva (campo telefono_cliente). "
+        f"NUNCA le preguntes 'cuál es tu teléfono' — ya lo tenemos.\n"
+    )
+
+
 # ---------- Loop principal del agente ----------
 
 def _history_to_openai(history: list[dict]) -> list[dict]:
@@ -490,10 +522,7 @@ def _reply_openai(user_message: str, history: list[dict], tenant: dict, caller_p
     time_ctx = _build_time_context(datetime.now(ZoneInfo(settings.default_timezone)))
     system_prompt = (
         tenant["system_prompt"]
-        + "\n\nCONTEXTO TEMPORAL (consulta esta tabla SIEMPRE que el cliente "
-        "diga 'hoy', 'mañana', 'el lunes', etc. — NO calcules fechas tú):\n"
-        + time_ctx
-        + f"\n\nTeléfono del cliente = {caller_phone}."
+        + _build_context_footer(tenant=tenant, time_ctx=time_ctx, caller_phone=caller_phone)
     )
 
     # OpenAI mete el system prompt como un mensaje más al inicio.
