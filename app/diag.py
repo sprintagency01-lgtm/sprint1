@@ -43,6 +43,31 @@ def _resolve_tenant_id(tenant_id: str | None) -> str:
     return (tn.load_tenants()[0]).get("id") or "default"
 
 
+@router.get("/tenant")
+def tenant_inspect(
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    """Devuelve los campos clave del tenant tal y como los ve el agente.
+
+    Pensado para verificar qué `name` se inyecta en el footer del prompt
+    (p.ej. si la BD trae 'Peluquería Demo' o 'Peluquería Ejemplo'), sin
+    tener que entrar al CMS.
+    """
+    _check_secret(x_tool_secret)
+    tid = _resolve_tenant_id(tenant_id)
+    t = tn.get_tenant(tid) or {}
+    return {
+        "id": t.get("id"),
+        "name": t.get("name"),
+        "calendar_id": t.get("calendar_id"),
+        "phone_number_id": t.get("phone_number_id"),
+        "n_services": len(t.get("services") or []),
+        "n_peluqueros": len(t.get("peluqueros") or []),
+        "system_prompt_head": (t.get("system_prompt") or "")[:200],
+    }
+
+
 class CreateCalReq(BaseModel):
     summary: str
     description: str | None = None
