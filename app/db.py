@@ -544,20 +544,58 @@ FORMATO (reglas ESTRICTAS — cualquier infracción arruina el mensaje)
 6) VARÍA expresiones: "te va bien", "te cuadra", "¿cómo lo ves?",
    "¿te encaja?". No suenes repetitiva."""
 
-_FLUJO_RESERVA = """════════════════════════════════════════════════════════════════════
-FLUJO DE RESERVA (orden estricto — no saltes pasos)
-════════════════════════════════════════════════════════════════════
+def _build_flujo_reserva(has_team: bool, professional_word: str) -> str:
+    """Construye el bloque FLUJO DE RESERVA adaptado al tenant.
 
-Antes de llamar a crear_reserva necesitas TODOS estos datos:
+    - Si el tenant tiene equipo con más de un miembro, incluye el PASO de
+      preguntar por el profesional antes de mirar huecos.
+    - Si no (equipo vacío o 1 solo), omite ese paso y renumera — si no, el
+      agente se queda en bucle pidiendo una preferencia que no tiene sentido
+      (caso Test Abogado: 0 abogados en la BD y Ana preguntaba ¿tienes
+      preferencia de abogado? sin parar).
+    - El `professional_word` se adapta al sector (p.ej. "peluquero/a" vs
+      "profesional") para que la frase de pregunta suene natural.
+    """
+    header = (
+        "════════════════════════════════════════════════════════════════════\n"
+        "FLUJO DE RESERVA (orden estricto — no saltes pasos)\n"
+        "════════════════════════════════════════════════════════════════════\n\n"
+        "Antes de llamar a crear_reserva necesitas TODOS estos datos:\n\n"
+    )
+    pasos: list[str] = []
+    pasos.append('PASO {n} — SERVICIO. Si el cliente dice sólo "cita", pregúntaselo.')
+    if has_team:
+        pasos.append(
+            f"PASO {{n}} — {professional_word.upper()}. OBLIGATORIO preguntar ANTES de\n"
+            f'   mirar huecos. Frase tipo: "¿tienes preferencia o te da igual?".'
+        )
+    pasos.append(
+        "PASO {n} — HORA. Consulta SIEMPRE disponibilidad con la función antes\n"
+        "   de proponer. Máximo 3 opciones, todas en la MISMA frase."
+    )
+    pasos.append('PASO {n} — NOMBRE DEL CLIENTE. "¿a qué nombre pongo la cita?".')
+    pasos.append(
+        "PASO {n} — CONFIRMACIÓN EXPLÍCITA. Resume en prosa (sin iconos) y\n"
+        '   pregunta "¿lo confirmo?". Espera un "sí" claro antes de crear.'
+    )
+    numbered = [p.format(n=i + 1) for i, p in enumerate(pasos)]
+    return header + "\n".join(numbered)
 
-PASO 1 — SERVICIO. Si el cliente dice sólo "cita", pregúntaselo.
-PASO 2 — PELUQUERO/A (o profesional). OBLIGATORIO preguntar ANTES de
-   mirar huecos. Frase tipo: "¿tienes preferencia o te da igual?".
-PASO 3 — HORA. Consulta SIEMPRE disponibilidad con la función antes
-   de proponer. Máximo 3 opciones, todas en la MISMA frase.
-PASO 4 — NOMBRE DEL CLIENTE. "¿a qué nombre pongo la cita?".
-PASO 5 — CONFIRMACIÓN EXPLÍCITA. Resume en prosa (sin iconos) y
-   pregunta "¿lo confirmo?". Espera un "sí" claro antes de crear."""
+
+def _professional_word_for(sector: str | None) -> str:
+    """Devuelve cómo llamar al profesional según el sector del tenant.
+
+    Deliberadamente conservador: solo mapeos que ya sabemos que suenan bien
+    en español. Por defecto "profesional" — genérico y nunca incorrecto.
+    """
+    s = (sector or "").lower()
+    if "peluqu" in s or "barber" in s or "estétic" in s or "estetic" in s:
+        return "peluquero/a"
+    if "abogad" in s or "legal" in s or "jurídic" in s or "juridic" in s:
+        return "abogado/a"
+    if "médic" in s or "medic" in s or "clínic" in s or "clinic" in s or "dental" in s or "odonto" in s:
+        return "profesional sanitario"
+    return "profesional"
 
 
 def render_system_prompt(t: "Tenant") -> str:
@@ -611,7 +649,7 @@ Reglas generales del negocio:
 
 {_FORMATO_WHATSAPP}
 
-{_FLUJO_RESERVA}
+{_build_flujo_reserva(has_team=len(t.equipo) > 1, professional_word=_professional_word_for(t.sector))}
 
 Reglas operativas:
 - Antes de proponer hora, consulta SIEMPRE disponibilidad con consultar_disponibilidad.
