@@ -43,6 +43,64 @@ def _resolve_tenant_id(tenant_id: str | None) -> str:
     return (tn.load_tenants()[0]).get("id") or "default"
 
 
+@router.post("/services/sync_from_yaml")
+def services_sync_from_yaml(
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    """Sincroniza los servicios del tenant desde tenants.yaml a la BD.
+
+    Usa el mismo formato que `/admin/clientes/{id}/servicios`: primero limpia
+    los servicios actuales del tenant y luego inserta los del YAML. Idempotente
+    — llamar dos veces deja el mismo estado.
+
+    Útil cuando un tenant ha quedado con `services=[]` en BD (caso típico:
+    CMS creó el tenant pero la pestaña de servicios no se guardó nunca) y el
+    YAML ya tiene los servicios definidos desde la fase de seed.
+    """
+    _check_secret(x_tool_secret)
+    tid = _resolve_tenant_id(tenant_id)
+
+    yaml_map = tn._load_yaml_by_id()
+    yaml_tenant = yaml_map.get(tid)
+    if not yaml_tenant:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Tenant {tid} no está en tenants.yaml — no hay servicios que copiar",
+        )
+    services = yaml_tenant.get("services") or []
+    if not services:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El YAML no tiene 'services' para {tid}",
+        )
+
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tid)
+        if t is None:
+            raise HTTPException(status_code=404, detail=f"Tenant {tid} no existe en BD")
+        t.services.clear()
+        s.flush()
+        added: list[dict[str, Any]] = []
+        for i, row in enumerate(services):
+            nombre = (row.get("nombre") or "").strip()
+            if not nombre:
+                continue
+            try:
+                dur = int(row.get("duracion_min") or 30)
+                precio = float(row.get("precio") or 0)
+            except (TypeError, ValueError):
+                continue
+            t.services.append(db_module.Service(
+                nombre=nombre, duracion_min=dur, precio=precio, orden=i,
+            ))
+            added.append({"nombre": nombre, "duracion_min": dur, "precio": precio})
+        s.commit()
+
+    log.info("Servicios sincronizados desde YAML para tenant %s: %d items", tid, len(added))
+    return {"ok": True, "tenant_id": tid, "count": len(added), "services": added}
+
+
 @router.get("/tenant")
 def tenant_inspect(
     x_tool_secret: str | None = Header(None),
