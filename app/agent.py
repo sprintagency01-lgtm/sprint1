@@ -333,6 +333,37 @@ _RE_EMOJI_PREFIX = re.compile(
     flags=re.UNICODE,
 )
 
+# Emoji atómico + modificadores ZWJ/skin-tone/variation selector. Sirve para
+# localizar emojis individuales en el texto y recortar el exceso (regla 3:
+# máximo 1 por mensaje).
+_RE_EMOJI_ATOM = re.compile(
+    r"[\U0001F300-\U0001FAFF\u2600-\u27BF]"
+    r"(?:\u200D[\U0001F300-\U0001FAFF\u2600-\u27BF])*"
+    r"[\uFE0F\U0001F3FB-\U0001F3FF]*",
+    flags=re.UNICODE,
+)
+
+
+def _cap_emoji_count(text: str, max_count: int = 1) -> str:
+    """Deja como mucho `max_count` emojis en el texto.
+
+    Estrategia: encuentra todas las apariciones; si hay más de `max_count`,
+    mantiene las primeras y elimina el resto (también los espacios contiguos
+    huérfanos). No toca espacios si no hay que recortar.
+    """
+    matches = list(_RE_EMOJI_ATOM.finditer(text))
+    if len(matches) <= max_count:
+        return text
+    # Recorrer de derecha a izquierda para no romper los offsets al borrar.
+    for m in reversed(matches[max_count:]):
+        start, end = m.start(), m.end()
+        # Consumir el espacio previo si queda al final de una palabra, para
+        # evitar "hola  cita" con doble espacio.
+        while start > 0 and text[start - 1] == " " and (end == len(text) or text[end] in (" ", "\n", ".", ",", "!", "?")):
+            start -= 1
+        text = text[:start] + text[end:]
+    return text
+
 
 def _sanitize_whatsapp(text: str) -> str:
     """Limpia la salida del LLM para WhatsApp.
@@ -410,6 +441,10 @@ def _sanitize_whatsapp(text: str) -> str:
     # 3) colapsar líneas en blanco múltiples
     result = "\n".join(out_lines)
     result = re.sub(r"\n{3,}", "\n\n", result)
+
+    # 4) máximo 1 emoji por mensaje (regla 3 del FORMATO)
+    result = _cap_emoji_count(result, max_count=1)
+
     return result.strip()
 
 
@@ -450,16 +485,16 @@ def _build_context_footer(tenant: dict, time_ctx: str, caller_phone: str) -> str
     """Footer con datos dinámicos que se anexa al system_prompt.
 
     Inyecta:
-    - Nombre real del negocio (para evitar que el modelo lo alucine).
-    - Tabla de fechas (vía _build_time_context).
+    - Nombre real del negocio (cuando hables del negocio usa ESTE nombre).
+    - Tabla de fechas ya resuelta (vía _build_time_context).
     - Teléfono del cliente y regla explícita de no preguntarlo.
     """
     business_name = tenant.get("name") or "la peluquería"
     return (
         f"\n\n════════ DATOS DINÁMICOS DE ESTA CONVERSACIÓN ════════\n"
         f"\nNEGOCIO: {business_name}.\n"
-        f"Cuando hables del negocio al cliente, usa este nombre EXACTO — "
-        f"no digas 'Peluquería Demo' ni inventes nombres.\n"
+        f"Cuando menciones el negocio al cliente, usa SIEMPRE este nombre "
+        f"exacto. No lo traduzcas, no lo abrevies, no inventes otro.\n"
         f"\nCONTEXTO TEMPORAL (consulta esta tabla SIEMPRE que el cliente "
         f"diga 'hoy', 'mañana', 'el lunes', etc. — NO calcules fechas tú):\n"
         f"{time_ctx}\n"

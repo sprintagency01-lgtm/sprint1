@@ -509,6 +509,57 @@ _TONE_LABELS = {
 }
 
 
+# Bloque FORMATO universal: se inyecta en todo system_prompt generado.
+# Estas reglas son independientes del tenant — son disciplina de escritura
+# para WhatsApp. Duplican las reglas más estrictas que teníamos en el YAML
+# y mantienen a cualquier cliente nuevo con el mismo nivel de calidad sin
+# tener que editar el prompt a mano.
+_FORMATO_WHATSAPP = """════════════════════════════════════════════════════════════════════
+FORMATO (reglas ESTRICTAS — cualquier infracción arruina el mensaje)
+════════════════════════════════════════════════════════════════════
+
+1) NADA DE LISTAS. Nunca uses ninguna de estas formas de listar:
+   - Números: "1. 10:00", "2. 10:30"
+   - Emojis numerados: "1️⃣ 10:00", "🥇 🥈 🥉"
+   - Guiones o asteriscos al inicio de línea: "- 10:00", "* 10:00"
+   - Cualquier marcador que ponga cada opción en su propia línea.
+   TODAS las opciones van en UNA frase, separadas con "o" y/o comas.
+   BIEN:  "tengo a las 10:30, a las 12 o a las 13:30, ¿cuál te cuadra?"
+   MAL:   "estas opciones:\\n1️⃣ 10:30\\n2️⃣ 12:00\\n3️⃣ 13:30"
+
+2) NADA DE MARKDOWN. No uses asteriscos, dobles asteriscos ni guiones
+   bajos para marcar negritas ni cursivas. Texto plano.
+
+3) UN SOLO EMOJI POR MENSAJE como MÁXIMO, y muchos mensajes van sin
+   ninguno. Nunca combines varios. BIEN: "¡hasta mañana!". MAL:
+   "¡Perfecto! 🎉 Tu cita está reservada 📅 💇‍♀️ ✨".
+
+4) NADA DE RESÚMENES CON ICONOS. No hagas "fichas" con un emoji
+   delante de cada dato (📅/🗓️/👤/⏰). Resume en prosa, dos frases
+   naturales máximo, sin decoración.
+
+5) BREVE. Si el cliente escribe corto ("vale", "gracias"), tú también.
+   Dos líneas máximo salvo que estés proponiendo huecos o confirmando.
+
+6) VARÍA expresiones: "te va bien", "te cuadra", "¿cómo lo ves?",
+   "¿te encaja?". No suenes repetitiva."""
+
+_FLUJO_RESERVA = """════════════════════════════════════════════════════════════════════
+FLUJO DE RESERVA (orden estricto — no saltes pasos)
+════════════════════════════════════════════════════════════════════
+
+Antes de llamar a crear_reserva necesitas TODOS estos datos:
+
+PASO 1 — SERVICIO. Si el cliente dice sólo "cita", pregúntaselo.
+PASO 2 — PELUQUERO/A (o profesional). OBLIGATORIO preguntar ANTES de
+   mirar huecos. Frase tipo: "¿tienes preferencia o te da igual?".
+PASO 3 — HORA. Consulta SIEMPRE disponibilidad con la función antes
+   de proponer. Máximo 3 opciones, todas en la MISMA frase.
+PASO 4 — NOMBRE DEL CLIENTE. "¿a qué nombre pongo la cita?".
+PASO 5 — CONFIRMACIÓN EXPLÍCITA. Resume en prosa (sin iconos) y
+   pregunta "¿lo confirmo?". Espera un "sí" claro antes de crear."""
+
+
 def render_system_prompt(t: "Tenant") -> str:
     """Construye el system_prompt que se envía al LLM a partir de los campos
     editables del tenant. Si hay override_prompt, se usa tal cual."""
@@ -535,7 +586,10 @@ def render_system_prompt(t: "Tenant") -> str:
 
     tone = _TONE_LABELS.get(t.assistant_tone, t.assistant_tone or "natural")
     treatment = "de tú" if t.assistant_formality == "tu" else "de usted"
-    emoji_line = "Puedes usar emojis con moderación." if t.assistant_emoji else "No uses emojis."
+    emoji_line = (
+        "Puedes usar emojis con moderación (1 por mensaje como máximo)."
+        if t.assistant_emoji else "No uses emojis."
+    )
 
     rules_block = "\n".join(f"- {r}" for r in t.assistant_rules) if t.assistant_rules else ""
 
@@ -555,9 +609,12 @@ Horario de atención:
 Reglas generales del negocio:
 {rules_block}
 
-Reglas operativas (siempre):
-- Antes de proponer hora, consulta SIEMPRE disponibilidad con la función consultar_disponibilidad.
-- Propón hasta 3 huecos como máximo, los primeros que encuentres.
+{_FORMATO_WHATSAPP}
+
+{_FLUJO_RESERVA}
+
+Reglas operativas:
+- Antes de proponer hora, consulta SIEMPRE disponibilidad con consultar_disponibilidad.
 - Confirma SIEMPRE la hora elegida antes de crear, mover o cancelar una reserva.
 - No pidas ni almacenes datos bancarios. El pago se hace en el local.
 - Si el cliente dice "mover mi cita" o "cambiar", busca primero su reserva por su teléfono.
