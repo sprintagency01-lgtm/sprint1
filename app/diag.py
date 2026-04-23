@@ -12,10 +12,13 @@ from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
 
 from .config import settings
 from . import calendar_service as cal
 from . import tenants as tn
+from . import db as db_module
 
 log = logging.getLogger(__name__)
 
@@ -132,3 +135,42 @@ def calendars_test(
         return {"ok": True, "id": got.get("id"), "summary": got.get("summary")}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "detail": str(e)[:300]}
+
+
+@router.get("/recent_messages")
+def recent_messages(
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+    limit: int = Query(40, ge=1, le=200),
+    phone: str | None = Query(None),
+) -> dict[str, Any]:
+    """Devuelve los últimos mensajes guardados (user/assistant) para depuración.
+
+    Filtros opcionales por tenant_id y por teléfono del cliente. Protegido con
+    X-Tool-Secret. Útil para ver qué ha dicho el bot cuando no hay acceso
+    directo a los logs de Railway.
+    """
+    _check_secret(x_tool_secret)
+    with Session(db_module.engine) as s:
+        q = s.query(db_module.Message)
+        if tenant_id:
+            q = q.filter(db_module.Message.tenant_id == tenant_id)
+        if phone:
+            q = q.filter(db_module.Message.customer_phone == phone)
+        rows = q.order_by(desc(db_module.Message.created_at)).limit(limit).all()
+    # Orden cronológico ascendente para que sea fácil de leer
+    rows = list(reversed(rows))
+    return {
+        "count": len(rows),
+        "messages": [
+            {
+                "id": m.id,
+                "tenant_id": m.tenant_id,
+                "phone": m.customer_phone,
+                "role": m.role,
+                "content": m.content,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
+            for m in rows
+        ],
+    }
