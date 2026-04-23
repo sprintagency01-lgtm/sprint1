@@ -101,6 +101,32 @@ def services_sync_from_yaml(
     return {"ok": True, "tenant_id": tid, "count": len(added), "services": added}
 
 
+@router.get("/tenants/list")
+def tenants_list(
+    x_tool_secret: str | None = Header(None),
+) -> dict[str, Any]:
+    """Enumera todos los tenants de la BD (id + name + sector).
+
+    Útil cuando el CMS muestra un tenant que no está en tenants.yaml y no
+    sabemos qué `id` tiene en la BD (caso típico: el CMS genera un slug al
+    crear el tenant).
+    """
+    _check_secret(x_tool_secret)
+    with Session(db_module.engine) as s:
+        rows = s.query(db_module.Tenant).all()
+        out = []
+        for t in rows:
+            out.append({
+                "id": t.id,
+                "name": getattr(t, "name", None),
+                "sector": getattr(t, "sector", None),
+                "calendar_id": getattr(t, "calendar_id", None),
+                "phone_number_id": getattr(t, "phone_number_id", None),
+                "is_active": getattr(t, "is_active", None),
+            })
+    return {"count": len(out), "tenants": out}
+
+
 @router.get("/tenant")
 def tenant_inspect(
     x_tool_secret: str | None = Header(None),
