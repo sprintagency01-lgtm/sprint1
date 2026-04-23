@@ -72,17 +72,41 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "crear_reserva",
-            "description": "Crea una cita en el calendario. SOLO tras confirmación explícita del cliente.",
+            "description": (
+                "Crea una cita en el calendario. SOLO tras confirmación explícita "
+                "del cliente. NUNCA la llames sin tener 'nombre_cliente' — si "
+                "todavía no sabes el nombre, pide '¿a qué nombre pongo la cita?' "
+                "antes de invocar esta función."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "titulo": {"type": "string", "description": "Ej: 'Corte + color — María'"},
+                    "titulo": {
+                        "type": "string",
+                        "description": (
+                            "Título de la cita en formato 'Servicio — Nombre (con Peluquero)'. "
+                            "Ej: 'Corte hombre — Marcos (con Laura)'."
+                        ),
+                    },
+                    "nombre_cliente": {
+                        "type": "string",
+                        "description": (
+                            "Nombre del cliente tal y como lo ha dicho. Obligatorio. "
+                            "Si no lo sabes, pregúntalo antes de llamar a esta función."
+                        ),
+                    },
                     "inicio_iso": {"type": "string"},
                     "fin_iso": {"type": "string"},
                     "telefono_cliente": {"type": "string"},
                     "notas": {"type": "string"},
                 },
-                "required": ["titulo", "inicio_iso", "fin_iso", "telefono_cliente"],
+                "required": [
+                    "titulo",
+                    "nombre_cliente",
+                    "inicio_iso",
+                    "fin_iso",
+                    "telefono_cliente",
+                ],
             },
         },
     },
@@ -156,12 +180,20 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
             return json.dumps({"huecos": out})
 
         if name == "crear_reserva":
+            nombre_cliente = (args.get("nombre_cliente") or "").strip()
+            if not nombre_cliente:
+                # Red de seguridad: el schema ya lo marca required, pero si el LLM
+                # se salta, abortamos con un error claro en vez de crear evento sin nombre.
+                return json.dumps({
+                    "error": "Falta nombre_cliente. Pregunta al cliente por su nombre antes de llamar a crear_reserva.",
+                })
             ev = cal.crear_evento(
                 titulo=args["titulo"],
                 inicio=datetime.fromisoformat(args["inicio_iso"]),
                 fin=datetime.fromisoformat(args["fin_iso"]),
                 descripcion=args.get("notas", ""),
                 telefono_cliente=args.get("telefono_cliente", caller_phone),
+                nombre_cliente=nombre_cliente,
                 calendar_id=calendar_id,
                 tenant_id=tenant_id,
             )

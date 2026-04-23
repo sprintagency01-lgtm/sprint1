@@ -370,6 +370,7 @@ def crear_evento(
     fin: datetime,
     descripcion: str = "",
     telefono_cliente: str = "",
+    nombre_cliente: str = "",
     calendar_id: str | None = None,
     tenant_id: str = "default",
 ) -> dict:
@@ -377,13 +378,32 @@ def crear_evento(
     cal = calendar_id or settings.default_calendar_id
     inicio = _ensure_local_tz(inicio)
     fin = _ensure_local_tz(fin)
+
+    nombre = (nombre_cliente or "").strip()
+    summary = titulo or ""
+    if nombre and nombre.lower() not in summary.lower():
+        summary = f"{summary} — {nombre}" if summary else nombre
+
+    desc_lines = []
+    if nombre:
+        desc_lines.append(f"Cliente: {nombre}")
+    if descripcion:
+        desc_lines.append(descripcion.strip())
+    if telefono_cliente:
+        desc_lines.append(f"Tel. cliente: {telefono_cliente}")
+    description = "\n\n".join(desc_lines).strip()
+
     event = {
-        "summary": titulo,
-        "description": f"{descripcion}\n\nTel. cliente: {telefono_cliente}".strip(),
+        "summary": summary,
+        "description": description,
         "start": {"dateTime": inicio.isoformat(), "timeZone": settings.default_timezone},
         "end": {"dateTime": fin.isoformat(), "timeZone": settings.default_timezone},
         "extendedProperties": {
-            "private": {"phone": telefono_cliente, "created_by": "bot"}
+            "private": {
+                "phone": telefono_cliente,
+                "client_name": nombre,
+                "created_by": "bot",
+            }
         },
     }
     res = svc.events().insert(calendarId=cal, body=event).execute()

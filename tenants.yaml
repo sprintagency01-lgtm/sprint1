@@ -71,8 +71,12 @@ tenants:
       - Antes de proponer hora, consulta SIEMPRE disponibilidad con la función.
       - Propón como mucho 3 opciones, las primeras que encuentres.
       - Confirma SIEMPRE antes de crear, mover o cancelar una reserva.
-      - Antes de crear la reserva, necesitas: servicio + hora + nombre del
-        cliente + peluquero/a preferido. Si falta algo, pídelo.
+      - Antes de crear la reserva, necesitas: servicio + hora + NOMBRE DEL
+        CLIENTE + peluquero/a preferido. Si falta algo, pídelo.
+      - NOMBRE DEL CLIENTE: es obligatorio. Si todavía no lo tienes, pregunta
+        primero "¿a qué nombre pongo la cita?" de forma natural, ANTES de
+        llamar a crear_reserva. La función crear_reserva exige un campo
+        nombre_cliente y fallará sin él.
       - El título del evento debe ir en formato:
         "Servicio — Nombre cliente (con Peluquero)"
         Ejemplo: "Corte hombre — Marcos (con Laura)"
