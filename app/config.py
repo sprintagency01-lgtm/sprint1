@@ -17,9 +17,17 @@ class Settings:
     whatsapp_phone_number_id: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
     whatsapp_app_secret: str = os.getenv("WHATSAPP_APP_SECRET", "")
 
+    # Provider del LLM del agente: "openai" | "anthropic".
+    # Por defecto openai para no romper instalaciones existentes.
+    llm_provider: str = os.getenv("LLM_PROVIDER", "openai").strip().lower()
+
     # OpenAI
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    # Anthropic (alternativa a OpenAI para el agente)
+    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+    anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
     # ElevenLabs (voz)
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")

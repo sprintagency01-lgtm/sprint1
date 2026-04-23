@@ -265,7 +265,29 @@ def _history_to_openai(history: list[dict]) -> list[dict]:
 
 
 def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> str:
-    """Devuelve la respuesta de texto del agente tras resolver tool calls."""
+    """Dispatcher: delega al provider configurado (OpenAI o Anthropic).
+
+    `LLM_PROVIDER=anthropic` cambia al adaptador de Anthropic (Claude). Cualquier
+    otro valor (o vacío) cae en OpenAI, que es el comportamiento original.
+    """
+    if settings.llm_provider == "anthropic":
+        from . import agent_anthropic  # import tardío: no forzar dep si no se usa
+        return agent_anthropic.reply(
+            user_message=user_message,
+            history=history,
+            tenant=tenant,
+            caller_phone=caller_phone,
+        )
+    return _reply_openai(
+        user_message=user_message,
+        history=history,
+        tenant=tenant,
+        caller_phone=caller_phone,
+    )
+
+
+def _reply_openai(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> str:
+    """Devuelve la respuesta de texto del agente tras resolver tool calls (provider OpenAI)."""
     now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M")
     system_prompt = (
         tenant["system_prompt"]
