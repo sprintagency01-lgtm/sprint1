@@ -56,8 +56,7 @@ const SERVICIOS = (__D.servicios || []).map(s => ({
 const HOY_ISO = __D.hoy_iso || new Date().toISOString().slice(0, 10);
 const RESERVAS = __D.reservas || [];
 const INGRESOS_30D = __D.ingresos_30d || [];
-const CONVERSACIONES_WA = __D.conversaciones_wa || [];
-const CONVERSACIONES_VOZ = __D.conversaciones_voz || [];
+const LLAMADAS = __D.llamadas || [];
 
 // KPIs derivados
 const kpis = () => {
@@ -127,9 +126,9 @@ const claude = {
 
 Object.assign(window, {
   NEGOCIO, EQUIPO, SERVICIOS, RESERVAS, HOY_ISO,
-  CONVERSACIONES_WA, CONVERSACIONES_VOZ, INGRESOS_30D,
+  LLAMADAS, INGRESOS_30D,
   kpis, servicioDe, miembroDe,
   api, reloadPortal, claude,
   PORTAL_USER: __D.user || { nombre: '', email: '' },
-  PORTAL_BOT:  __D.bot  || { voz: true, wa: true },
+  PORTAL_BOT:  __D.bot  || { voz: true },
 });

@@ -1,4 +1,10 @@
-# Empieza aquí — bot de reservas WhatsApp
+# Empieza aquí — bot de reservas por voz
+
+> ⚠️ **Pivot (abril 2026):** este documento se escribió cuando el producto
+> era un bot de WhatsApp. Ahora el canal único es la voz (ElevenLabs
+> Conversational AI). Ignora las secciones sobre Meta / webhook /whatsapp /
+> tokens de Cloud API — esos endpoints ya no existen. Todo lo que describe
+> CMS, base de datos, Google Calendar y el portal del cliente sigue vigente.
 
 Esta carpeta contiene **todo lo necesario** para poner en marcha el bot:
 código listo para desplegar, documentación del proyecto y guía de alta de

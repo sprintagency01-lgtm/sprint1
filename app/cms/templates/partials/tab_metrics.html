@@ -3,7 +3,7 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
   <div class="bg-white rounded-xl border border-slate-200 p-5">
-    <div class="text-sm text-slate-500">Conversaciones (30d)</div>
+    <div class="text-sm text-slate-500">Clientes atendidos (30d)</div>
     <div class="text-2xl font-semibold mt-1">{{ m.convos_30d }}</div>
     {{ ui.delta_badge(metrics_deltas.convos) }}
   </div>
@@ -18,7 +18,7 @@
     <div class="text-xs text-slate-400 mt-0.5">últimos 30d</div>
   </div>
   <div class="bg-white rounded-xl border border-slate-200 p-5">
-    <div class="text-sm text-slate-500">Coste/conversación</div>
+    <div class="text-sm text-slate-500">Coste/cliente atendido</div>
     <div class="text-2xl font-semibold mt-1">{% if m.convos_30d %}{{ (m.cost_30d / m.convos_30d)|fmt_eur }}{% else %}—{% endif %}</div>
     <div class="text-xs text-slate-400 mt-0.5">media por cliente final</div>
   </div>

@@ -29,7 +29,7 @@
           <option value="lead"       {% if t.kind == 'lead' %}selected{% endif %}>Lead (aún no contratado)</option>
           <option value="contracted" {% if t.kind == 'contracted' %}selected{% endif %}>Contratado</option>
         </select>
-        <div class="text-xs text-slate-400 mt-1">Cambia a "Contratado" cuando firme y tengas su WhatsApp Number ID.</div>
+        <div class="text-xs text-slate-400 mt-1">Cambia a "Contratado" cuando firme y tengas el agente de ElevenLabs activo.</div>
       </div>
       <div>
         <label class="text-xs font-medium text-slate-700 mb-1 block">Persona de contacto</label>
@@ -46,13 +46,9 @@
     <h2 class="text-sm font-semibold mb-4">Integraciones</h2>
     <div class="space-y-4">
       <div>
-        <label class="text-xs font-medium text-slate-700 mb-1 block">WhatsApp Phone Number ID</label>
-        <input name="phone_number_id" value="{{ t.phone_number_id }}" placeholder="108923456789012" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"/>
-        <div class="text-xs text-slate-400 mt-1">Panel Meta → WhatsApp → API Setup.</div>
-      </div>
-      <div>
         <label class="text-xs font-medium text-slate-700 mb-1 block">Número visible</label>
         <input name="phone_display" value="{{ t.phone_display }}" placeholder="+34 910 000 000" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"/>
+        <div class="text-xs text-slate-400 mt-1">Teléfono que mostramos en la landing y la ficha del cliente.</div>
       </div>
       <div>
         <label class="text-xs font-medium text-slate-700 mb-1 block">Google Calendar ID</label>
@@ -230,7 +226,7 @@
 <form method="post" action="/admin/clientes/{{ t.id }}/delete" class="mt-6 bg-white rounded-xl border border-rose-200 p-6" onsubmit="return confirm('¿Seguro que quieres eliminar este cliente? Esta acción no se puede deshacer.');">
   <h2 class="text-sm font-semibold text-rose-700 mb-2">Zona de peligro</h2>
   <div class="flex items-center justify-between flex-wrap gap-3">
-    <div class="text-sm text-slate-600">Eliminar este cliente borrará su configuración y servicios. Las conversaciones y tokens registrados se conservan por auditoría.</div>
+    <div class="text-sm text-slate-600">Eliminar este cliente borrará su configuración y servicios. Los registros de llamadas y tokens se conservan por auditoría.</div>
     <button type="submit" class="text-sm px-4 py-2 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 font-medium">Eliminar cliente</button>
   </div>
 </form>

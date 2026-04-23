@@ -48,7 +48,6 @@
       ('equipo', 'Equipo'),
       ('personalizacion', 'Personalización del bot'),
       ('voz', 'Voz (ElevenLabs)'),
-      ('conversaciones', 'Conversaciones'),
       ('metricas', 'Métricas'),
     ] %}
     {% for tb_id, tb_label in tabs %}
@@ -73,8 +72,6 @@
     {% include "partials/tab_personalization.html" %}
   {% elif tab == 'voz' %}
     {% include "partials/tab_voice.html" %}
-  {% elif tab == 'conversaciones' %}
-    {% include "partials/tab_conversations.html" %}
   {% elif tab == 'metricas' %}
     {% include "partials/tab_metrics.html" %}
   {% endif %}

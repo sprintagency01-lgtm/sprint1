@@ -37,7 +37,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
       </div>
     </div>
-    <div class="text-sm text-slate-500">Conversaciones (30d)</div>
+    <div class="text-sm text-slate-500">Clientes atendidos (30d)</div>
     <div class="mt-1 text-2xl font-semibold tracking-tight">{{ total_convos|fmt_int }}</div>
   </div>
 
@@ -83,11 +83,10 @@
     </div>
   </div>
 
-  <!-- Últimas conversaciones -->
+  <!-- Últimas llamadas (placeholder — se llenará cuando ElevenLabs envíe transcripts) -->
   <div class="bg-white rounded-xl border border-slate-200 p-6">
     <div class="flex items-center justify-between mb-4">
-      <div class="text-sm font-medium">Últimas conversaciones</div>
-      <a href="/admin/conversaciones" class="text-xs text-brand-700 hover:underline">Ver todas</a>
+      <div class="text-sm font-medium">Últimas llamadas</div>
     </div>
     {% if recent %}
     <ul class="space-y-3">
@@ -98,12 +97,11 @@
           <div class="text-sm font-medium truncate">{{ r.phone }}</div>
           <div class="text-xs text-slate-500 truncate">{{ r.tenant.name if r.tenant else '—' }}</div>
         </div>
-        <a class="text-xs text-brand-700 hover:underline" href="/admin/conversaciones?tenant={{ r.tenant.id if r.tenant }}&phone={{ r.phone }}">abrir</a>
       </li>
       {% endfor %}
     </ul>
     {% else %}
-    <div class="text-sm text-slate-400 py-8 text-center">Aún no hay conversaciones.</div>
+    <div class="text-sm text-slate-400 py-8 text-center">Aún no hay llamadas registradas.</div>
     {% endif %}
   </div>
 
@@ -151,8 +149,8 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M20 6 9 17l-5-5"/></svg>
         </div>
         <div>
-          <div class="font-medium">Webhook activo</div>
-          <div class="text-xs text-slate-500">/whatsapp recibiendo eventos.</div>
+          <div class="font-medium">Tools de ElevenLabs activos</div>
+          <div class="text-xs text-slate-500">/tools/* recibiendo llamadas del agente.</div>
         </div>
       </li>
       <li class="flex gap-3 items-start">
@@ -161,7 +159,7 @@
         </div>
         <div>
           <div class="font-medium">Base de datos</div>
-          <div class="text-xs text-slate-500">{{ tenants|length }} tenants · {{ total_convos|fmt_int }} conversaciones (30d)</div>
+          <div class="text-xs text-slate-500">{{ tenants|length }} tenants · {{ total_convos|fmt_int }} clientes atendidos (30d)</div>
         </div>
       </li>
     </ul>

@@ -8,7 +8,6 @@ function App() {
     nombre: (window.PORTAL_USER && window.PORTAL_USER.nombre) || '',
     email:  (window.PORTAL_USER && window.PORTAL_USER.email)  || '',
     botVoz: !!(window.PORTAL_BOT && window.PORTAL_BOT.voz),
-    botWa:  !!(window.PORTAL_BOT && window.PORTAL_BOT.wa),
   });
 
   // Sincroniza el toggle de bot con el backend — la tarjeta "Tu bot ahora"
@@ -22,7 +21,7 @@ function App() {
       } catch (err) {
         // si falla, revertimos
         console.warn('bot toggle failed', err);
-        setUser(u => ({ ...u, [canal === 'voz' ? 'botVoz' : 'botWa']: !on }));
+        setUser(u => ({ ...u, botVoz: !on }));
       }
     };
     window.addEventListener('portal:bot-toggle', off);
@@ -34,7 +33,7 @@ function App() {
   const screen = (() => {
     switch (active) {
       case 'hoy':            return <ScreenHoy user={user} setUser={setUser} setActive={setActive} onOpenReserva={r => { setDetalleReserva(r); setActive('reservas'); }} />;
-      case 'conversaciones': return <ScreenConversaciones />;
+      case 'llamadas':       return <ScreenLlamadas />;
       case 'reservas':       return <ScreenReservas initialReserva={detalleReserva} onCloseDetalle={() => setDetalleReserva(null)} />;
       case 'ingresos':       return <ScreenIngresos />;
       case 'servicios':      return <ScreenServicios />;

@@ -8,7 +8,7 @@ const Icon = ({ d, cls='w-5 h-5' }) => (
 
 const ICONS = {
   hoy:            '<path d="M3 12 12 3l9 9M5 10v10h4v-6h6v6h4V10"/>',
-  conversaciones: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',
+  llamadas:       '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92Z"/>',
   reservas:       '<path d="M8 2v4M16 2v4M3 10h18M5 6h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/>',
   ingresos:       '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
   servicios:      '<path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><path d="M7 7h.01"/>',
@@ -18,7 +18,6 @@ const ICONS = {
   menu:           '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
   close:          '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   voz:            '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>',
-  whatsapp:       '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/>',
   check:          '<path d="M20 6 9 17l-5-5"/>',
   clock:          '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   euro:           '<path d="M18 7a6 6 0 1 0 0 10M4 10h10M4 14h10"/>',
@@ -39,7 +38,7 @@ const ICONS = {
 
 const NAV = [
   { key:'hoy',            label:'Hoy',              icon:ICONS.hoy },
-  { key:'conversaciones', label:'Conversaciones',   icon:ICONS.conversaciones },
+  { key:'llamadas',       label:'Llamadas',         icon:ICONS.llamadas },
   { key:'reservas',       label:'Reservas',         icon:ICONS.reservas },
   { key:'ingresos',       label:'Ingresos',         icon:ICONS.ingresos },
   { key:'servicios',      label:'Servicios',        icon:ICONS.servicios },
@@ -47,7 +46,7 @@ const NAV = [
   { key:'ajustes',        label:'Ajustes',          icon:ICONS.ajustes },
 ];
 
-const MOBILE_TABS = ['hoy','reservas','conversaciones','equipo','ajustes'];
+const MOBILE_TABS = ['hoy','reservas','llamadas','equipo','ajustes'];
 
 function initialsOf(name) {
   return name.split(/[\s·]+/).filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();
@@ -77,7 +76,6 @@ function StatusDot({ on, label }) {
 function CanalBadge({ canal }) {
   const map = {
     voz:      { bg:'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',     label:'Voz',      icon:ICONS.voz },
-    whatsapp: { bg:'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', label:'WhatsApp', icon:ICONS.whatsapp },
     manual:   { bg:'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',           label:'Manual',   icon:ICONS.hand },
   };
   const c = map[canal] || map.manual;
@@ -186,7 +184,6 @@ function Shell({ active, setActive, user, children }) {
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <StatusDot on={user.botVoz} label="Voz"/>
-            <StatusDot on={user.botWa}  label="WhatsApp"/>
           </div>
         </header>
         <div className="p-4 md:p-8 fade-in">{children}</div>

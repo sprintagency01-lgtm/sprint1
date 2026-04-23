@@ -4,10 +4,9 @@ function ScreenIngresos() {
   const [rango, setRango] = useState('30d');
   const data = rango==='7d' ? INGRESOS_30D.slice(-7) : rango==='30d' ? INGRESOS_30D : INGRESOS_30D.slice(-14);
   const totalVoz = data.reduce((s,d)=>s+d.voz,0);
-  const totalWa  = data.reduce((s,d)=>s+d.wa,0);
   const totalMan = data.reduce((s,d)=>s+d.man,0);
-  const total = totalVoz + totalWa + totalMan;
-  const totalBot = totalVoz + totalWa;
+  const total = totalVoz + totalMan;
+  const totalBot = totalVoz;
   const max = Math.max(...data.map(d=>d.total), 1);
   const W = 600, H = 220;
 
@@ -47,7 +46,7 @@ function ScreenIngresos() {
               Ingresos atribuibles al bot este mes
               <span className="group relative">
                 <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 inline-flex items-center justify-center text-[9px] text-slate-500 cursor-help">?</span>
-                <span className="invisible group-hover:visible absolute left-5 top-0 w-56 text-[11px] bg-slate-900 text-white rounded-lg p-2 z-10 shadow-lg">Ingreso estimado a partir del precio del servicio reservado por el bot (voz + WhatsApp).</span>
+                <span className="invisible group-hover:visible absolute left-5 top-0 w-56 text-[11px] bg-slate-900 text-white rounded-lg p-2 z-10 shadow-lg">Ingreso estimado a partir del precio del servicio reservado por el bot de voz.</span>
               </span>
             </div>
             <div className="text-4xl font-semibold tracking-tight mt-2 tabular-nums">{eur(totalBot)}</div>
@@ -57,10 +56,6 @@ function ScreenIngresos() {
             <div>
               <div className="text-xs text-slate-500">Voz</div>
               <div className="font-semibold text-indigo-600 tabular-nums">{eur(totalVoz)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-500">WhatsApp</div>
-              <div className="font-semibold text-brand-700 tabular-nums">{eur(totalWa)}</div>
             </div>
             <div>
               <div className="text-xs text-slate-500">Manual</div>
@@ -79,7 +74,6 @@ function ScreenIngresos() {
           </div>
           <div className="flex items-center gap-3 text-[11px]">
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-indigo-500"/>Voz</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-emerald-500"/>WhatsApp</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-slate-300"/>Manual</span>
           </div>
         </div>
@@ -93,13 +87,11 @@ function ScreenIngresos() {
             const total = Math.max(d.total,1);
             const hTotal = (total/max)*(H-20);
             const hVoz = (d.voz/total)*hTotal;
-            const hWa  = (d.wa/total)*hTotal;
             const hMan = (d.man/total)*hTotal;
-            const yVoz = H-hTotal, yWa = yVoz+hVoz, yMan = yWa+hWa;
+            const yVoz = H-hTotal, yMan = yVoz+hVoz;
             return (
               <g key={i}>
                 <rect x={x} y={yVoz} width={w} height={hVoz} fill="#6366f1" rx="2"/>
-                <rect x={x} y={yWa}  width={w} height={hWa}  fill="#10b981"/>
                 <rect x={x} y={yMan} width={w} height={hMan} fill="#cbd5e1"/>
               </g>
             );

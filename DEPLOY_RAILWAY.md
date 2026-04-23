@@ -1,5 +1,11 @@
 # Desplegar el bot + CMS en Railway
 
+> ⚠️ **Pivot (abril 2026):** el producto dejó de tener canal WhatsApp. Las
+> instrucciones sobre `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`,
+> `WHATSAPP_PHONE_NUMBER_ID` y el webhook `/whatsapp` son historia — ya no
+> hay que configurarlas. El resto (Railway, Volume, Google, ElevenLabs,
+> TOOL_SECRET, ADMIN_EMAIL) sigue siendo correcto.
+
 Guía paso a paso. Tiempo estimado: **10 minutos**.
 
 Partes:

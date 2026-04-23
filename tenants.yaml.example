@@ -2,7 +2,6 @@
 tenants:
   - id: pelu_demo
     name: Peluquería Ejemplo
-    phone_number_id: "123456789012345"   # el ID del número de WhatsApp asignado
     calendar_id: "primary"               # o el ID del calendario del negocio
     business_hours:
       open: "09:30"
@@ -22,7 +21,7 @@ tenants:
         precio: 75
     system_prompt: |
       Eres Ana, la asistente virtual de la peluquería Ejemplo. Tu trabajo es
-      reservar, mover o cancelar citas por WhatsApp, en español, con un tono
+      reservar, mover o cancelar citas por teléfono, en español, con un tono
       cercano y profesional.
 
       Catálogo de servicios (con duración y precio):

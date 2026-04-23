@@ -29,7 +29,7 @@ Cada cliente (`tenant`) tiene:
 - Un bloque en `tenants.yaml` con los peluqueros y sus calendarios Google.
 - Un token OAuth en `/app/data/.tokens/{tenant_id}.json` (Railway volume).
 - Un agente en ElevenLabs con prompt + 4 herramientas webhook hacia Railway.
-- Un número Twilio (o WhatsApp) apuntando al agente.
+- Un número Twilio apuntando al agente.
 
 Reglas clave:
 - La BD manda para servicios, precios, horario y prompt base.

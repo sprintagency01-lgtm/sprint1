@@ -12,16 +12,13 @@ Estructura de URLs (todas bajo /admin):
     GET  /admin/clientes/new                  Formulario nuevo
     POST /admin/clientes                      Crear tenant
     GET  /admin/clientes/{id}                 → /admin/clientes/{id}/general
-    GET  /admin/clientes/{id}/{tab}           Detalle (tab = general|servicios|horarios|personalizacion|conversaciones|metricas)
+    GET  /admin/clientes/{id}/{tab}           Detalle (tab = general|servicios|horarios|personalizacion|metricas)
     POST /admin/clientes/{id}/general         Guardar datos generales
     POST /admin/clientes/{id}/servicios       Guardar servicios
     POST /admin/clientes/{id}/horarios        Guardar horarios
     POST /admin/clientes/{id}/personalizacion Guardar personalización del bot
     POST /admin/clientes/{id}/delete          Borrar tenant
     POST /admin/clientes/{id}/toggle          Pausar/activar
-
-    GET  /admin/conversaciones                Bandeja global
-    GET  /admin/conversaciones/{tenant}/{phone} Vista chat (JSON)
 
     GET  /admin/reservas                      Lista (placeholder)
     GET  /admin/facturacion                   Desglose coste por cliente
@@ -142,7 +139,7 @@ def _metrics_for_tenant(s: Session, tenant_id: str) -> dict:
         db_module.TokenUsage.created_at < t30_end,
     ).scalar() or 0.0
 
-    # conversaciones distintas en 30d (1 conversación = 1 customer_phone)
+    # clientes atendidos distintos en 30d (1 cliente = 1 customer_phone)
     convos_30 = s.query(func.count(func.distinct(db_module.Message.customer_phone))).filter(
         db_module.Message.tenant_id == tenant_id,
         db_module.Message.created_at >= t30,
@@ -469,7 +466,7 @@ async def dashboard(request: Request, uid: int = Depends(auth.current_user_id)):
             d = (datetime.utcnow() - timedelta(days=29 - i)).date().isoformat()
             global_series.append(series_map.get(d, 0))
 
-        # Últimas conversaciones (5)
+        # Últimas llamadas (5) — cada una es 1 customer_phone distinto
         recent_rows = s.execute(
             select(
                 db_module.Message.tenant_id,
@@ -552,7 +549,7 @@ async def client_new(request: Request, uid: int = Depends(auth.current_user_id))
     # Esqueleto de tenant vacío (no persistido hasta que haga POST)
     empty = db_module.Tenant(
         id="", name="", sector="", status="active", plan="Básico",
-        phone_number_id="", phone_display="", calendar_id="primary",
+        phone_display="", calendar_id="primary",
         timezone="Europe/Madrid", language="Español",
         contact_name="", contact_email="",
         business_hours_json=json.dumps({
@@ -585,7 +582,6 @@ async def client_create(
     plan: str = Form("Básico"),
     contact_name: str = Form(""),
     contact_email: str = Form(""),
-    phone_number_id: str = Form(""),
     phone_display: str = Form(""),
     calendar_id: str = Form("primary"),
     timezone: str = Form("Europe/Madrid"),
@@ -614,7 +610,7 @@ async def client_create(
         t = db_module.Tenant(
             id=tid, name=name, sector=sector, plan=plan,
             contact_name=contact_name, contact_email=contact_email,
-            phone_number_id=phone_number_id, phone_display=phone_display,
+            phone_display=phone_display,
             calendar_id=calendar_id or "primary",
             timezone=timezone, language=language,
             status="active",
@@ -738,7 +734,7 @@ async def client_detail(
     tenant_id: str, tab: str, request: Request,
     uid: int = Depends(auth.current_user_id),
 ):
-    if tab not in ("general", "servicios", "horarios", "equipo", "personalizacion", "voz", "conversaciones", "metricas"):
+    if tab not in ("general", "servicios", "horarios", "equipo", "personalizacion", "voz", "metricas"):
         raise HTTPException(404, "Pestaña desconocida")
 
     with Session(db_module.engine) as s:
@@ -753,33 +749,7 @@ async def client_detail(
         if tab == "voz":
             _seed_voice_defaults_if_empty(s, t)
 
-        metrics = _metrics_for_tenant(s, tenant_id) if tab in ("metricas", "general", "conversaciones") else None
-
-        conversations = []
-        if tab == "conversaciones":
-            rows = s.execute(
-                select(
-                    db_module.Message.customer_phone,
-                    func.max(db_module.Message.created_at).label("last_at"),
-                    func.count(db_module.Message.id).label("n_msg"),
-                )
-                .where(db_module.Message.tenant_id == tenant_id)
-                .group_by(db_module.Message.customer_phone)
-                .order_by(func.max(db_module.Message.created_at).desc())
-                .limit(50)
-            ).all()
-            for row in rows:
-                phone, last_at, n_msg = row[0], row[1], row[2]
-                last_msg = s.query(db_module.Message).filter(
-                    db_module.Message.tenant_id == tenant_id,
-                    db_module.Message.customer_phone == phone,
-                ).order_by(db_module.Message.created_at.desc()).first()
-                conversations.append({
-                    "phone": phone,
-                    "last_at": last_at,
-                    "last_text": (last_msg.content[:120] + "…") if last_msg and len(last_msg.content) > 120 else (last_msg.content if last_msg else ""),
-                    "n_messages": n_msg,
-                })
+        metrics = _metrics_for_tenant(s, tenant_id) if tab in ("metricas", "general") else None
 
         # prompt preview
         prompt_preview = db_module.render_system_prompt(t)
@@ -820,7 +790,6 @@ async def client_detail(
                 "cost":   _delta_pct(metrics["cost_30d"],   metrics["cost_prev"])   if metrics else 0,
                 "convos": _delta_pct(metrics["convos_30d"], metrics["convos_prev"]) if metrics else 0,
             } if metrics else None,
-            "conversations": conversations,
             "prompt_preview": prompt_preview,
             "google_connected": _google_calendar_connected(tenant_id),
             "equipo_conectados": equipo_conectados,
@@ -839,7 +808,6 @@ async def client_save_general(
     kind: str = Form("contracted"),
     contact_name: str = Form(""),
     contact_email: str = Form(""),
-    phone_number_id: str = Form(""),
     phone_display: str = Form(""),
     calendar_id: str = Form("primary"),
     timezone: str = Form("Europe/Madrid"),
@@ -857,7 +825,6 @@ async def client_save_general(
             t.kind = kind
         t.contact_name = contact_name
         t.contact_email = contact_email
-        t.phone_number_id = phone_number_id
         t.phone_display = phone_display
         t.calendar_id = calendar_id or "primary"
         t.timezone = timezone
@@ -1424,74 +1391,6 @@ async def client_delete(tenant_id: str, uid: int = Depends(auth.current_user_id)
 
 
 # ==========================================================================
-#  CONVERSACIONES (global)
-# ==========================================================================
-
-@router.get("/admin/conversaciones", response_class=HTMLResponse)
-async def conversations_list(
-    request: Request,
-    tenant: Optional[str] = None,
-    phone: Optional[str] = None,
-    uid: int = Depends(auth.current_user_id),
-):
-    with Session(db_module.engine) as s:
-        # Lista de conversaciones (group by tenant + phone)
-        rows = s.execute(
-            select(
-                db_module.Message.tenant_id,
-                db_module.Message.customer_phone,
-                func.max(db_module.Message.created_at).label("last_at"),
-                func.count(db_module.Message.id).label("n_msg"),
-            ).group_by(db_module.Message.tenant_id, db_module.Message.customer_phone)
-             .order_by(func.max(db_module.Message.created_at).desc())
-             .limit(100)
-        ).all()
-
-        tenants_map = {t.id: t for t in s.query(db_module.Tenant).all()}
-        convos = []
-        for row in rows:
-            # OJO: no reasignar `phone` porque es el query param de entrada.
-            row_tid, row_phone, row_last = row[0], row[1], row[2]
-            last_msg = s.query(db_module.Message).filter(
-                db_module.Message.tenant_id == row_tid,
-                db_module.Message.customer_phone == row_phone,
-            ).order_by(db_module.Message.created_at.desc()).first()
-            convos.append({
-                "tenant": tenants_map.get(row_tid),
-                "tenant_id": row_tid,
-                "phone": row_phone,
-                "last_at": row_last,
-                "last_text": (last_msg.content if last_msg else ""),
-            })
-
-        # Conversación seleccionada (si se pasó tenant+phone)
-        messages = []
-        selected = None
-        if tenant and phone:
-            messages = s.query(db_module.Message).filter(
-                db_module.Message.tenant_id == tenant,
-                db_module.Message.customer_phone == phone,
-            ).order_by(db_module.Message.created_at.asc()).all()
-            selected = {"tenant": tenants_map.get(tenant), "phone": phone}
-        elif convos:
-            c0 = convos[0]
-            messages = s.query(db_module.Message).filter(
-                db_module.Message.tenant_id == c0["tenant_id"],
-                db_module.Message.customer_phone == c0["phone"],
-            ).order_by(db_module.Message.created_at.asc()).all()
-            selected = {"tenant": c0["tenant"], "phone": c0["phone"]}
-
-    return templates.TemplateResponse("conversations.html", {
-        "request": request,
-        "user_email": auth.current_user_email(uid),
-        "active": "conversaciones",
-        "convos": convos,
-        "messages": messages,
-        "selected": selected,
-    })
-
-
-# ==========================================================================
 #  FACTURACIÓN
 # ==========================================================================
 
@@ -1558,7 +1457,7 @@ async def settings_view(request: Request, uid: int = Depends(auth.current_user_i
         "OPENAI_API_KEY":       _mask(os.getenv("OPENAI_API_KEY", "")),
         "ANTHROPIC_API_KEY":    _mask(os.getenv("ANTHROPIC_API_KEY", "")),
         "ELEVENLABS_API_KEY":   _mask(os.getenv("ELEVENLABS_API_KEY", "")),
-        "WHATSAPP_APP_SECRET":  _mask(os.getenv("WHATSAPP_APP_SECRET", "")),
+        "TOOL_SECRET":          _mask(os.getenv("TOOL_SECRET", "")),
         "GOOGLE_CLIENT_SECRET": _mask(os.getenv("GOOGLE_CLIENT_SECRET", "")),
     }
 

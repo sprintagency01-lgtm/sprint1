@@ -1,4 +1,4 @@
-# Configuración Railway para bot_reservas_whatsapp + CMS
+# Configuración Railway para bot_reservas_voz (ElevenLabs) + CMS
 # Docs: https://docs.railway.com/reference/config-as-code
 
 [build]

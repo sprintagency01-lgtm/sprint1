@@ -1,121 +1,74 @@
-# Bot de reservas por WhatsApp (MVP)
+# Bot de reservas por voz (ElevenLabs) + CMS + Portal del cliente
 
-Esqueleto de backend para el bot de reservas por WhatsApp con Google Calendar
-y agente LLM con function calling. Listo para Fase 1 del plan.
+Backend FastAPI que sostiene tres piezas:
 
-## Qué hace hoy este esqueleto
+1. **Llamadas de voz** — un agente de ElevenLabs Conversational AI habla con
+   el cliente final y llama a los server tools expuestos en `/tools/*` para
+   consultar disponibilidad y crear / mover / cancelar reservas contra Google
+   Calendar.
+2. **CMS interno** (`/admin/*`) — el panel que usa Sprintagency para dar de
+   alta negocios, revisar métricas y publicar cambios.
+3. **Portal del cliente** (`/app`) — lo que ve el dueño del negocio: hoy,
+   llamadas, reservas, ingresos, servicios, equipo y ajustes.
 
-- Expone un webhook `/whatsapp` para Meta Cloud API (verificación GET + eventos POST).
-- Recibe el mensaje, identifica al tenant (negocio) por el número de WhatsApp destino.
-- Manda el mensaje al agente (Claude con tool use) con herramientas:
-  `consultar_disponibilidad`, `crear_reserva`, `mover_reserva`, `cancelar_reserva`.
-- El agente decide qué función llamar. El backend ejecuta contra Google Calendar.
-- Responde por WhatsApp con el texto del agente.
-- Persiste el historial de conversaciones en SQLite.
+> **Histórico:** el proyecto nació como bot de WhatsApp; en abril de 2026
+> pivotamos a voz únicamente. Todo el código del webhook de Meta/Twilio se
+> retiró. Las guías antiguas (`DEPLOY_RAILWAY.md`, `PLAYBOOK_CLIENTE_NUEVO.md`,
+> `START_HERE.md`, `HANDOFF_2026-04-21.md`, `CMS_README.md`) aún describen el
+> stack de WhatsApp en algunas secciones — léelas con ese filtro hasta que
+> terminemos la revisión.
 
 ## Estructura
 
 ```
-bot_reservas/
-├── app/
-│   ├── main.py              FastAPI + webhook
-│   ├── config.py            Variables de entorno
-│   ├── whatsapp.py          Cliente de Meta Cloud API
-│   ├── agent.py             Agente Claude con tool use
-│   ├── calendar_service.py  Google Calendar (leer/crear/mover/cancelar)
-│   ├── tenants.py           Carga de tenants y su prompt
-│   └── db.py                SQLite para historial
-├── tests/
-│   └── test_smoke.py        Test mínimo de que arranca
-├── requirements.txt
-├── .env.example             Copiar a .env y rellenar
-├── .gitignore
-└── README.md
+app/
+├── main.py                 FastAPI + landing + /api/leads
+├── config.py               Settings (variables de entorno)
+├── db.py                   SQLAlchemy models + migrations auto
+├── calendar_service.py     Google Calendar (leer/crear/mover/cancelar)
+├── eleven_tools.py         /tools/* — lo que llama ElevenLabs
+├── agent.py                Razonamiento LLM (usado por diag/CLI)
+├── diag.py                 /_diag/* endpoints de mantenimiento
+├── oauth_web.py            /oauth/start + /oauth/callback
+├── cms/                    Panel interno (/admin/*)
+└── portal/                 Portal del cliente (/app + /api/portal/*)
+tests/
+└── test_smoke.py           App arranca, /health y / responden
 ```
 
-## Puesta en marcha (día 1)
-
-### 1. Requisitos
-
-- Python 3.11+
-- Cuenta en Meta for Developers con una app y tu número de WhatsApp como
-  test number.
-- API key de Anthropic (https://console.anthropic.com).
-- Proyecto en Google Cloud con Calendar API habilitada y un OAuth client
-  (type: Web) con redirect `http://localhost:8000/oauth/callback`.
-- (Producción) Railway o Render para exponer HTTPS público al webhook.
-
-### 2. Instalar
+## Puesta en marcha (local)
 
 ```bash
-cd bot_reservas
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env         # y rellenar
-```
-
-### 3. Configurar .env
-
-Variables mínimas:
-
-- `WHATSAPP_VERIFY_TOKEN`: inventa una cadena. La pegas también en el panel de Meta.
-- `WHATSAPP_ACCESS_TOKEN`: token temporal de 24 h de tu app Meta (para desarrollo).
-  Para producción se genera un token permanente con System User.
-- `WHATSAPP_PHONE_NUMBER_ID`: el ID del número de prueba en tu app Meta.
-- `ANTHROPIC_API_KEY`: la API key de vuestro console.anthropic.com.
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: del OAuth client.
-- `DEFAULT_CALENDAR_ID`: en MVP puedes dejar tu calendario primario (`primary`).
-
-### 4. Arrancar en local
-
-```bash
+cp .env.example .env              # rellenar claves
 uvicorn app.main:app --reload --port 8000
 ```
 
-Expón el puerto 8000 a internet con ngrok (u otro túnel):
+Variables mínimas (ver `.env.example`):
 
-```bash
-ngrok http 8000
-```
+- `OPENAI_API_KEY` — parse IA en el portal + agente en modo CLI.
+- `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `ELEVENLABS_AGENT_ID` — para
+  que las llamadas entrantes se puedan originar.
+- `TOOL_SECRET` — shared secret que ElevenLabs pone en `X-Tool-Secret` al
+  llamar a `/tools/*`.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — OAuth web de Google Calendar.
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD` — bootstrap del primer usuario del CMS.
+- `SESSION_SECRET` — firma las cookies de sesión (CMS y portal).
 
-Coge la URL HTTPS pública, ve al panel Meta → WhatsApp → Configuration →
-Webhook: pega `<URL_PUBLICA>/whatsapp` y el `WHATSAPP_VERIFY_TOKEN`.
-Suscríbete a `messages`. Envía un 'hola' desde tu móvil al número de prueba.
+## Añadir un tenant nuevo
 
-### 5. Autorizar Google Calendar (una vez)
+Desde el CMS (`/admin/clientes/nuevo`) se crea el registro. Luego se autoriza
+el calendario de Google desde `/oauth/start?tenant=<id>` y se configura el
+agente de ElevenLabs apuntando sus server tools al dominio del deploy
+(`/tools/*`) con el `TOOL_SECRET`.
 
-```bash
-python -m app.calendar_service authorize
-```
+El fichero `tenants.yaml` es legacy — ya no se usa para servir tráfico; la
+verdad está en la tabla `tenants` de la base de datos.
 
-Abre el navegador, das consentimiento, y guarda el refresh token en `.tokens/`.
+## Seguridad mínima
 
-## Cómo añadir un segundo tenant
-
-Editad `tenants.yaml` (crearlo siguiendo el ejemplo comentado en
-`app/tenants.py`). Cada tenant tiene:
-
-- `name`: nombre del negocio.
-- `phone_number_id`: el ID del número de WhatsApp asignado.
-- `calendar_id`: su calendario de Google.
-- `system_prompt`: plantilla del agente, personalizada con servicios y reglas.
-- `services`: lista de servicios con duración y precio.
-- `business_hours`: horario de apertura.
-
-## Roadmap del código
-
-- [x] Fase 1: webhook + agente + Calendar básico (este esqueleto).
-- [ ] Fase 2: notas de voz (entrante: Whisper, saliente: ElevenLabs).
-- [ ] Fase 2: multi-tenant con BD y dashboard mínimo.
-- [ ] Fase 3: integración con Twilio Voice + ElevenLabs Conversational AI.
-- [ ] Fase 4: panel de administración del cliente y OAuth onboarding.
-
-## Seguridad mínima desde el día uno
-
-- `.env` nunca al repo (ya está en `.gitignore`).
-- Valida la firma del webhook de Meta (`X-Hub-Signature-256`) — ver TODO
-  en `whatsapp.py`.
-- No guardes mensajes con datos personales más de lo necesario. Añade un
-  job que borre conversaciones con > 90 días.
-- Nunca dejes que el LLM construya URLs o mande a terceros: solo puede
-  llamar a las funciones whitelist.
+- `.env` nunca al repo (ya en `.gitignore`).
+- `/tools/*` y `/_diag/*` exigen `X-Tool-Secret`.
+- `/admin/*` y `/app/*` autentican con cookies de sesión firmadas.
+- Nada de datos de pago — el pago se hace en el local.

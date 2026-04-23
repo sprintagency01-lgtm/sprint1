@@ -11,14 +11,9 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class Settings:
-    # WhatsApp
-    whatsapp_verify_token: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
-    whatsapp_access_token: str = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
-    whatsapp_phone_number_id: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-    whatsapp_app_secret: str = os.getenv("WHATSAPP_APP_SECRET", "")
-
-    # Provider del LLM del agente: "openai" | "anthropic".
-    # Por defecto openai para no romper instalaciones existentes.
+    # Provider del LLM del agente (CLI/diag): "openai" | "anthropic".
+    # El canal productivo es voz por ElevenLabs; OpenAI/Anthropic se usan
+    # sólo para el CLI de pruebas y el asistente de reservas del portal.
     llm_provider: str = os.getenv("LLM_PROVIDER", "openai").strip().lower()
 
     # OpenAI
@@ -29,7 +24,7 @@ class Settings:
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
     anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
-    # ElevenLabs (voz)
+    # ElevenLabs (voz — canal productivo)
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
     elevenlabs_voice_id: str = os.getenv("ELEVENLABS_VOICE_ID", "")
 
@@ -53,15 +48,6 @@ class Settings:
     tool_secret: str = os.getenv("TOOL_SECRET", "")
     # ID del agente en ElevenLabs (se guarda tras crear con scripts/setup_elevenlabs_agent.py).
     elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
-
-    # Twilio (WhatsApp sandbox / producción) — adaptador alternativo a Meta
-    twilio_account_sid: str = os.getenv("TWILIO_ACCOUNT_SID", "")
-    twilio_auth_token: str = os.getenv("TWILIO_AUTH_TOKEN", "")
-    # Número saliente en E.164 (ej. "+14155238886" del sandbox, o tu número real).
-    twilio_whatsapp_from: str = os.getenv("TWILIO_WHATSAPP_FROM", "")
-    # Tenant por defecto para tráfico que entra por el sandbox compartido.
-    # En producción, cada tenant tendrá su propio número y routeamos por To.
-    twilio_default_tenant_id: str = os.getenv("TWILIO_DEFAULT_TENANT_ID", "pelu_demo")
 
 
 settings = Settings()

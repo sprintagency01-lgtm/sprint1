@@ -204,7 +204,7 @@ def _build_initial_data(user_id: int, tenant_id: str) -> dict[str, Any]:
     hoy = date.today().isoformat()
     reservas = _load_reservas_for_window(tenant, dias=7)
     ingresos_30d = _compute_ingresos_30d(tenant, servicios)
-    conv_wa, conv_voz = _load_conversaciones(tenant_id)
+    llamadas = _load_llamadas(tenant_id)
 
     return {
         "user": {
@@ -215,7 +215,6 @@ def _build_initial_data(user_id: int, tenant_id: str) -> dict[str, Any]:
         },
         "bot": {
             "voz": tenant.status == "active",
-            "wa":  tenant.status == "active",
         },
         "negocio": negocio,
         "equipo": equipo,
@@ -223,8 +222,7 @@ def _build_initial_data(user_id: int, tenant_id: str) -> dict[str, Any]:
         "reservas": reservas,
         "hoy_iso": hoy,
         "ingresos_30d": ingresos_30d,
-        "conversaciones_wa": conv_wa,
-        "conversaciones_voz": conv_voz,
+        "llamadas": llamadas,
     }
 
 
@@ -258,10 +256,6 @@ def _event_to_reserva(ev: dict, services_by_id: dict[str, dict], miembros_by_nam
     created_by = (priv.get("channel") or priv.get("created_by") or "").lower()
     if created_by in ("voice", "voz"):
         canal = "voz"
-    elif created_by in ("wa", "whatsapp"):
-        canal = "whatsapp"
-    elif created_by in ("manual", "portal", "cms", ""):
-        canal = "manual"
     else:
         canal = "manual"
 
@@ -358,7 +352,7 @@ def _compute_ingresos_30d(tenant: db_module.Tenant, servicios: list[dict]) -> li
     """Ingresos por día en los últimos 30 días, agrupados por canal.
 
     Se calculan desde el calendario principal del tenant: precio del servicio
-    de cada reserva, bucketizado por canal (voz/whatsapp/manual).
+    de cada reserva, bucketizado por canal (voz vs manual desde el portal/CMS).
     """
     try:
         today = datetime.now(calendar_service.TZ).date()
@@ -373,7 +367,7 @@ def _compute_ingresos_30d(tenant: db_module.Tenant, servicios: list[dict]) -> li
         buckets: dict[str, dict] = {}
         for i in range(30):
             d = (today - timedelta(days=29 - i)).isoformat()
-            buckets[d] = {"d": i, "fecha": d, "voz": 0, "wa": 0, "man": 0, "total": 0}
+            buckets[d] = {"d": i, "fecha": d, "voz": 0, "man": 0, "total": 0}
         for ev in events:
             if ev.get("status") == "cancelled":
                 continue
@@ -389,21 +383,21 @@ def _compute_ingresos_30d(tenant: db_module.Tenant, servicios: list[dict]) -> li
             ch = (priv.get("channel") or priv.get("created_by") or "").lower()
             if ch in ("voice", "voz"):
                 buckets[d]["voz"] += precio
-            elif ch in ("wa", "whatsapp"):
-                buckets[d]["wa"] += precio
             else:
                 buckets[d]["man"] += precio
-            buckets[d]["total"] = buckets[d]["voz"] + buckets[d]["wa"] + buckets[d]["man"]
+            buckets[d]["total"] = buckets[d]["voz"] + buckets[d]["man"]
         return list(buckets.values())
     except Exception as exc:
         log.warning("ingresos_30d falló para tenant=%s: %s", tenant.id, exc)
         return []
 
 
-def _load_conversaciones(tenant_id: str) -> tuple[list[dict], list[dict]]:
-    """Agrupa los mensajes de `messages` por teléfono → una conversación por
-    cliente. Devuelve (whatsapp, voz). Por ahora todas son WhatsApp; la
-    distinción por canal se hará cuando guardemos `channel` en Message.
+def _load_llamadas(tenant_id: str) -> list[dict]:
+    """Agrupa los mensajes de `messages` por teléfono → una llamada por cliente.
+
+    Nota: hoy la tabla `messages` contiene turnos transcritos por
+    ElevenLabs (voz). Cuando tengamos un modelo dedicado de "llamada"
+    sustituiremos esta función.
     """
     try:
         with Session(db_module.engine) as s:
@@ -417,19 +411,19 @@ def _load_conversaciones(tenant_id: str) -> tuple[list[dict], list[dict]]:
         conv_by_phone: dict[str, list[db_module.Message]] = {}
         for m in rows:
             conv_by_phone.setdefault(m.customer_phone, []).append(m)
-        wa: list[dict] = []
+        llamadas: list[dict] = []
         for phone, msgs in conv_by_phone.items():
             msgs_sorted = sorted(msgs, key=lambda x: x.created_at)
             last = msgs_sorted[-1]
             preview = (last.content or "")[:120]
-            wa.append({
-                "id": f"w_{phone}",
+            llamadas.append({
+                "id": f"v_{phone}",
                 "telefono": phone,
                 "nombre": "—",
                 "ultimoAt": last.created_at.isoformat(timespec="minutes"),
                 "reserva": False,
                 "preview": preview,
-                "mensajes": [
+                "turnos": [
                     {
                         "role": m.role,
                         "at": m.created_at.strftime("%H:%M"),
@@ -437,12 +431,12 @@ def _load_conversaciones(tenant_id: str) -> tuple[list[dict], list[dict]]:
                     } for m in msgs_sorted
                 ],
             })
-        # Orden por último mensaje descendente
-        wa.sort(key=lambda x: x["ultimoAt"], reverse=True)
-        return wa, []
+        # Orden por última llamada descendente
+        llamadas.sort(key=lambda x: x["ultimoAt"], reverse=True)
+        return llamadas
     except Exception as exc:
-        log.warning("conversaciones falló para tenant=%s: %s", tenant_id, exc)
-        return [], []
+        log.warning("llamadas falló para tenant=%s: %s", tenant_id, exc)
+        return []
 
 
 # ===========================================================================
@@ -451,7 +445,6 @@ def _load_conversaciones(tenant_id: str) -> tuple[list[dict], list[dict]]:
 
 class BotToggle(BaseModel):
     voz: bool | None = None
-    wa: bool | None = None
 
 
 class ReservaCreate(BaseModel):
@@ -540,18 +533,15 @@ async def api_bot_toggle(
     body: BotToggle,
     t: db_module.Tenant = Depends(_current_tenant),
 ):
-    # MVP: los dos toggles comparten el `status` del tenant. Cuando añadamos
-    # canales independientes, haremos un desglose (bot_voz_on / bot_wa_on).
+    # Producto de voz único (ElevenLabs): `voz` mapea directamente al
+    # `status` del tenant. Si en el futuro sumamos otro canal, volveremos
+    # a un desglose por canal.
     with Session(db_module.engine) as s:
         tenant = s.get(db_module.Tenant, t.id)
         if tenant is None:
             raise HTTPException(404, "tenant no encontrado")
-        any_on = bool(body.voz or body.wa)
-        # Si ambos llegan y alguno está on → active; si ambos off → paused.
-        if body.voz is not None and body.wa is not None:
-            tenant.status = "active" if (body.voz or body.wa) else "paused"
-        else:
-            tenant.status = "active" if any_on else tenant.status
+        if body.voz is not None:
+            tenant.status = "active" if body.voz else "paused"
         s.commit()
         return {"ok": True, "status": tenant.status}
 

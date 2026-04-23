@@ -103,8 +103,8 @@ function TabAvisos() {
   // Mock local sin persistencia — el backend aún no tiene endpoints de avisos.
   const [avisos, setAvisos] = useState([
     ['Cuando el bot crea una reserva','Recibe un email al instante',true],
-    ['Cuando el bot mueve una reserva','Aviso por WhatsApp al móvil del dueño',true],
-    ['Cuando el bot cancela una reserva','Email + WhatsApp',true],
+    ['Cuando el bot mueve una reserva','Email al dueño',true],
+    ['Cuando el bot cancela una reserva','Email al dueño',true],
     ['Resumen diario','Cada noche a las 21:00 con las reservas del día siguiente',false],
     ['Alertas de caída del bot','Si Ana deja de funcionar, te avisamos',true],
   ]);

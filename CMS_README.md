@@ -39,14 +39,12 @@ Abre http://localhost:8000/admin/login y entra con las credenciales del `.env`.
 
 | Ruta                                    | Qué hace                         |
 |-----------------------------------------|----------------------------------|
-| `GET  /whatsapp`                        | Verificación webhook (Meta)      |
-| `POST /whatsapp`                        | Webhook de mensajes              |
+| `POST /tools/*`                         | Server tools que llama ElevenLabs|
 | `GET  /admin/login`                     | Login del panel                  |
 | `GET  /admin/dashboard`                 | Resumen y métricas globales      |
 | `GET  /admin/clientes`                  | Listado de clientes + tokens     |
 | `GET  /admin/clientes/new`              | Alta de cliente                  |
 | `GET  /admin/clientes/{id}/{tab}`       | Detalle con pestañas             |
-| `GET  /admin/conversaciones`            | Bandeja de chats                 |
 | `GET  /admin/facturacion`               | Desglose coste / plan / margen   |
 | `GET  /admin/ajustes`                   | Estado de API keys y modelo      |
 

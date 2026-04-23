@@ -8,10 +8,9 @@ function ScreenHoy({ user, setUser, setActive, onOpenReserva }) {
 
   const toggleBot = (canal) => {
     // Actualiza optimistamente el estado local y delega al listener en app.jsx
-    // que sincroniza con /api/portal/bot.
-    const key = canal === 'voz' ? 'botVoz' : 'botWa';
-    const next = !(user && user[key]);
-    if (typeof setUser === 'function') setUser(u => ({ ...u, [key]: next }));
+    // que sincroniza con /api/portal/bot. Solo existe el canal 'voz'.
+    const next = !(user && user.botVoz);
+    if (typeof setUser === 'function') setUser(u => ({ ...u, botVoz: next }));
     window.dispatchEvent(new CustomEvent('portal:bot-toggle', { detail: { canal, on: next } }));
   };
 
@@ -69,26 +68,15 @@ function ScreenHoy({ user, setUser, setActive, onOpenReserva }) {
           <div className="text-sm font-semibold">Tu bot ahora</div>
           <button onClick={()=>setActive('ajustes')} className="text-xs text-brand-700 hover:underline">Ajustes →</button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={()=>toggleBot('voz')}
-            className={`text-left flex items-center gap-2.5 p-3 rounded-lg border ${user.botVoz?'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-900/40':'bg-slate-50 border-transparent dark:bg-slate-800/40'}`}>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${user.botVoz?'bg-emerald-500':'bg-slate-400'}`}><Icon d={ICONS.voz} cls="w-4 h-4"/></div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium">Llamadas</div>
-              <div className="text-xs text-slate-500">{user.botVoz?'Activas · toca para pausar':'Pausadas · toca para activar'}</div>
-            </div>
-            <div className={`tg ${user.botVoz?'on':''}`} role="switch" aria-checked={user.botVoz}/>
-          </button>
-          <button type="button" onClick={()=>toggleBot('wa')}
-            className={`text-left flex items-center gap-2.5 p-3 rounded-lg border ${user.botWa?'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-900/40':'bg-slate-50 border-transparent dark:bg-slate-800/40'}`}>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${user.botWa?'bg-emerald-500':'bg-slate-400'}`}><Icon d={ICONS.whatsapp} cls="w-4 h-4"/></div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium">WhatsApp</div>
-              <div className="text-xs text-slate-500">{user.botWa?'Activo · toca para pausar':'Pausado · toca para activar'}</div>
-            </div>
-            <div className={`tg ${user.botWa?'on':''}`} role="switch" aria-checked={user.botWa}/>
-          </button>
-        </div>
+        <button type="button" onClick={()=>toggleBot('voz')}
+          className={`w-full text-left flex items-center gap-2.5 p-3 rounded-lg border ${user.botVoz?'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-900/40':'bg-slate-50 border-transparent dark:bg-slate-800/40'}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${user.botVoz?'bg-emerald-500':'bg-slate-400'}`}><Icon d={ICONS.voz} cls="w-4 h-4"/></div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">Llamadas de voz</div>
+            <div className="text-xs text-slate-500">{user.botVoz?'Activas · toca para pausar':'Pausadas · toca para activar'}</div>
+          </div>
+          <div className={`tg ${user.botVoz?'on':''}`} role="switch" aria-checked={user.botVoz}/>
+        </button>
       </Card>
     </>
   );

@@ -72,7 +72,6 @@ function ScreenReservas({ initialReserva, onCloseDetalle }) {
           className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
           <option value="todos">Todos los canales</option>
           <option value="voz">Voz</option>
-          <option value="whatsapp">WhatsApp</option>
           <option value="manual">Manual</option>
         </select>
         <select value={filtroEquipo} onChange={e=>setFiltroEquipo(e.target.value)}

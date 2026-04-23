@@ -12,11 +12,11 @@
 #    ./deploy.sh <nombre-del-repo>
 #
 #  Ejemplo:
-#    ./deploy.sh bot-reservas-whatsapp
+#    ./deploy.sh bot-reservas-voz
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
-REPO_NAME="${1:-bot-reservas-whatsapp}"
+REPO_NAME="${1:-bot-reservas-voz}"
 GREEN="\033[0;32m"; YELLOW="\033[1;33m"; RED="\033[0;31m"; NC="\033[0m"
 
 info()  { echo -e "${GREEN}[deploy]${NC} $*"; }
