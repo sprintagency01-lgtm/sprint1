@@ -57,7 +57,12 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "duracion_minutos": {
                         "type": "integer",
-                        "description": "Duración del servicio en minutos (30, 45, 60, 90...).",
+                        "description": (
+                            "Duración del servicio en minutos. Debe coincidir "
+                            "con el servicio que ha pedido el cliente — NO la "
+                            "inventes. Duraciones típicas de esta peluquería: "
+                            "Corte hombre=30, Corte mujer=45, Color=90, Mechas=120."
+                        ),
                     },
                     "max_resultados": {
                         "type": "integer",
