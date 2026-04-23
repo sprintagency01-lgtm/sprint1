@@ -19,6 +19,7 @@ import json
 import logging
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import anthropic
 
@@ -77,11 +78,15 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
             "ANTHROPIC_API_KEY no configurada. Pon LLM_PROVIDER=openai o añade la key."
         )
 
-    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    time_ctx = _agent_openai_mod._build_time_context(
+        datetime.now(ZoneInfo(settings.default_timezone))
+    )
     system_prompt = (
         tenant["system_prompt"]
-        + f"\n\n(Contexto: fecha y hora actual = {now_iso} "
-        f"zona {settings.default_timezone}. Teléfono del cliente = {caller_phone}.)"
+        + "\n\nCONTEXTO TEMPORAL (consulta esta tabla SIEMPRE que el cliente "
+        "diga 'hoy', 'mañana', 'el lunes', etc. — NO calcules fechas tú):\n"
+        + time_ctx
+        + f"\n\nTeléfono del cliente = {caller_phone}."
     )
 
     tools_anthropic = _openai_tools_to_anthropic(_agent_openai_mod.TOOLS)

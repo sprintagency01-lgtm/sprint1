@@ -20,6 +20,7 @@ import logging
 import re
 from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from openai import OpenAI
 
@@ -311,6 +312,19 @@ _RE_LIST_PREFIX = re.compile(
 _RE_DOUBLE_STAR = re.compile(r"\*\*(.+?)\*\*", flags=re.DOTALL)
 _RE_DOUBLE_UNDERSCORE = re.compile(r"__(.+?)__", flags=re.DOTALL)
 
+# Línea que empieza con un pictograma/emoji "decorativo" típico de fichas:
+# 📅 🗓️ ⏰ 👤 📱 📋 ✂️ 💇 ✅ 📍 💈 🗒️ etc. — es decir, cualquier símbolo en los
+# rangos estándar de emoji/pictograph, seguido (opc.) de variation selector y
+# espacio, y luego contenido.
+_RE_EMOJI_PREFIX = re.compile(
+    r"^\s*"
+    r"[\U0001F300-\U0001FAFF\u2600-\u27BF\u2700-\u27BF]"
+    r"[\uFE0F\u200D\U0001F3FB-\U0001F3FF]*"
+    r"(?:[\U0001F300-\U0001FAFF\u2600-\u27BF][\uFE0F\u200D\U0001F3FB-\U0001F3FF]*)*"
+    r"\s+(?P<rest>.+)$",
+    flags=re.UNICODE,
+)
+
 
 def _sanitize_whatsapp(text: str) -> str:
     """Limpia la salida del LLM para WhatsApp.
@@ -332,40 +346,96 @@ def _sanitize_whatsapp(text: str) -> str:
     text = _RE_DOUBLE_STAR.sub(r"\1", text)
     text = _RE_DOUBLE_UNDERSCORE.sub(r"\1", text)
 
-    # 2) aplanar listas
+    # 2) aplanar listas (marcador numérico, guion, asterisco, emoji-keycap)
+    #    y "fichas" (2+ líneas seguidas con prefijo emoji decorativo).
     lines = text.split("\n")
-    # Detectamos bloques consecutivos de líneas-lista
     out_lines: list[str] = []
-    buffer_items: list[str] = []
+    list_buffer: list[str] = []    # ítems de lista → unidos con ", " y " o "
+    emoji_buffer: list[str] = []   # líneas tipo ficha → unidas con ", "
 
-    def _flush_buffer() -> None:
-        nonlocal buffer_items
-        if not buffer_items:
+    def _flush_list() -> None:
+        nonlocal list_buffer
+        if not list_buffer:
             return
-        if len(buffer_items) == 1:
-            out_lines.append(buffer_items[0])
+        if len(list_buffer) == 1:
+            out_lines.append(list_buffer[0])
         else:
-            # une con ", " y sustituye el penúltimo separador por " o "
-            joined = ", ".join(buffer_items[:-1]) + " o " + buffer_items[-1]
+            joined = ", ".join(list_buffer[:-1]) + " o " + list_buffer[-1]
             out_lines.append(joined)
-        buffer_items = []
+        list_buffer = []
+
+    def _flush_emoji() -> None:
+        nonlocal emoji_buffer
+        if not emoji_buffer:
+            return
+        # Si hay 2+ líneas, es una ficha — las unimos como prosa con coma.
+        # Si sólo hay una, la dejamos tal cual (puede ser un saludo "👋 Hola").
+        if len(emoji_buffer) == 1:
+            out_lines.append(emoji_buffer[0])
+        else:
+            out_lines.append(", ".join(emoji_buffer))
+        emoji_buffer = []
+
+    def _flush_all() -> None:
+        _flush_list()
+        _flush_emoji()
 
     for raw in lines:
-        m = _RE_LIST_PREFIX.match(raw)
-        if m:
-            item = raw[m.end():].strip()
+        m_list = _RE_LIST_PREFIX.match(raw)
+        if m_list:
+            _flush_emoji()  # cerramos un bloque distinto
+            item = raw[m_list.end():].strip()
             if item:
-                buffer_items.append(item)
-            # si la línea sólo era marcador (raro), la ignoramos
+                list_buffer.append(item)
             continue
-        _flush_buffer()
+        m_emoji = _RE_EMOJI_PREFIX.match(raw)
+        if m_emoji:
+            _flush_list()
+            rest = m_emoji.group("rest").strip()
+            if rest:
+                emoji_buffer.append(rest)
+            continue
+        _flush_all()
         out_lines.append(raw)
-    _flush_buffer()
+    _flush_all()
 
     # 3) colapsar líneas en blanco múltiples
     result = "\n".join(out_lines)
     result = re.sub(r"\n{3,}", "\n\n", result)
     return result.strip()
+
+
+# ---------- Contexto temporal inyectado al prompt ----------
+
+_WEEKDAYS_ES = [
+    "lunes", "martes", "miércoles", "jueves",
+    "viernes", "sábado", "domingo",
+]
+_MONTHS_ES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+
+
+def _format_date_es(d: datetime) -> str:
+    return f"{_WEEKDAYS_ES[d.weekday()]} {d.day} de {_MONTHS_ES[d.month - 1]} de {d.year}"
+
+
+def _build_time_context(now: datetime) -> str:
+    """Genera una tabla de días nombrados → fecha para los próximos 8 días.
+
+    Los LLM son malos calculando "lunes" a partir de "hoy es jueves 23". Les
+    damos la tabla ya resuelta para que sólo tengan que mirar.
+    """
+    today = _format_date_es(now)
+    lines = [
+        f"Hoy es {today}, {now.strftime('%H:%M')} (zona {settings.default_timezone}).",
+        f"Mañana es {_format_date_es(now + timedelta(days=1))}.",
+    ]
+    for i in range(2, 8):
+        d = now + timedelta(days=i)
+        lines.append(f"En {i} días: {_format_date_es(d)}.")
+    return "\n".join(lines)
 
 
 # ---------- Loop principal del agente ----------
@@ -415,11 +485,15 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
 
 def _reply_openai(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> str:
     """Devuelve la respuesta de texto del agente tras resolver tool calls (provider OpenAI)."""
-    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    # Usar TZ del negocio para que el "hoy" del prompt coincida con lo que
+    # percibe el cliente; Railway corre en UTC.
+    time_ctx = _build_time_context(datetime.now(ZoneInfo(settings.default_timezone)))
     system_prompt = (
         tenant["system_prompt"]
-        + f"\n\n(Contexto: fecha y hora actual = {now_iso} "
-        f"zona {settings.default_timezone}. Teléfono del cliente = {caller_phone}.)"
+        + "\n\nCONTEXTO TEMPORAL (consulta esta tabla SIEMPRE que el cliente "
+        "diga 'hoy', 'mañana', 'el lunes', etc. — NO calcules fechas tú):\n"
+        + time_ctx
+        + f"\n\nTeléfono del cliente = {caller_phone}."
     )
 
     # OpenAI mete el system prompt como un mensaje más al inicio.
