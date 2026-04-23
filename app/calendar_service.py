@@ -373,6 +373,12 @@ def crear_evento(
     nombre_cliente: str = "",
     calendar_id: str | None = None,
     tenant_id: str = "default",
+    # Metadatos opcionales que el portal usa para reconstruir las reservas.
+    # Quedan en extendedProperties.private y no afectan a la vista del
+    # usuario en Google Calendar.
+    service_id: str | int | None = None,
+    member_id: str | int | None = None,
+    channel: str = "bot",
 ) -> dict:
     svc = _service(tenant_id)
     cal = calendar_id or settings.default_calendar_id
@@ -393,18 +399,23 @@ def crear_evento(
         desc_lines.append(f"Tel. cliente: {telefono_cliente}")
     description = "\n\n".join(desc_lines).strip()
 
+    private: dict[str, str] = {
+        "phone": telefono_cliente or "",
+        "client_name": nombre,
+        "created_by": channel or "bot",
+        "channel": channel or "bot",
+    }
+    if service_id is not None:
+        private["service_id"] = str(service_id)
+    if member_id is not None:
+        private["member_id"] = str(member_id)
+
     event = {
         "summary": summary,
         "description": description,
         "start": {"dateTime": inicio.isoformat(), "timeZone": settings.default_timezone},
         "end": {"dateTime": fin.isoformat(), "timeZone": settings.default_timezone},
-        "extendedProperties": {
-            "private": {
-                "phone": telefono_cliente,
-                "client_name": nombre,
-                "created_by": "bot",
-            }
-        },
+        "extendedProperties": {"private": private},
     }
     res = svc.events().insert(calendarId=cal, body=event).execute()
     _invalidate_freebusy_cache(tenant_id)
@@ -463,6 +474,42 @@ def buscar_evento_por_telefono(
         privateExtendedProperty=f"phone={telefono}",
     ).execute().get("items", [])
     return events[0] if events else None
+
+
+def listar_eventos(
+    desde: datetime,
+    hasta: datetime,
+    calendar_id: str | None = None,
+    tenant_id: str = "default",
+) -> list[dict]:
+    """Lista eventos del calendario en un rango.
+
+    Devuelve la lista cruda de eventos de Google (ya expandidos: singleEvents=True,
+    ordenados por startTime). Quien llama los mapea al formato del portal.
+    """
+    svc = _service(tenant_id)
+    cal = calendar_id or settings.default_calendar_id
+    desde = _ensure_local_tz(desde)
+    hasta = _ensure_local_tz(hasta)
+    items: list[dict] = []
+    page_token: str | None = None
+    while True:
+        params = dict(
+            calendarId=cal,
+            timeMin=desde.isoformat(),
+            timeMax=hasta.isoformat(),
+            singleEvents=True,
+            orderBy="startTime",
+            maxResults=250,
+        )
+        if page_token:
+            params["pageToken"] = page_token
+        resp = svc.events().list(**params).execute()
+        items.extend(resp.get("items", []))
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    return items
 
 
 # ---------- CLI mínima para autorizar ----------

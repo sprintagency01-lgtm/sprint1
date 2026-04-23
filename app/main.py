@@ -21,6 +21,9 @@ from . import oauth_web
 from . import diag
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
+from .portal import router as portal_router
+from .portal.routes import router_mounts as portal_mounts
+from .portal.auth import ensure_portal_users
 
 logging.basicConfig(
     level=settings.log_level,
@@ -41,8 +44,20 @@ except Exception:
     log.exception("Bootstrap del admin falló — el servidor arranca igual, "
                   "pero el login del CMS no funcionará hasta que se arregle.")
 
+# Bootstrap de usuarios del portal (1 owner por tenant contracted si el env
+# PORTAL_BOOTSTRAP_PASSWORD está definido y no existe ningún usuario todavía).
+try:
+    ensure_portal_users()
+except Exception:
+    log.exception("Bootstrap del portal falló — /app seguirá disponible "
+                  "pero habrá que crear cuentas a mano.")
+
 # Monta el CMS bajo /admin (las rutas ya incluyen el prefijo).
 app.include_router(cms_router)
+# Portal del cliente (/app + /api/portal/*).
+app.include_router(portal_router)
+for mount_path, mount_app in portal_mounts:
+    app.mount(mount_path, mount_app, name=f"portal_{mount_path.strip('/').replace('/', '_')}")
 # Endpoints /tools/* que ElevenLabs Conversational AI llama como server tools
 # durante las llamadas de voz (consultar disponibilidad, crear/mover/cancelar
 # reserva). Protegidos por X-Tool-Secret.

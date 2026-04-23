@@ -218,11 +218,38 @@ class Service(Base):
     duracion_min: Mapped[int] = mapped_column(Integer, default=30)
     precio: Mapped[float] = mapped_column(Float, default=0.0)
     orden: Mapped[int] = mapped_column(Integer, default=0)
+    # Si está inactivo, el bot no lo ofrece en conversaciones y no aparece en el
+    # portal como opción disponible. Por defecto activo para no romper datos
+    # existentes.
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    # IDs (int) de miembros del equipo que pueden hacer este servicio,
+    # serializado como JSON. Lista vacía = todos los miembros.
+    equipo_json: Mapped[str] = mapped_column(Text, default="[]")
 
     tenant: Mapped["Tenant"] = relationship(back_populates="services")
 
+    @property
+    def equipo_ids(self) -> list[int]:
+        try:
+            raw = json.loads(self.equipo_json or "[]")
+            return [int(x) for x in raw if str(x).lstrip("-").isdigit()]
+        except json.JSONDecodeError:
+            return []
+
+    @equipo_ids.setter
+    def equipo_ids(self, value: list[int]) -> None:
+        clean = sorted({int(x) for x in value})
+        self.equipo_json = json.dumps(clean)
+
     def to_dict(self) -> dict[str, Any]:
-        return {"nombre": self.nombre, "duracion_min": self.duracion_min, "precio": self.precio}
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "duracion_min": self.duracion_min,
+            "precio": self.precio,
+            "activo": bool(self.activo),
+            "equipo": self.equipo_ids,
+        }
 
 
 # ---------------------------------------------------------------------
@@ -248,6 +275,14 @@ class MiembroEquipo(Base):
     # serializado como JSON: [0,1,2,3,4,5] = lun-sáb.
     dias_trabajo_json: Mapped[str] = mapped_column(Text, default="[0,1,2,3,4,5]")
     orden: Mapped[int] = mapped_column(Integer, default=0)
+    # Color hex para visualización en el portal (agenda, etiquetas).
+    color: Mapped[str] = mapped_column(String(16), default="#059669")
+    # Turnos diarios: lista de [inicio_hhmm, fin_hhmm] en formato 24h,
+    # p.ej. [["10:00","14:00"],["17:00","20:30"]] para un turno partido.
+    # Se aplica a todos los dias_trabajo.
+    turnos_json: Mapped[str] = mapped_column(Text, default='[["10:00","20:00"]]')
+    # Periodos de vacaciones: lista de {desde: "YYYY-MM-DD", hasta: "YYYY-MM-DD"}
+    vacaciones_json: Mapped[str] = mapped_column(Text, default="[]")
 
     tenant: Mapped["Tenant"] = relationship(back_populates="equipo")
 
@@ -264,18 +299,61 @@ class MiembroEquipo(Base):
         clean = sorted({int(x) for x in value if 0 <= int(x) <= 6})
         self.dias_trabajo_json = json.dumps(clean)
 
+    @property
+    def turnos(self) -> list[list[str]]:
+        """Turnos del día como lista de [inicio, fin]. Siempre al menos uno."""
+        try:
+            raw = json.loads(self.turnos_json or "[]")
+            out: list[list[str]] = []
+            for t in raw or []:
+                if isinstance(t, (list, tuple)) and len(t) >= 2:
+                    out.append([str(t[0]), str(t[1])])
+            return out or [["10:00", "20:00"]]
+        except json.JSONDecodeError:
+            return [["10:00", "20:00"]]
+
+    @turnos.setter
+    def turnos(self, value: list[list[str]]) -> None:
+        clean = [[str(t[0])[:5], str(t[1])[:5]] for t in (value or []) if len(t) >= 2]
+        self.turnos_json = json.dumps(clean or [["10:00", "20:00"]])
+
+    @property
+    def vacaciones(self) -> list[dict[str, str]]:
+        try:
+            raw = json.loads(self.vacaciones_json or "[]")
+            out: list[dict[str, str]] = []
+            for v in raw or []:
+                if isinstance(v, dict) and v.get("desde") and v.get("hasta"):
+                    out.append({"desde": str(v["desde"]), "hasta": str(v["hasta"])})
+            return out
+        except json.JSONDecodeError:
+            return []
+
+    @vacaciones.setter
+    def vacaciones(self, value: list[dict[str, str]]) -> None:
+        clean = [
+            {"desde": str(v.get("desde", "")), "hasta": str(v.get("hasta", ""))}
+            for v in (value or [])
+            if v.get("desde") and v.get("hasta")
+        ]
+        self.vacaciones_json = json.dumps(clean)
+
     def to_dict(self) -> dict[str, Any]:
         """Formato que consumen `eleven_tools.py` y `calendar_service.py`.
 
-        Las keys se mantienen ("nombre", "calendar_id", "dias_trabajo")
-        aunque la clase se llame MiembroEquipo, para no romper esos módulos
-        ni las tools expuestas a ElevenLabs.
+        Las keys legacy se mantienen ("nombre", "calendar_id", "dias_trabajo")
+        para no romper esos módulos ni las tools expuestas a ElevenLabs. Los
+        campos añadidos para el portal (color, turnos, vacaciones) se incluyen
+        además pero son ignorados por los consumidores legacy.
         """
         return {
             "id": self.id,
             "nombre": self.nombre,
             "calendar_id": self.calendar_id,
             "dias_trabajo": self.dias_trabajo,
+            "color": self.color or "#059669",
+            "turnos": self.turnos,
+            "vacaciones": self.vacaciones,
         }
 
 
@@ -463,6 +541,35 @@ class AdminUser(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(200), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------
+#  TENANT USERS  (login del portal del cliente)
+#
+#  Usuarios del portal (/app) — distintos de AdminUser, que es solo para
+#  Sprintagency. Cada registro pertenece a un tenant. Roles:
+#    - owner      : dueño/a del negocio. Acceso total, incluido Ajustes/Usuarios.
+#    - manager    : recepción con acceso de escritura pero sin poder borrar
+#                   usuarios ni cambiar datos del negocio.
+#    - readonly   : solo lectura (útil para demos o contables).
+#
+#  Email es único por tenant (un mismo email puede tener cuenta en varios
+#  tenants, aunque en la práctica hoy solo tenemos pelu_demo).
+# ---------------------------------------------------------------------
+
+class TenantUser(Base):
+    __tablename__ = "tenant_users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), index=True,
+    )
+    email: Mapped[str] = mapped_column(String(200), index=True)
+    password_hash: Mapped[str] = mapped_column(String(200))
+    nombre: Mapped[str] = mapped_column(String(200), default="")
+    # owner | manager | readonly
+    role: Mapped[str] = mapped_column(String(20), default="owner")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
@@ -1111,6 +1218,18 @@ def _auto_migrate_sqlite() -> None:
          "ALTER TABLE tenants ADD COLUMN voice_last_sync_at DATETIME"),
         ("tenants", "voice_last_sync_status",
          "ALTER TABLE tenants ADD COLUMN voice_last_sync_status VARCHAR(400) DEFAULT ''"),
+        # --- Service: flags del portal del cliente ---
+        ("services", "activo",
+         "ALTER TABLE services ADD COLUMN activo BOOLEAN DEFAULT 1"),
+        ("services", "equipo_json",
+         "ALTER TABLE services ADD COLUMN equipo_json TEXT DEFAULT '[]'"),
+        # --- MiembroEquipo: campos visuales/agenda añadidos para el portal ---
+        ("equipo", "color",
+         "ALTER TABLE equipo ADD COLUMN color VARCHAR(16) DEFAULT '#059669'"),
+        ("equipo", "turnos_json",
+         "ALTER TABLE equipo ADD COLUMN turnos_json TEXT DEFAULT '[[\"10:00\",\"20:00\"]]'"),
+        ("equipo", "vacaciones_json",
+         "ALTER TABLE equipo ADD COLUMN vacaciones_json TEXT DEFAULT '[]'"),
     ]
 
     try:
