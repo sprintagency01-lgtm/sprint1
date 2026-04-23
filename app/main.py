@@ -14,6 +14,7 @@ from . import twilio_wa
 from . import db
 from . import tenants
 from . import agent
+from . import interactive as interactive_ids
 from . import voice
 from . import eleven_tools
 from . import oauth_web
@@ -201,7 +202,75 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
             msg["audio_media_id"],
             msg["phone_number_id"],
         )
+    elif msg["type"] == "interactive_reply":
+        # El cliente pulsó un botón/fila. Traducimos el reply_id al texto
+        # sintético correspondiente y reutilizamos el pipeline de texto.
+        synthetic = _synthetic_text_from_interactive_reply(
+            reply_id=msg.get("reply_id", ""),
+            reply_title=msg.get("reply_title", ""),
+        )
+        background_tasks.add_task(
+            handle_incoming_text,
+            msg["from"],
+            synthetic,
+            msg["phone_number_id"],
+        )
     return {"received": True}
+
+
+# ---------- Helpers de interactive → texto sintético ----------
+
+def _synthetic_text_from_interactive_reply(reply_id: str, reply_title: str) -> str:
+    """Convierte un id codificado a un string que el LLM interpreta como
+    elección clara del cliente. El objetivo es que el agente no tenga que
+    saber nada de ids: le llega "El cliente elige la hora 2026-04-24T10:00" y
+    sigue el flujo con normalidad.
+    """
+    parsed = interactive_ids.parse_id(reply_id)
+    kind = parsed.get("kind")
+
+    if kind == "slot":
+        inicio = parsed.get("inicio_iso", "")
+        fin = parsed.get("fin_iso", "")
+        miembro = parsed.get("miembro") or ""
+        base = f"El cliente elige el hueco de {inicio} a {fin}."
+        if miembro:
+            base += f" Con el miembro {miembro}."
+        return base
+
+    if kind == "team":
+        if parsed.get("sin_preferencia"):
+            return "El cliente dice que le da igual el miembro del equipo."
+        return f"El cliente elige al miembro del equipo con id {parsed.get('member_id')}."
+
+    if kind == "svc":
+        return f"El cliente elige el servicio con slug {parsed.get('slug')}."
+
+    if kind == "confirm":
+        return "Sí, confírmalo." if parsed.get("yes") else "No, vamos a cambiar algo."
+
+    if kind == "other":
+        target = parsed.get("target", "")
+        if target == "slot":
+            return (
+                "El cliente pide OTRA hora distinta a las ofrecidas. "
+                "Pregúntale qué franja le va mejor (día/hora aproximada) "
+                "en texto libre."
+            )
+        if target == "team":
+            # Vuelve al paso anterior: re-ofrecer huecos.
+            return (
+                "El cliente quiere OTRO miembro del equipo. Vuelve a "
+                "ofrecerle huecos disponibles con el resto del equipo."
+            )
+        if target == "svc":
+            return "El cliente quiere OTRO servicio distinto a los ofrecidos."
+        return "El cliente pide otra opción distinta a las ofrecidas."
+
+    # Desconocido: nos apoyamos en el título que WhatsApp nos devuelve.
+    if reply_title:
+        return reply_title
+    return reply_id or ""
 
 
 # ---------- Pipeline de procesamiento ----------
@@ -218,21 +287,39 @@ async def handle_incoming_text(from_phone: str, text: str, phone_number_id: str)
         # El último user ya está en history; para no duplicar lo quitamos del final
         history = [m for m in history[:-1]] if history and history[-1]["role"] == "user" else history
 
-        reply_text = agent.reply(
+        reply = agent.reply(
             user_message=text,
             history=history,
             tenant=tenant,
             caller_phone=from_phone,
         )
 
-        db.save_message(tenant_id, from_phone, "assistant", reply_text)
-        log.info("msg out [%s] %s: %s", tenant_id, from_phone, reply_text)
+        db.save_message(tenant_id, from_phone, "assistant", reply.text)
+        log.info("msg out [%s] %s: %s", tenant_id, from_phone, reply.text)
 
-        await whatsapp.send_text(
-            to_phone=from_phone,
-            body=reply_text,
-            phone_number_id=phone_number_id,
-        )
+        if reply.has_interactive:
+            # Guardamos el menú (Meta no lo necesita para el dispatch, pero
+            # así mantenemos estado consistente entre canales y habilita
+            # resolución por texto si el cliente escribe libre en vez de
+            # pulsar una opción).
+            db.save_pending_menu(
+                tenant_id=tenant_id,
+                customer_phone=from_phone,
+                kind=(reply.interactive or {}).get("type", "list"),
+                options=(reply.interactive or {}).get("options", []),
+            )
+            await whatsapp.send_interactive(
+                to_phone=from_phone,
+                spec=reply.interactive or {},
+                phone_number_id=phone_number_id,
+            )
+        else:
+            db.clear_pending_menu(tenant_id, from_phone)
+            await whatsapp.send_text(
+                to_phone=from_phone,
+                body=reply.text,
+                phone_number_id=phone_number_id,
+            )
     except Exception:
         log.exception("Error procesando mensaje entrante")
         try:
@@ -307,22 +394,55 @@ async def handle_incoming_text_twilio(
         tenant_id = tenant.get("id", "default")
 
         log.info("twilio in  [%s] %s (%s): %s", tenant_id, from_phone, profile_name or "-", text)
+
+        # Fallback de interactivos en Twilio: si hay un menú pendiente y el
+        # cliente responde "1", "dos", "otra", etc., lo resolvemos a su id
+        # y lo convertimos a texto sintético para que el agente lo interprete
+        # igual que una pulsación nativa en Meta.
+        effective_text = text
+        pending = db.get_pending_menu(tenant_id, from_phone)
+        if pending:
+            opt = interactive_ids.resolve_from_pending_menu(pending, text)
+            if opt is not None:
+                rid = opt.get("id") or ""
+                effective_text = _synthetic_text_from_interactive_reply(
+                    reply_id=rid,
+                    reply_title=opt.get("title", ""),
+                )
+                log.info(
+                    "twilio [%s] %s resuelve menú: '%s' → %s",
+                    tenant_id, from_phone, text, rid,
+                )
+
         db.save_message(tenant_id, from_phone, "user", text)
 
         history = db.load_history(tenant_id, from_phone)
         history = [m for m in history[:-1]] if history and history[-1]["role"] == "user" else history
 
-        reply_text = agent.reply(
-            user_message=text,
+        reply = agent.reply(
+            user_message=effective_text,
             history=history,
             tenant=tenant,
             caller_phone=from_phone,
         )
 
-        db.save_message(tenant_id, from_phone, "assistant", reply_text)
-        log.info("twilio out [%s] %s: %s", tenant_id, from_phone, reply_text)
+        db.save_message(tenant_id, from_phone, "assistant", reply.text)
+        log.info("twilio out [%s] %s: %s", tenant_id, from_phone, reply.text)
 
-        await twilio_wa.send_text(to_phone=from_phone, body=reply_text)
+        if reply.has_interactive:
+            db.save_pending_menu(
+                tenant_id=tenant_id,
+                customer_phone=from_phone,
+                kind=(reply.interactive or {}).get("type", "list"),
+                options=(reply.interactive or {}).get("options", []),
+            )
+            await twilio_wa.send_interactive(
+                to_phone=from_phone,
+                spec=reply.interactive or {},
+            )
+        else:
+            db.clear_pending_menu(tenant_id, from_phone)
+            await twilio_wa.send_text(to_phone=from_phone, body=reply.text)
     except Exception:
         log.exception("Error procesando mensaje Twilio")
         try:
@@ -366,16 +486,29 @@ async def handle_incoming_audio_twilio(
         history = db.load_history(tenant_id, from_phone)
         history = [m for m in history[:-1]] if history and history[-1]["role"] == "user" else history
 
-        reply_text = agent.reply(
+        reply = agent.reply(
             user_message=text_in,
             history=history,
             tenant=tenant,
             caller_phone=from_phone,
         )
-        db.save_message(tenant_id, from_phone, "assistant", reply_text)
-        log.info("twilio voz out [%s] %s: %s", tenant_id, from_phone, reply_text)
+        db.save_message(tenant_id, from_phone, "assistant", reply.text)
+        log.info("twilio voz out [%s] %s: %s", tenant_id, from_phone, reply.text)
 
-        await twilio_wa.send_text(to_phone=from_phone, body=reply_text)
+        if reply.has_interactive:
+            db.save_pending_menu(
+                tenant_id=tenant_id,
+                customer_phone=from_phone,
+                kind=(reply.interactive or {}).get("type", "list"),
+                options=(reply.interactive or {}).get("options", []),
+            )
+            await twilio_wa.send_interactive(
+                to_phone=from_phone,
+                spec=reply.interactive or {},
+            )
+        else:
+            db.clear_pending_menu(tenant_id, from_phone)
+            await twilio_wa.send_text(to_phone=from_phone, body=reply.text)
     except Exception:
         log.exception("Error procesando voz Twilio")
         try:
@@ -398,6 +531,11 @@ async def handle_incoming_audio(from_phone: str, media_id: str, phone_number_id:
         Guarda en BBDD el texto transcrito como mensaje del usuario y la respuesta
         del agente, para que el historial de conversación sea coherente entre
         mensajes de texto y notas de voz.
+
+        Nota: para notas de voz SIEMPRE devolvemos texto plano (TTS). Si el
+        agente produjo un mensaje interactivo, mantenemos el body como texto
+        para el audio y el usuario podrá seguir escribiendo. Mandamos también
+        el interactivo por chat en paralelo para no perder la UI clicable.
         """
         log.info("audio in [%s] %s: %s", tenant_id, from_phone, text_in)
         db.save_message(tenant_id, from_phone, "user", f"[voz] {text_in}")
@@ -405,15 +543,36 @@ async def handle_incoming_audio(from_phone: str, media_id: str, phone_number_id:
         history = db.load_history(tenant_id, from_phone)
         history = [m for m in history[:-1]] if history and history[-1]["role"] == "user" else history
 
-        reply_text = agent.reply(
+        reply = agent.reply(
             user_message=text_in,
             history=history,
             tenant=tenant,
             caller_phone=from_phone,
         )
-        db.save_message(tenant_id, from_phone, "assistant", reply_text)
-        log.info("audio out [%s] %s: %s", tenant_id, from_phone, reply_text)
-        return reply_text
+        db.save_message(tenant_id, from_phone, "assistant", reply.text)
+        log.info("audio out [%s] %s: %s", tenant_id, from_phone, reply.text)
+
+        if reply.has_interactive:
+            # Además del TTS, mandamos el mensaje interactivo por chat para
+            # que el cliente pueda pulsar la opción.
+            try:
+                db.save_pending_menu(
+                    tenant_id=tenant_id,
+                    customer_phone=from_phone,
+                    kind=(reply.interactive or {}).get("type", "list"),
+                    options=(reply.interactive or {}).get("options", []),
+                )
+                await whatsapp.send_interactive(
+                    to_phone=from_phone,
+                    spec=reply.interactive or {},
+                    phone_number_id=phone_number_id,
+                )
+            except Exception:
+                log.exception("Error enviando interactive tras voz (Meta)")
+        else:
+            db.clear_pending_menu(tenant_id, from_phone)
+
+        return reply.text
 
     await voice.handle_incoming_voice(
         from_phone=from_phone,

@@ -71,8 +71,14 @@ def _history_to_anthropic(history: list[dict]) -> list[dict]:
     return out
 
 
-def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> str:
-    """Devuelve la respuesta de texto del agente tras resolver tool_use (Claude)."""
+def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> "_agent_openai_mod.AgentReply":
+    """Devuelve la respuesta del agente tras resolver tool_use (Claude).
+
+    Retorna `AgentReply` (text + opcional interactive). Las tools de oferta
+    (`ofrecer_huecos`, `ofrecer_equipo`, `pedir_confirmacion`) terminan el
+    turno lanzando `_EarlyReply`, que capturamos para construir la reply
+    interactiva igual que en el flow de OpenAI.
+    """
     if _client is None:
         raise RuntimeError(
             "ANTHROPIC_API_KEY no configurada. Pon LLM_PROVIDER=openai o añade la key."
@@ -145,12 +151,17 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
             for b in tool_use_blocks:
                 name = getattr(b, "name", "")
                 tool_input = getattr(b, "input", {}) or {}
-                result_json = _agent_openai_mod._execute_tool(
-                    name=name,
-                    args=tool_input if isinstance(tool_input, dict) else {},
-                    tenant=tenant,
-                    caller_phone=caller_phone,
-                )
+                try:
+                    result_json = _agent_openai_mod._execute_tool(
+                        name=name,
+                        args=tool_input if isinstance(tool_input, dict) else {},
+                        tenant=tenant,
+                        caller_phone=caller_phone,
+                    )
+                except _agent_openai_mod._EarlyReply as er:
+                    # Una tool de oferta terminó el turno: devolvemos la
+                    # AgentReply interactiva sin continuar la conversación.
+                    return er.reply
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": getattr(b, "id", ""),
@@ -168,9 +179,11 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
         if stop_reason not in ("end_turn", "max_tokens", "stop_sequence", None):
             log.warning("stop_reason inesperado: %s", stop_reason)
         clean = _agent_openai_mod._sanitize_whatsapp(text)
-        return clean or "¿En qué puedo ayudarte?"
+        return _agent_openai_mod.AgentReply(text=clean or "¿En qué puedo ayudarte?")
 
-    return "Lo siento, no he podido completar la petición. ¿Puedes intentarlo de otra forma?"
+    return _agent_openai_mod.AgentReply(
+        text="Lo siento, no he podido completar la petición. ¿Puedes intentarlo de otra forma?"
+    )
 
 
 def _block_to_dict(block: Any) -> dict[str, Any]:

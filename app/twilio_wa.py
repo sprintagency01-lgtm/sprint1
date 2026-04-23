@@ -184,6 +184,58 @@ async def send_text(to_phone: str, body: str, from_number: str | None = None) ->
     return r.json()
 
 
+# ---------- Envío interactivo (FALLBACK a texto numerado) ----------
+#
+# Twilio NO permite mandar botones/listas inline en una session message
+# sin un Content Template pre-aprobado por Meta. Como los huecos horarios
+# son dinámicos (cambian cada conversación), un template estático no sirve.
+#
+# Estrategia: renderizamos las opciones como texto numerado y el cliente
+# responde "1", "2", "3", "Otra". El handler en main.py resuelve la
+# respuesta contra el último menú guardado en `pending_menus`.
+#
+# Si en el futuro el cliente tiene un template aprobado, se puede añadir
+# `send_template(content_sid, variables)` aquí y sustituir el fallback.
+
+async def send_interactive(
+    to_phone: str,
+    spec: dict[str, Any],
+    from_number: str | None = None,
+) -> dict[str, Any]:
+    """Renderiza opciones como mensaje de texto numerado.
+
+    spec = {
+        "type": "list" | "buttons",
+        "body": str,
+        "options": [{"id": str, "title": str, "description"?: str}, ...],
+    }
+
+    El `id` no se envía (Twilio no tiene forma de devolverlo). Para
+    resolver la selección, el caller DEBE guardar las opciones en
+    `pending_menus` con los mismos `id` — el handler hace la búsqueda.
+    """
+    body = (spec or {}).get("body") or ""
+    options = (spec or {}).get("options") or []
+    lines: list[str] = []
+    if body:
+        lines.append(body)
+        lines.append("")  # separador visual
+
+    for idx, opt in enumerate(options, start=1):
+        title = (opt.get("title") or "").strip() or f"Opción {idx}"
+        desc = (opt.get("description") or "").strip()
+        if desc:
+            lines.append(f"{idx}. {title} — {desc}")
+        else:
+            lines.append(f"{idx}. {title}")
+
+    if options:
+        lines.append("")
+        lines.append("Responde con el número de la opción que prefieras.")
+
+    return await send_text(to_phone=to_phone, body="\n".join(lines), from_number=from_number)
+
+
 async def send_media(to_phone: str, media_url: str, body: str = "", from_number: str | None = None) -> dict[str, Any]:
     """Envía un mensaje con media (imagen/audio) por Twilio. media_url debe ser pública."""
     if not settings.twilio_account_sid or not settings.twilio_auth_token:

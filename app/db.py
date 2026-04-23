@@ -467,6 +467,119 @@ class AdminUser(Base):
 
 
 # ---------------------------------------------------------------------
+#  PENDING MENUS  (último menú interactivo ofrecido a un cliente)
+#
+#  Los canales que NO soportan mensajes interactivos nativos (Twilio sin
+#  Content Templates aprobados) rinderizan las opciones como lista
+#  numerada en texto. Para resolver la respuesta del cliente ("1", "2",
+#  "otra") necesitamos recordar qué menú se le ofreció por última vez.
+#
+#  También lo usamos en Meta como "última oferta" para detectar selecciones
+#  por texto cuando el cliente no pulsa el botón y responde escribiendo
+#  ("a las 10 sí").
+#
+#  Upsert por (tenant_id, phone): cada cliente tiene como mucho UN menú
+#  pendiente. Si se ofrece otro, reemplaza al anterior.
+# ---------------------------------------------------------------------
+
+class PendingMenu(Base):
+    __tablename__ = "pending_menus"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    customer_phone: Mapped[str] = mapped_column(String(32), index=True)
+    # kind: slot | team | service | confirm  (para debug/telemetría)
+    kind: Mapped[str] = mapped_column(String(20), default="slot")
+    # options_json: [{id: str, title: str, description?: str}, ...]
+    options_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# TTL: si el último menú tiene más de 24h se ignora. Es lo que permite
+# WhatsApp para sesiones customer-initiated, y evita que un "1" escrito
+# muchos días después se interprete como selección de un menú viejo.
+_PENDING_MENU_TTL_HOURS = 24
+
+
+def save_pending_menu(
+    tenant_id: str,
+    customer_phone: str,
+    kind: str,
+    options: list[dict[str, Any]],
+) -> None:
+    """Guarda/actualiza el menú pendiente para (tenant, teléfono).
+
+    Si ya había uno, lo reemplaza. `options` es una lista de dicts con al
+    menos `id` y `title` — cada uno corresponde a una opción clicable.
+    """
+    payload = json.dumps(options, ensure_ascii=False)
+    with Session(engine) as db:
+        existing = db.scalar(
+            select(PendingMenu).where(
+                PendingMenu.tenant_id == tenant_id,
+                PendingMenu.customer_phone == customer_phone,
+            )
+        )
+        if existing is None:
+            db.add(PendingMenu(
+                tenant_id=tenant_id,
+                customer_phone=customer_phone,
+                kind=kind,
+                options_json=payload,
+            ))
+        else:
+            existing.kind = kind
+            existing.options_json = payload
+            existing.created_at = datetime.utcnow()
+        db.commit()
+
+
+def get_pending_menu(
+    tenant_id: str,
+    customer_phone: str,
+) -> dict[str, Any] | None:
+    """Devuelve el menú pendiente activo, o None si no hay o expiró.
+
+    Formato: {"kind": str, "options": [{id, title, ...}], "created_at": dt}
+    """
+    with Session(engine) as db:
+        row = db.scalar(
+            select(PendingMenu).where(
+                PendingMenu.tenant_id == tenant_id,
+                PendingMenu.customer_phone == customer_phone,
+            )
+        )
+        if row is None:
+            return None
+        age = datetime.utcnow() - row.created_at
+        if age.total_seconds() > _PENDING_MENU_TTL_HOURS * 3600:
+            return None
+        try:
+            options = json.loads(row.options_json or "[]")
+        except json.JSONDecodeError:
+            options = []
+        return {
+            "kind": row.kind,
+            "options": options,
+            "created_at": row.created_at,
+        }
+
+
+def clear_pending_menu(tenant_id: str, customer_phone: str) -> None:
+    """Borra el menú pendiente tras resolverlo (o al empezar un turno nuevo sin opciones)."""
+    with Session(engine) as db:
+        row = db.scalar(
+            select(PendingMenu).where(
+                PendingMenu.tenant_id == tenant_id,
+                PendingMenu.customer_phone == customer_phone,
+            )
+        )
+        if row is not None:
+            db.delete(row)
+            db.commit()
+
+
+# ---------------------------------------------------------------------
 #  HISTORIAL DE CONVERSACIONES  (API compartida)
 # ---------------------------------------------------------------------
 

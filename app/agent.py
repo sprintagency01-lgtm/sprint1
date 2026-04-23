@@ -4,6 +4,10 @@ El agente recibe el mensaje del cliente + el historial + el prompt del tenant
 y decide:
 - Contestar texto directamente.
 - Llamar a una de las funciones (consultar_disponibilidad, crear_reserva, ...).
+- Ofrecer OPCIONES CLICABLES al cliente (ofrecer_huecos, ofrecer_equipo,
+  pedir_confirmacion). Estas tools terminan el turno inmediatamente y devuelven
+  un `AgentReply` con `interactive` poblado — el webhook las convierte a un
+  mensaje de lista o botones en WhatsApp.
 
 Las funciones se ejecutan en el backend contra Google Calendar (seguro:
 el LLM NO escribe nunca al calendario directamente, todo pasa por funciones
@@ -18,6 +22,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -27,10 +32,52 @@ from openai import OpenAI
 from .config import settings
 from . import calendar_service as cal
 from . import db as db_module
+from . import interactive as interactive_ids
 
 log = logging.getLogger(__name__)
 
 client = OpenAI(api_key=settings.openai_api_key)
+
+
+# ---------- Tipo de retorno del agente (text + opcional interactive) ----------
+
+@dataclass
+class AgentReply:
+    """Respuesta completa del agente tras un turno.
+
+    - `text`: el cuerpo del mensaje a enviar/guardar. Siempre no vacío.
+    - `interactive`: spec del mensaje interactivo si el agente quiere
+      ofrecer opciones clicables. `None` para respuestas de texto puro.
+      Formato:
+          {
+            "type": "list" | "buttons",
+            "body": str,                       # mismo que text en la práctica
+            "button": str (opc., solo list),
+            "section_title": str (opc.),
+            "options": [{"id": str, "title": str, "description"?: str}, ...]
+          }
+      El `id` de cada opción sigue el formato del módulo `interactive` —
+      el backend lo genera, el LLM no lo inventa.
+    """
+
+    text: str
+    interactive: dict[str, Any] | None = None
+
+    @property
+    def has_interactive(self) -> bool:
+        return bool(self.interactive and self.interactive.get("options"))
+
+
+class _EarlyReply(Exception):
+    """Señal interna: un tool quiere TERMINAR el turno con una AgentReply concreta.
+
+    La lanzan las tools "de oferta" (ofrecer_huecos, ofrecer_equipo,
+    pedir_confirmacion): el loop del agente la captura y devuelve la reply
+    sin pedir más completions al LLM.
+    """
+
+    def __init__(self, reply: AgentReply) -> None:
+        self.reply = reply
 
 # ---------- Definición de herramientas (tools) para OpenAI ----------
 # Formato OpenAI: {"type": "function", "function": {name, description, parameters}}
@@ -195,6 +242,155 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    # -----------------------------------------------------------------
+    # TOOLS DE OFERTA (UI interactivo WhatsApp)
+    #
+    # Estas tools NO devuelven datos para que el LLM siga razonando:
+    # TERMINAN el turno y generan un mensaje con opciones clicables en
+    # WhatsApp. El LLM debe llamarlas al final de una fase y NO añadir
+    # texto extra después.
+    # -----------------------------------------------------------------
+    {
+        "type": "function",
+        "function": {
+            "name": "ofrecer_huecos",
+            "description": (
+                "Ofrece al cliente huecos horarios como LISTA CLICABLE en "
+                "WhatsApp. Llama a esta función INMEDIATAMENTE después de "
+                "consultar_disponibilidad cuando ya tengas los huecos. "
+                "TERMINA el turno — no añadas texto en la respuesta, el "
+                "`body` de esta función es el texto que verá el cliente. "
+                "Los IDs de cada opción los genera el backend — pasa solo "
+                "las horas ISO y el backend añade una opción 'Otra hora' "
+                "automáticamente."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "description": (
+                            "Frase introductoria corta (máx 2 frases). Ej: "
+                            "'Estos son los huecos libres el viernes 24. "
+                            "¿Cuál te encaja?'."
+                        ),
+                    },
+                    "huecos": {
+                        "type": "array",
+                        "description": (
+                            "Lista de huecos a ofrecer, en el MISMO ORDEN "
+                            "que quieres que aparezcan. Máximo 9 (el 10º "
+                            "queda para 'Otra hora')."
+                        ),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "inicio_iso": {
+                                    "type": "string",
+                                    "description": "Inicio del hueco, ISO 8601.",
+                                },
+                                "fin_iso": {
+                                    "type": "string",
+                                    "description": "Fin del hueco, ISO 8601.",
+                                },
+                            },
+                            "required": ["inicio_iso", "fin_iso"],
+                        },
+                    },
+                },
+                "required": ["body", "huecos"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "equipo_disponible_en",
+            "description": (
+                "Devuelve qué miembros del equipo están libres en un hueco "
+                "concreto (misma duración del servicio). Úsalo JUSTO después "
+                "de que el cliente elija una hora, para saber si hay que "
+                "ofrecerle elegir miembro o si sólo queda uno disponible."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "inicio_iso": {"type": "string"},
+                    "fin_iso": {"type": "string"},
+                },
+                "required": ["inicio_iso", "fin_iso"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ofrecer_equipo",
+            "description": (
+                "Ofrece al cliente elegir miembro del equipo como LISTA "
+                "CLICABLE en WhatsApp. Úsalo SÓLO cuando equipo_disponible_en "
+                "devuelva >1 miembros libres para el hueco elegido. Si sólo "
+                "hay 1, NO llames a esta función — pasa directo a "
+                "pedir_confirmacion con ese miembro. TERMINA el turno."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "description": (
+                            "Frase corta. Ej: '¿Con quién prefieres?'."
+                        ),
+                    },
+                    "miembros": {
+                        "type": "array",
+                        "description": (
+                            "Lista de miembros disponibles a esa hora. Usa los "
+                            "IDs tal cual te los devolvió equipo_disponible_en."
+                        ),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "description": "member_id (entero como string) del miembro del equipo.",
+                                },
+                                "nombre": {"type": "string"},
+                            },
+                            "required": ["id", "nombre"],
+                        },
+                    },
+                },
+                "required": ["body", "miembros"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "pedir_confirmacion",
+            "description": (
+                "Muestra al cliente el RESUMEN de la reserva y le pide "
+                "confirmación con dos botones: Sí / No. TERMINA el turno — "
+                "no llames a crear_reserva directamente tras esta función; "
+                "espera a que el cliente pulse 'Sí' en el siguiente turno."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "resumen": {
+                        "type": "string",
+                        "description": (
+                            "Resumen en UNA frase de todo lo acordado. Ej: "
+                            "'Corte de hombre, viernes 24 a las 10:00 con "
+                            "Mario. ¿Te lo confirmo?'"
+                        ),
+                    },
+                },
+                "required": ["resumen"],
+            },
+        },
+    },
 ]
 
 
@@ -290,11 +486,189 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
             cal.cancelar_evento(args["event_id"], calendar_id=calendar_id, tenant_id=tenant_id)
             return json.dumps({"ok": True})
 
+        # --- Tools de oferta (terminan el turno con interactive) ---------
+
+        if name == "equipo_disponible_en":
+            disponibles = _miembros_disponibles_en(
+                tenant=tenant,
+                inicio_iso=args["inicio_iso"],
+                fin_iso=args["fin_iso"],
+            )
+            return json.dumps({"miembros": disponibles})
+
+        if name == "ofrecer_huecos":
+            raise _EarlyReply(_build_reply_ofrecer_huecos(args, tenant))
+
+        if name == "ofrecer_equipo":
+            raise _EarlyReply(_build_reply_ofrecer_equipo(args, tenant))
+
+        if name == "pedir_confirmacion":
+            raise _EarlyReply(_build_reply_confirmacion(args))
+
         return json.dumps({"error": f"herramienta desconocida: {name}"})
 
+    except _EarlyReply:
+        # Propagar — el loop del agente decide qué hacer con esto.
+        raise
     except Exception as e:
         log.exception("Error ejecutando tool %s", name)
         return json.dumps({"error": str(e)})
+
+
+# ---------- Builders de AgentReply para las tools de oferta ----------
+
+_DIAS_CORTOS_ES = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+
+
+def _format_slot_title(inicio_iso: str, fin_iso: str) -> str:
+    """Genera un título corto para la fila de lista.
+
+    Max 24 chars (límite WhatsApp). Formato: "vie 24 abr, 10:00".
+    """
+    try:
+        dt = datetime.fromisoformat(inicio_iso)
+    except ValueError:
+        return (inicio_iso or "")[:24]
+    dia = _DIAS_CORTOS_ES[dt.weekday()]
+    mes = _MONTHS_ES[dt.month - 1][:3] if dt.month <= 12 else ""
+    title = f"{dia} {dt.day} {mes}, {dt.strftime('%H:%M')}"
+    return title[:24]
+
+
+def _build_reply_ofrecer_huecos(args: dict, tenant: dict) -> AgentReply:
+    """Construye AgentReply para ofrecer_huecos: lista + fila 'Otra hora'."""
+    body = (args.get("body") or "").strip() or "¿Cuál de estas horas te encaja?"
+    huecos = args.get("huecos") or []
+    options: list[dict[str, str]] = []
+    # WhatsApp permite 10 filas; dejamos 1 para "Otra hora" → huecos ≤ 9.
+    for h in huecos[:9]:
+        inicio = (h.get("inicio_iso") or "").strip()
+        fin = (h.get("fin_iso") or "").strip()
+        if not inicio or not fin:
+            continue
+        options.append({
+            "id": interactive_ids.make_slot_id(inicio, fin),
+            "title": _format_slot_title(inicio, fin),
+        })
+    options.append({
+        "id": interactive_ids.make_other_id("slot"),
+        "title": "Otra hora",
+    })
+    spec = {
+        "type": "list",
+        "body": body,
+        "button": "Ver huecos",
+        "section_title": "Horas libres",
+        "options": options,
+    }
+    return AgentReply(text=body, interactive=spec)
+
+
+def _build_reply_ofrecer_equipo(args: dict, tenant: dict) -> AgentReply:
+    """Construye AgentReply para ofrecer_equipo: lista + fila 'Otro miembro'.
+
+    "Otro miembro" devuelve el cliente al paso anterior (volver a elegir hora),
+    según el flujo acordado. Esa semántica la resuelve main.py al recibir
+    other:team.
+    """
+    body = (args.get("body") or "").strip() or "¿Con quién prefieres?"
+    miembros = args.get("miembros") or []
+    options: list[dict[str, str]] = []
+    # WhatsApp lista permite 10; dejamos 1 para "Otro miembro".
+    for m in miembros[:9]:
+        mid = str(m.get("id") or "").strip()
+        nombre = (m.get("nombre") or "").strip()
+        if not mid or not nombre:
+            continue
+        options.append({
+            "id": interactive_ids.make_team_id(mid),
+            "title": nombre[:24],
+        })
+    options.append({
+        "id": interactive_ids.make_other_id("team"),
+        "title": "Otro miembro",
+    })
+    spec = {
+        "type": "list",
+        "body": body,
+        "button": "Elegir",
+        "section_title": "Equipo disponible",
+        "options": options,
+    }
+    return AgentReply(text=body, interactive=spec)
+
+
+def _build_reply_confirmacion(args: dict) -> AgentReply:
+    """Construye AgentReply para pedir_confirmacion: botones Sí/No."""
+    resumen = (args.get("resumen") or "").strip() or "¿Confirmo la reserva?"
+    options = [
+        {"id": interactive_ids.make_confirm_id(True), "title": "Sí, confirmar"},
+        {"id": interactive_ids.make_confirm_id(False), "title": "No, cambiar"},
+    ]
+    spec = {
+        "type": "buttons",
+        "body": resumen,
+        "options": options,
+    }
+    return AgentReply(text=resumen, interactive=spec)
+
+
+def _miembros_disponibles_en(
+    tenant: dict,
+    inicio_iso: str,
+    fin_iso: str,
+) -> list[dict[str, Any]]:
+    """Devuelve la lista de miembros del equipo libres en el hueco dado.
+
+    Consulta freebusy individual de cada calendario del miembro. Si un miembro
+    no tiene calendar_id propio (antiguo setup single-calendar), se asume
+    disponible (mismo criterio que listar_huecos_por_peluqueros).
+    """
+    equipo = tenant.get("equipo") or tenant.get("peluqueros") or []
+    if not equipo:
+        return []
+
+    try:
+        inicio = datetime.fromisoformat(inicio_iso)
+        fin = datetime.fromisoformat(fin_iso)
+    except ValueError:
+        return []
+
+    tenant_id = tenant.get("id", "default")
+    duracion = max(1, int((fin - inicio).total_seconds() // 60))
+
+    disponibles: list[dict[str, Any]] = []
+    for m in equipo:
+        dias = m.get("dias_trabajo") or list(range(7))
+        if inicio.weekday() not in dias:
+            continue
+        cal_id = m.get("calendar_id") or ""
+        if not cal_id:
+            # Sin calendar propio: se asume disponible (legacy).
+            disponibles.append({
+                "id": str(m.get("id") or ""),
+                "nombre": m.get("nombre") or "",
+            })
+            continue
+        # Consulta de huecos sobre ese calendario para la ventana exacta.
+        try:
+            slots = cal.listar_huecos_libres(
+                inicio, fin, duracion,
+                calendar_id=cal_id, tenant_id=tenant_id,
+                business_hours=tenant.get("business_hours"),
+            )
+        except Exception:
+            log.exception("freebusy miembro %s falló — se omite", m.get("nombre"))
+            continue
+        # Si hay al menos 1 slot que cubra exactamente [inicio, fin), está libre.
+        for s in slots:
+            if s.start <= inicio and s.end >= fin:
+                disponibles.append({
+                    "id": str(m.get("id") or ""),
+                    "nombre": m.get("nombre") or "",
+                })
+                break
+    return disponibles
 
 
 # ---------- Sanitizer de salida (WhatsApp-friendly) ----------
@@ -528,20 +902,27 @@ def _history_to_openai(history: list[dict]) -> list[dict]:
     return out
 
 
-def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> str:
+def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> AgentReply:
     """Dispatcher: delega al provider configurado (OpenAI o Anthropic).
 
     `LLM_PROVIDER=anthropic` cambia al adaptador de Anthropic (Claude). Cualquier
     otro valor (o vacío) cae en OpenAI, que es el comportamiento original.
+
+    Devuelve siempre un `AgentReply`. Si el provider antiguo devuelve str (por
+    compatibilidad), lo envolvemos aquí.
     """
     if settings.llm_provider == "anthropic":
         from . import agent_anthropic  # import tardío: no forzar dep si no se usa
-        return agent_anthropic.reply(
+        result = agent_anthropic.reply(
             user_message=user_message,
             history=history,
             tenant=tenant,
             caller_phone=caller_phone,
         )
+        if isinstance(result, AgentReply):
+            return result
+        # Compatibilidad con versiones antiguas del provider que devolvían str.
+        return AgentReply(text=str(result or ""))
     return _reply_openai(
         user_message=user_message,
         history=history,
@@ -550,7 +931,7 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
     )
 
 
-def _reply_openai(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> str:
+def _reply_openai(user_message: str, history: list[dict], tenant: dict, caller_phone: str) -> AgentReply:
     """Devuelve la respuesta de texto del agente tras resolver tool calls (provider OpenAI)."""
     # Usar TZ del negocio para que el "hoy" del prompt coincida con lo que
     # percibe el cliente; Railway corre en UTC.
@@ -633,7 +1014,13 @@ def _reply_openai(user_message: str, history: list[dict], tenant: dict, caller_p
                     args = json.loads(tc.function.arguments or "{}")
                 except json.JSONDecodeError:
                     args = {}
-                result = _execute_tool(tc.function.name, args, tenant, caller_phone)
+                try:
+                    result = _execute_tool(tc.function.name, args, tenant, caller_phone)
+                except _EarlyReply as er:
+                    # Una tool de oferta (ofrecer_huecos / ofrecer_equipo /
+                    # pedir_confirmacion) ha TERMINADO el turno. Devolvemos
+                    # la AgentReply con interactive sin pedir más al LLM.
+                    return er.reply
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
@@ -646,6 +1033,8 @@ def _reply_openai(user_message: str, history: list[dict], tenant: dict, caller_p
         if choice.finish_reason not in ("stop", "length", None):
             log.warning("finish_reason inesperado: %s", choice.finish_reason)
         clean = _sanitize_whatsapp(text)
-        return clean or "¿En qué puedo ayudarte?"
+        return AgentReply(text=clean or "¿En qué puedo ayudarte?")
 
-    return "Lo siento, no he podido completar la petición. ¿Puedes intentarlo de otra forma?"
+    return AgentReply(
+        text="Lo siento, no he podido completar la petición. ¿Puedes intentarlo de otra forma?"
+    )
