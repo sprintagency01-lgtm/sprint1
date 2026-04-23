@@ -65,6 +65,20 @@ def test_parse_other_slot():
     assert parsed["target"] == "slot"
 
 
+def test_make_and_parse_service_id():
+    rid = ix.make_service_id("corte-hombre")
+    assert rid == "svc:corte-hombre"
+    parsed = ix.parse_id(rid)
+    assert parsed["kind"] == "svc"
+    assert parsed["slug"] == "corte-hombre"
+
+
+def test_parse_other_svc():
+    parsed = ix.parse_id("other:svc")
+    assert parsed["kind"] == "other"
+    assert parsed["target"] == "svc"
+
+
 def test_parse_unknown_does_not_raise():
     parsed = ix.parse_id("garbage:stuff:123")
     # no reconocemos el prefijo → kind="unknown", raw intacto

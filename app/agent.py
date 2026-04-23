@@ -253,6 +253,34 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "ofrecer_servicio",
+            "description": (
+                "Ofrece al cliente los servicios del negocio como LISTA "
+                "CLICABLE en WhatsApp. Úsalo en el PASO 1 del flujo (cuando "
+                "el cliente pide 'cita' o 'reservar' sin decir qué servicio). "
+                "No hace falta pasar la lista de servicios — el backend los "
+                "lee de la configuración del negocio y añade una opción "
+                "'Otro' al final. TERMINA el turno: NO añadas texto después."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "description": (
+                            "Frase introductoria corta, máx 1 frase. Ej: "
+                            "'¿Qué te hacemos?'. Evita listar los servicios "
+                            "aquí — los renderiza la propia función."
+                        ),
+                    },
+                },
+                "required": ["body"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "ofrecer_huecos",
             "description": (
                 "Ofrece al cliente huecos horarios como LISTA CLICABLE en "
@@ -496,6 +524,9 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
             )
             return json.dumps({"miembros": disponibles})
 
+        if name == "ofrecer_servicio":
+            raise _EarlyReply(_build_reply_ofrecer_servicio(args, tenant))
+
         if name == "ofrecer_huecos":
             raise _EarlyReply(_build_reply_ofrecer_huecos(args, tenant))
 
@@ -533,6 +564,79 @@ def _format_slot_title(inicio_iso: str, fin_iso: str) -> str:
     mes = _MONTHS_ES[dt.month - 1][:3] if dt.month <= 12 else ""
     title = f"{dia} {dt.day} {mes}, {dt.strftime('%H:%M')}"
     return title[:24]
+
+
+def _slugify_service(nombre: str) -> str:
+    """Normaliza un nombre de servicio a slug estable.
+
+    - minúsculas
+    - acentos fuera (á→a, é→e, etc.)
+    - espacios y "/" pasan a "-"
+    - colapsa guiones duplicados
+    - recorta a 60 chars
+
+    Es reversible por búsqueda: el slug se mapea de vuelta al servicio
+    comparando contra cada service['nombre'] slugificado.
+    """
+    import unicodedata
+    s = (nombre or "").strip().lower()
+    # Quitar acentos/diacríticos
+    s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+    # Espacios, "/" y barras → guion
+    s = re.sub(r"[\s/]+", "-", s)
+    # Todo lo que no sea alfanumérico o "-" fuera
+    s = re.sub(r"[^a-z0-9\-]", "", s)
+    # Colapsar guiones y recortar
+    s = re.sub(r"-+", "-", s).strip("-")
+    return s[:60]
+
+
+def _build_reply_ofrecer_servicio(args: dict, tenant: dict) -> AgentReply:
+    """Construye AgentReply para ofrecer_servicio: lista con los servicios
+    del tenant + fila 'Otro'.
+
+    El LLM solo aporta el `body`; la lista se genera leyendo
+    `tenant["services"]` (formato YAML: nombre, duracion_min, precio).
+    """
+    body = (args.get("body") or "").strip() or "¿Qué te hacemos?"
+    services = tenant.get("services") or []
+    options: list[dict[str, str]] = []
+    # WhatsApp lista → 10 filas; dejamos 1 para "Otro".
+    for s in services[:9]:
+        nombre = (s.get("nombre") or "").strip()
+        if not nombre:
+            continue
+        slug = _slugify_service(nombre)
+        if not slug:
+            continue
+        precio = s.get("precio")
+        dur = s.get("duracion_min")
+        # Descripción compacta ≤72 chars: "30 min · 15€"
+        desc_parts: list[str] = []
+        if isinstance(dur, (int, float)):
+            desc_parts.append(f"{int(dur)} min")
+        if isinstance(precio, (int, float)):
+            desc_parts.append(f"{int(precio)}€")
+        desc = " · ".join(desc_parts) if desc_parts else ""
+        row: dict[str, str] = {
+            "id": interactive_ids.make_service_id(slug),
+            "title": nombre[:24],
+        }
+        if desc:
+            row["description"] = desc[:72]
+        options.append(row)
+    options.append({
+        "id": interactive_ids.make_other_id("svc"),
+        "title": "Otro",
+    })
+    spec = {
+        "type": "list",
+        "body": body,
+        "button": "Ver servicios",
+        "section_title": "Servicios",
+        "options": options,
+    }
+    return AgentReply(text=body, interactive=spec)
 
 
 def _build_reply_ofrecer_huecos(args: dict, tenant: dict) -> AgentReply:

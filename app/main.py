@@ -244,6 +244,10 @@ def _synthetic_text_from_interactive_reply(reply_id: str, reply_title: str) -> s
         return f"El cliente elige al miembro del equipo con id {parsed.get('member_id')}."
 
     if kind == "svc":
+        # Preferimos el título humano ("Corte hombre") sobre el slug, porque
+        # es lo que el agente ya conoce del catálogo en su system_prompt.
+        if reply_title:
+            return f"El cliente elige el servicio: {reply_title}."
         return f"El cliente elige el servicio con slug {parsed.get('slug')}."
 
     if kind == "confirm":
