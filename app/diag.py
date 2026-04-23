@@ -19,6 +19,7 @@ from .config import settings
 from . import calendar_service as cal
 from . import tenants as tn
 from . import db as db_module
+from . import agent as agent_module
 
 log = logging.getLogger(__name__)
 
@@ -135,6 +136,68 @@ def calendars_test(
         return {"ok": True, "id": got.get("id"), "summary": got.get("summary")}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "detail": str(e)[:300]}
+
+
+class TestAgentReq(BaseModel):
+    text: str
+    phone: str = "+34600000099"
+    tenant_id: str | None = None
+    reset_history: bool = False
+
+
+@router.post("/test_agent")
+def test_agent(
+    req: TestAgentReq,
+    x_tool_secret: str | None = Header(None),
+) -> dict[str, Any]:
+    """Simula un mensaje entrante SIN pasar por Twilio/WhatsApp.
+
+    Ejecuta el mismo pipeline (agent.reply con modelo y prompt reales, tools
+    contra Google Calendar real) y guarda el turno en BD. Devuelve la respuesta
+    del agente para que podamos leerla desde fuera.
+
+    Útil para tests integrales sin quemar mensajes de Twilio ni necesitar un
+    WhatsApp real. El `phone` por defecto es ficticio para no mezclarse con
+    conversaciones de clientes reales.
+    """
+    _check_secret(x_tool_secret)
+    tid = _resolve_tenant_id(req.tenant_id)
+    tenant = tn.get_tenant(tid) or {"id": tid}
+
+    if req.reset_history:
+        from sqlalchemy import delete
+        with Session(db_module.engine) as s:
+            s.execute(delete(db_module.Message).where(
+                db_module.Message.tenant_id == tid,
+                db_module.Message.customer_phone == req.phone,
+            ))
+            s.commit()
+
+    # Guardar el mensaje del usuario
+    db_module.save_message(tid, req.phone, "user", req.text)
+    history = db_module.load_history(tid, req.phone)
+    # Quitar el último (es el que acabamos de guardar, se pasa como user_message)
+    history = history[:-1] if history and history[-1]["role"] == "user" else history
+
+    try:
+        reply = agent_module.reply(
+            user_message=req.text,
+            history=history,
+            tenant=tenant,
+            caller_phone=req.phone,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.exception("Error en /_diag/test_agent")
+        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    db_module.save_message(tid, req.phone, "assistant", reply)
+    return {
+        "ok": True,
+        "tenant_id": tid,
+        "phone": req.phone,
+        "reply": reply,
+        "model": settings.openai_model,
+    }
 
 
 @router.get("/recent_messages")
