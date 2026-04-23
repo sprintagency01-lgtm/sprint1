@@ -280,13 +280,27 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
 
     tenant_id = tenant.get("id", "default")
 
+    # La familia GPT-5 (y los modelos o1/o3) usa `max_completion_tokens` en vez
+    # de `max_tokens`. Detectamos por prefijo; si añadimos más modelos con la
+    # API nueva, incluirlos aquí.
+    model_name = settings.openai_model
+    uses_new_token_param = (
+        model_name.startswith("gpt-5")
+        or model_name.startswith("o1")
+        or model_name.startswith("o3")
+        or model_name.startswith("o4")
+    )
+    token_kwargs: dict[str, int] = (
+        {"max_completion_tokens": 1024} if uses_new_token_param else {"max_tokens": 1024}
+    )
+
     for _ in range(6):  # máx 6 rondas para evitar loops infinitos
         resp = client.chat.completions.create(
-            model=settings.openai_model,
+            model=model_name,
             messages=messages,
             tools=TOOLS,
             tool_choice="auto",
-            max_tokens=1024,
+            **token_kwargs,
         )
 
         # --- Tracking de tokens (no-op si falla) ------------------------
