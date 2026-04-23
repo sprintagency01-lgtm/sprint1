@@ -20,6 +20,7 @@ from . import calendar_service as cal
 from . import tenants as tn
 from . import db as db_module
 from . import agent as agent_module
+from . import elevenlabs_client
 
 log = logging.getLogger(__name__)
 
@@ -99,6 +100,70 @@ def services_sync_from_yaml(
 
     log.info("Servicios sincronizados desde YAML para tenant %s: %d items", tid, len(added))
     return {"ok": True, "tenant_id": tid, "count": len(added), "services": added}
+
+
+class VoicePromptReq(BaseModel):
+    voice_prompt: str
+    sync_to_elevenlabs: bool = True
+
+
+@router.post("/tenant/voice/update")
+def tenant_voice_update(
+    req: VoicePromptReq,
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    """Actualiza `voice_prompt` del tenant y opcionalmente lo envía a ElevenLabs.
+
+    Pensado para automatizar cambios del prompt de voz sin pasar por el CMS.
+    Si `sync_to_elevenlabs=true` (default), hace PATCH al agente remoto usando
+    `elevenlabs_client.sync_agent` y escribe `voice_last_sync_*` igual que el
+    botón del CMS.
+    """
+    from datetime import datetime as _dt
+
+    _check_secret(x_tool_secret)
+    tid = _resolve_tenant_id(tenant_id)
+    new_prompt = (req.voice_prompt or "").strip()
+    if not new_prompt:
+        raise HTTPException(status_code=400, detail="voice_prompt vacío")
+
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tid)
+        if t is None:
+            raise HTTPException(status_code=404, detail=f"Tenant {tid} no existe")
+        t.voice_prompt = new_prompt
+
+        synced = False
+        sync_error: str | None = None
+        if req.sync_to_elevenlabs:
+            try:
+                elevenlabs_client.sync_agent(
+                    t.voice_agent_id,
+                    prompt=t.voice_prompt,
+                    voice=elevenlabs_client.VoiceParams(
+                        voice_id=t.voice_voice_id,
+                        stability=t.voice_stability,
+                        similarity_boost=t.voice_similarity_boost,
+                        speed=t.voice_speed,
+                    ),
+                )
+                t.voice_last_sync_at = _dt.utcnow()
+                t.voice_last_sync_status = "ok"
+                synced = True
+            except elevenlabs_client.ElevenLabsError as e:
+                sync_error = str(e)[:380]
+                t.voice_last_sync_at = _dt.utcnow()
+                t.voice_last_sync_status = sync_error
+        s.commit()
+
+    return {
+        "ok": synced or not req.sync_to_elevenlabs,
+        "tenant_id": tid,
+        "prompt_len": len(new_prompt),
+        "synced_to_elevenlabs": synced,
+        "sync_error": sync_error,
+    }
 
 
 @router.get("/tenant/voice")
