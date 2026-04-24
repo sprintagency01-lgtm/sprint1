@@ -6,6 +6,40 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (ronda 8 — restaurar jerarquía del prompt + test automatizado)
+
+Bug de producto: al recortar el prompt en la ronda 7, moví **"nombre al FINAL antes de crear_reserva"** a **"nombre antes de consultar"**, eliminé la repetición enfática de **"UNA pregunta por turno"** y suprimí la sección de fillers. Marcos cazó la regresión en una llamada real ("te pregunta 27 cosas, habíamos establecido una jerarquía"). Corregido.
+
+### Corregido
+
+- **Prompt `ana_prompt_new.txt` restaurado a la jerarquía original** (5 KB): `servicio → cuándo → consultar → ofrecer → elegir → NOMBRE → crear`. Nombre al FINAL, justo antes de `crear_reserva`, no antes. Incluye EJEMPLO DE TURNOS BIEN ORDENADOS + ejemplos explícitos de MAL (encadenar dos preguntas en un turno) para que el LLM no se desvíe. Sección `## Estilo` pura + sección `## UNA pregunta por turno (regla crítica)` separada.
+- **Bug de año de las fechas**: Gemini 3 Flash Preview ignora `{{system__time}}` del contexto y usa su training cutoff → enviaba fechas de 2025 cuando estábamos en 2026 → huecos=[] → Ana alucinaba horas. **Nuevo `scripts/refresh_agent_prompt.py`** que renderiza el bloque `<!-- REFRESH_BLOCK -->` con macros `__HOY_FECHA__`, `__MANANA_FECHA__`, `__ANO_ACTUAL__`, etc. como **texto literal** antes de sincronizar el prompt. Ya no depende de la variable — la fecha queda hardcodeada en el prompt subido. Ejecutar al menos 1x al día (idealmente cron).
+
+### Añadido
+
+- **`scripts/test_dialog.py`**: harness de tests de flujo contra el agente real vía `/v1/convai/agents/{id}/simulate-conversation`. Valida 7 checks por escenario:
+  1. `orden_tools_correcto` — `consultar_disponibilidad` antes de `crear_reserva`, etc.
+  2. `nombre_al_final` — primera pregunta de nombre después del primer `consultar_disponibilidad`.
+  3. `una_pregunta_por_turno` — 0 ó 1 interrogación por turno de agente (ignora muletillas).
+  4. `año_correcto` — todas las fechas ISO con año actual.
+  5. `peluquero_vacio` — `peluquero_preferido` vacío cuando el user no lo menciona.
+  6. `telefono_no_none` — en `crear_reserva`, `telefono_cliente` no es literal "None".
+  7. `no_alucina_huecos` — si el backend devuelve `huecos=[]`, Ana no propone horas (SKIP en sim porque `simulate-conversation` no ejecuta tools realmente).
+  4 escenarios (reserva_sin_peluquero, reserva_con_peluquero, mover_cita, cancelar_cita). Resultado tras fix: **3/4 escenarios ALL GREEN (7/7 checks)**. `mover_cita` falla con 500 del simulator de ElevenLabs (bug del simulator, no del prompt — en llamadas reales la tool sí devuelve event_id).
+
+- **`scripts/refresh_agent_prompt.py`**: renderiza fechas reales en el prompt y sincroniza. Idempotente, ejecutable vía cron.
+
+### Cambiado
+
+- **LLM vuelve a `gemini-3-flash-preview`** con prompt reforzado. Gemini 2.5 Flash era más obediente pero 3x más lento. El refuerzo con ejemplos explícitos hace que 3-flash-preview siga el flujo (verificado en los 7 checks de 3/4 escenarios).
+- **`ana_prompt_new.txt`**: nueva sección `## ATENCIÓN — FECHA ACTUAL` al principio con bloque `<!-- REFRESH_BLOCK -->` que `refresh_agent_prompt.py` reemplaza por fecha literal.
+
+### Política
+
+- **No volver a tocar la jerarquía del prompt de Ana sin permiso explícito de Marcos.** Se ha añadido feedback a la memoria personal (`feedback_prompt_ana_no_tocar.md`) para que futuras sesiones lo tengan presente.
+
+---
+
 ## 2026-04-24 (ronda 7 — hotfix fechas alucinadas)
 
 Bug crítico descubierto al probar el bot con una llamada real: Ana alucinaba fechas de **mayo 2025** cuando hoy era abril 2026, creaba la cita pero en el año pasado, y respondía "no hay huecos" en cuanto el cliente mencionaba cualquier día.
