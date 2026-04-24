@@ -562,6 +562,27 @@ def telegram_status(
     Si TELEGRAM_BOT_TOKEN no está configurado, devuelve `configured: false`
     explícitamente en vez de fallar, para que el CMS pueda pintar "canal
     desactivado" limpiamente.
+
+    Devuelve un campo `status` con valores categóricos para facilitar el
+    diagnóstico rápido:
+
+    - `"not_configured"`: sin TELEGRAM_BOT_TOKEN. Nada que hacer hasta que
+      se añada en Railway.
+    - `"token_invalid"`: token presente pero Telegram devuelve 401. Se
+      debe regenerar vía @BotFather o comprobar typos.
+    - `"webhook_missing"`: token válido pero `url=""`. El webhook se
+      perdió o nunca se registró — correr
+      `scripts/setup_telegram_bot.py` o re-ejecutar `setWebhook`. Este
+      escenario lo provocan otros procesos que usan `getUpdates`
+      (polling) contra el mismo bot: Telegram solo permite un modo, y
+      quien llama a `getUpdates` borra el webhook.
+    - `"webhook_mismatched"`: el webhook apunta a otra URL distinta de
+      la del backend actual. Típico al mover el proyecto de Railway de
+      dominio. Re-registrar apuntando al dominio vivo.
+    - `"webhook_errors"`: webhook registrado pero Telegram está
+      acumulando errores de entrega (`last_error_*` presente). Revisar
+      que `/telegram/webhook` responda 200.
+    - `"healthy"`: todo OK.
     """
     _check_secret(x_tool_secret)
 
@@ -569,6 +590,7 @@ def telegram_status(
     if not token:
         return {
             "configured": False,
+            "status": "not_configured",
             "hint": "Añade TELEGRAM_BOT_TOKEN en Railway para activar el canal.",
         }
 
@@ -576,15 +598,25 @@ def telegram_status(
         client = tg_module.TelegramClient(token)
         me = client.get_me()
     except tg_module.TelegramError as e:
+        msg = str(e)
+        status = "token_invalid" if ("401" in msg or "Unauthorized" in msg) else "error"
         return {
             "configured": True,
             "ok": False,
-            "error": str(e)[:280],
+            "status": status,
+            "error": msg[:280],
+            "hint": (
+                "El token no es válido. Regéneralo en @BotFather (/mybots "
+                "→ tu bot → API Token) y actualiza TELEGRAM_BOT_TOKEN en Railway."
+                if status == "token_invalid"
+                else "getMe falló — revisa conectividad y credenciales."
+            ),
         }
     except Exception as e:  # noqa: BLE001
         return {
             "configured": True,
             "ok": False,
+            "status": "error",
             "error": f"getMe falló: {str(e)[:260]}",
         }
 
@@ -600,9 +632,52 @@ def telegram_status(
     except Exception as e:  # noqa: BLE001
         webhook_info = {"error": str(e)[:200]}
 
-    return {
+    # Clasificación del estado del webhook.
+    webhook_url = (webhook_info.get("url") or "").strip()
+    expected_suffix = "/telegram/webhook"
+    last_err = webhook_info.get("last_error_message")
+    # Ventana corta de errores: si hay error registrado en los últimos 10 min,
+    # es relevante. Si es antiguo, probablemente ya resuelto — no alarmamos.
+    from datetime import datetime, timezone, timedelta
+    last_err_date = webhook_info.get("last_error_date")
+    recent_error = False
+    if last_err and last_err_date:
+        try:
+            err_dt = datetime.fromtimestamp(int(last_err_date), tz=timezone.utc)
+            recent_error = (datetime.now(tz=timezone.utc) - err_dt) < timedelta(minutes=10)
+        except (ValueError, TypeError):
+            recent_error = True  # fecha rara → asumimos reciente para no ocultar
+
+    if not webhook_url:
+        status = "webhook_missing"
+        hint = (
+            "El webhook no está registrado. Ejecuta "
+            "`python scripts/setup_telegram_bot.py <URL pública del backend>` "
+            "o llama a setWebhook directamente. "
+            "Si se repite tras cada registro, hay otro servicio haciendo "
+            "`getUpdates` contra el mismo bot token — en Telegram solo un "
+            "modo (webhook o polling) puede estar activo a la vez."
+        )
+    elif not webhook_url.endswith(expected_suffix):
+        status = "webhook_mismatched"
+        hint = (
+            f"El webhook apunta a {webhook_url}, que no acaba en {expected_suffix}. "
+            "Revisa que sea la URL del backend actual."
+        )
+    elif recent_error:
+        status = "webhook_errors"
+        hint = (
+            f"Telegram reporta error reciente entregando updates: {last_err}. "
+            "Revisa que el backend responda 200 en /telegram/webhook."
+        )
+    else:
+        status = "healthy"
+        hint = None
+
+    result: dict[str, Any] = {
         "configured": True,
-        "ok": True,
+        "ok": status == "healthy",
+        "status": status,
         "bot": {
             "id": me.get("id"),
             "username": me.get("username"),
@@ -610,12 +685,15 @@ def telegram_status(
             "can_join_groups": me.get("can_join_groups"),
         },
         "webhook": {
-            "url": webhook_info.get("url"),
+            "url": webhook_url or None,
             "has_custom_certificate": webhook_info.get("has_custom_certificate"),
             "pending_update_count": webhook_info.get("pending_update_count"),
-            "last_error_date": webhook_info.get("last_error_date"),
-            "last_error_message": webhook_info.get("last_error_message"),
+            "last_error_date": last_err_date,
+            "last_error_message": last_err,
             "secret_token_configured": bool(settings.telegram_webhook_secret.strip()),
         },
         "default_tenant_id": settings.telegram_default_tenant_id or "(fallback al primer contracted)",
     }
+    if hint:
+        result["hint"] = hint
+    return result

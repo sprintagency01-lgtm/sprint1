@@ -6,6 +6,24 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (parche pm)
+
+### Cambiado
+
+- **`/_diag/telegram/status` ahora devuelve un campo `status` categórico** para diagnóstico rápido: `healthy` | `not_configured` | `token_invalid` | `webhook_missing` | `webhook_mismatched` | `webhook_errors`. Cada estado no-healthy incluye `hint` accionable. Escenario disparador: hoy el bot heredado `@dmarco2_bot` tenía otro servicio (OpenClaw) haciendo `getUpdates` contra él, lo que sobreescribía nuestro webhook y dejaba la columna `url` vacía sin explicación. El endpoint ahora lo detecta y lo explica.
+- `webhook_errors` solo se activa si `last_error_date` es de los últimos 10 minutos; errores antiguos ya resueltos no alarman.
+
+### Añadido
+
+- `tests/test_diag_telegram_status.py` con 8 tests que cubren los 5 estados + caso sin auth. Suite pasa a **64/64**.
+
+### Notas operativas
+
+- Bot de producción: `@sprintagency_reservas_bot` (id `8759954298`). Creado fresco para evitar conflicto con `@dmarco2_bot`, que pertenecía a OpenClaw.
+- `TELEGRAM_BOT_TOKEN` en Railway actualizado al token del bot nuevo. Webhook registrado apuntando a Railway, verificado con `getWebhookInfo` y con smoke test sintético contra `/telegram/webhook` (ejecuta el pipeline entero: auth → load_history → agent.reply → save_message → sendMessage).
+
+---
+
 ## 2026-04-24
 
 ### Añadido
