@@ -240,11 +240,20 @@ def create_agent_for_tenant(
         raise ElevenLabsError("El prompt está vacío. No creamos un agente mudo.")
 
     tools = _build_tools(tool_base_url, secret, tenant_id)
+    # Config ganadora tras rondas 1-7 de latencia. Ver BOT_NUEVO_CONFIG.md.
     payload = {
         "name": f"Ana · {tenant.get('name') or tenant_id}",
         "conversation_config": {
             "agent": {
-                "prompt": {"prompt": prompt, "tools": tools},
+                "prompt": {
+                    "prompt": prompt,
+                    "tools": tools,
+                    "llm": "gemini-3-flash-preview",
+                    "temperature": 0.3,
+                    "max_tokens": 300,
+                    "thinking_budget": 0,
+                    "backup_llm_config": {"preference": "disabled"},
+                },
                 "first_message": f"¡Hola! Soy Ana de {tenant.get('name') or 'la peluquería'}. ¿En qué te puedo ayudar?",
                 "language": "es",
             },
@@ -254,6 +263,34 @@ def create_agent_for_tenant(
                 "stability": round(float(voice.stability), 3),
                 "similarity_boost": round(float(voice.similarity_boost), 3),
                 "speed": round(float(voice.speed), 3),
+                "text_normalisation_type": "elevenlabs",
+                "agent_output_audio_format": "ulaw_8000",
+                "optimize_streaming_latency": 4,
+            },
+            "turn": {
+                "turn_timeout": 1.0,
+                "turn_eagerness": "eager",
+                "speculative_turn": True,
+                "turn_model": "turn_v3",
+                "spelling_patience": "off",
+            },
+            "asr": {
+                "quality": "high",
+                "user_input_audio_format": "pcm_16000",
+            },
+        },
+        "platform_settings": {
+            "workspace_overrides": {
+                "conversation_initiation_client_data_webhook": {
+                    "url": f"{tool_base_url.rstrip('/')}/tools/eleven/personalization?tenant_id={tenant_id}",
+                    "request_headers": {
+                        "X-Tool-Secret": secret,
+                        "Content-Type": "application/json",
+                    },
+                },
+            },
+            "overrides": {
+                "enable_conversation_initiation_client_data_from_webhook": True,
             },
         },
     }

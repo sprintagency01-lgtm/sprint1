@@ -58,10 +58,17 @@ Variables mínimas (ver `.env.example`):
 
 ## Añadir un tenant nuevo
 
-Desde el CMS (`/admin/clientes/nuevo`) se crea el registro. Luego se autoriza
-el calendario de Google desde `/oauth/start?tenant=<id>` y se configura el
-agente de ElevenLabs apuntando sus server tools al dominio del deploy
-(`/tools/*`) con el `TOOL_SECRET`.
+Sigue la checklist de [`BOT_NUEVO_CONFIG.md`](./BOT_NUEVO_CONFIG.md). Resumen:
+
+1. Crear el tenant en el CMS (`/admin/clientes/nuevo`).
+2. Autorizar Google Calendar desde `/oauth/start?tenant=<id>`.
+3. Crear el agente ElevenLabs con `python scripts/setup_elevenlabs_agent.py
+   https://<tu-dominio>` (o botón del CMS). **El script ya aplica la config
+   ganadora de baja latencia** (Gemini 3 Flash Preview, TTS Flash v2.5,
+   turn_v3, pre_tool_speech=force, personalization webhook, prefetch).
+4. Copiar el `agent_id` al tenant.
+5. Smoke test: llamada de 30 s. Ana debe empezar a hablar <1,5 s tras tu
+   última palabra y dar huecos en <3 s.
 
 El fichero `tenants.yaml` es legacy — ya no se usa para servir tráfico; la
 verdad está en la tabla `tenants` de la base de datos.

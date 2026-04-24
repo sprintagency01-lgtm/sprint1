@@ -242,6 +242,8 @@ def main() -> None:
     system_prompt = build_system_prompt(tenant)
     tools = build_tools(tool_base_url, tool_secret)
 
+    # Config ganadora tras rondas 1-7 de optimización de latencia.
+    # Ver BOT_NUEVO_CONFIG.md para el detalle y la justificación de cada valor.
     payload = {
         "name": f"Ana - {tenant.get('name', 'Peluquería')}",
         "conversation_config": {
@@ -249,26 +251,52 @@ def main() -> None:
                 "prompt": {
                     "prompt": system_prompt,
                     "tools": tools,
-                    # Ronda 6 (2026-04-24): gemini-3-flash-preview sustituye a
-                    # gemini-2.5-flash. Bench: TTFR ~1200ms vs ~4500ms, TT_final
-                    # ~3000ms vs ~7500-10400ms. 4/4 escenarios con tool-calling OK.
-                    "llm": "gemini-3-flash-preview",
+                    "llm": "gemini-3-flash-preview",   # ronda 6 — 3x más rápido que 2.5-flash, 4/4 tools OK
                     "temperature": 0.3,
                     "max_tokens": 300,
                     "thinking_budget": 0,
+                    # ronda 7 — desactiva cascade de 4s, camino hot más predecible
+                    "backup_llm_config": {"preference": "disabled"},
                 },
                 "first_message": "¡Hola! Soy Ana de la peluquería. ¿En qué te puedo ayudar?",
                 "language": "es",
             },
             "tts": {
                 "voice_id": voice_id,
-                "model_id": "eleven_flash_v2_5",
+                "model_id": "eleven_flash_v2_5",       # ronda 5 — flash, no v3 conversational
+                "text_normalisation_type": "elevenlabs",  # ronda 7 — server-side, evita prompt
+                "agent_output_audio_format": "ulaw_8000",  # ronda 4 — match Twilio sin transcode
+                "optimize_streaming_latency": 4,        # ronda 4 — máximo
             },
             "turn": {
-                "turn_timeout": 1.0,
+                "turn_timeout": 1.0,                    # ronda 4 — mínimo de la API
                 "turn_eagerness": "eager",
                 "speculative_turn": True,
-                "turn_model": "turn_v3",  # ronda 6
+                "turn_model": "turn_v3",                # ronda 6
+                "spelling_patience": "off",             # ronda 7
+            },
+            "asr": {
+                "quality": "high",                      # obligatorio por la API
+                "user_input_audio_format": "pcm_16000",
+            },
+        },
+        # Personalization webhook (ronda 7): ElevenLabs llama a este endpoint
+        # una vez al inicio de cada llamada y recibe dynamic_variables
+        # precomputadas (hoy_fecha_iso, manana_natural, hora_local, etc.).
+        # Además dispara un prefetch especulativo de freebusy que deja el
+        # cache caliente cuando Ana pide huecos 2-5s después.
+        "platform_settings": {
+            "workspace_overrides": {
+                "conversation_initiation_client_data_webhook": {
+                    "url": f"{tool_base_url.rstrip('/')}/tools/eleven/personalization?tenant_id={tenant.get('id','default')}",
+                    "request_headers": {
+                        "X-Tool-Secret": tool_secret,
+                        "Content-Type": "application/json",
+                    },
+                },
+            },
+            "overrides": {
+                "enable_conversation_initiation_client_data_from_webhook": True,
             },
         },
     }

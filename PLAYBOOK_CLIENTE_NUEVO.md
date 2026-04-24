@@ -7,6 +7,13 @@ arquitectura, runbook paso a paso, bugs encontrados con su causa raíz, y la che
 evita repetirlos. La idea es que un cliente nuevo se pueda montar en ~45 min sin
 redescubrir problemas.
 
+> **2026-04-24 — config de baja latencia**: cualquier bot nuevo debe aplicar la
+> configuración canónica documentada en **[`BOT_NUEVO_CONFIG.md`](./BOT_NUEVO_CONFIG.md)**.
+> Los scripts `scripts/setup_elevenlabs_agent.py` y el helper
+> `app.elevenlabs_client.create_agent_for_tenant` ya la aplican por defecto tras
+> la ronda 7 de optimización. Usa la checklist y el bloque de verificaciones de
+> ese documento.
+
 ---
 
 ## 1. Piezas del sistema y cómo encajan

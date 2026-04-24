@@ -16,7 +16,10 @@ Documentos canónicos que complementan este fichero:
 - `ELEVENLABS.md` — configuración del agente de voz.
 - `PLAYBOOK_CLIENTE_NUEVO.md` — alta de tenants.
 - `CMS_README.md` — panel de administración.
+- `BOT_NUEVO_CONFIG.md` — **config canónica de baja latencia** que debe aplicarse a cualquier bot nuevo (post-ronda 7). Valores de LLM, TTS, turn, tools, personalization webhook. Antes de crear un tenant nuevo, leerlo.
 - `HANDOFF_YYYY-MM-DD.md` — handoffs técnicos densos de sesiones puntuales.
+- `HANDOFF_PROTOCOL.md` — protocolo automático de cierre de jornada a `#bot-reservas`.
+- `scripts/handoff_closing_prompt.md` — prompt que ejecuta la scheduled task de cierre.
 - `CHANGELOG.md` — registro vivo de cambios por push (ver sección siguiente).
 
 ## Regla obligatoria: actualizar `CHANGELOG.md` antes de cada push
@@ -75,6 +78,23 @@ El hook bloquea el push si detecta commits nuevos pero `CHANGELOG.md` no ha sido
 ## Handoffs técnicos largos
 
 Los `HANDOFF_YYYY-MM-DD.md` siguen teniendo sentido para cierres de sesión grandes donde haga falta pasar contexto denso a otro agente/humano. `CHANGELOG.md` y handoffs son complementarios, no sustitutivos: el changelog es la vista lineal para cualquier lector, el handoff es el briefing profundo de un momento concreto.
+
+## Cierre de jornada automático a Slack (obligatorio)
+
+Este repo tiene un **protocolo de handoff diario** a `#bot-reservas` (Slack ID `C0AU8MGLKU5`) definido en `HANDOFF_PROTOCOL.md`. Aplica a cualquier agente LLM — el Claude de Marcos y el de Mario — que trabaje sobre este repositorio.
+
+Resumen para agentes que abren sesión por primera vez:
+
+1. Lee `HANDOFF_PROTOCOL.md` entero.
+2. Si el usuario dice algo como "manda el handoff", "cierra la jornada" o "resumen a Slack", ejecuta el procedimiento manualmente siguiendo `scripts/handoff_closing_prompt.md`.
+3. La primera vez que abras Claude en esta máquina sobre este repo, instala la scheduled task local:
+   - `taskId`: `bot-reservas-handoff`
+   - `cronExpression`: `*/30 * * * *`
+   - `prompt`: el contenido literal de `scripts/handoff_closing_prompt.md`
+   - Se registra con `mcp__scheduled-tasks__create_scheduled_task`.
+4. El estado local vive en `.handoff_state.json` (ignorado por git). Para evitar handoffs duplicados, antes de publicar el agente chequea los últimos mensajes de `#bot-reservas`.
+
+Trigger: >3h sin actividad en el repo + hay actividad hoy + no se ha publicado ya. Contenido: bullets de avances, quién tocó qué, bloqueos/pendientes, próximos pasos. Formato completo en `HANDOFF_PROTOCOL.md`.
 
 ## Otras convenciones relevantes
 
