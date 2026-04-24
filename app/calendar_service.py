@@ -507,33 +507,50 @@ def buscar_evento_por_nombre(
     cal = calendar_id or settings.default_calendar_id
     desde = _ensure_local_tz(desde)
     hasta = _ensure_local_tz(hasta)
-    events = svc.events().list(
-        calendarId=cal,
-        timeMin=desde.isoformat(),
-        timeMax=hasta.isoformat(),
-        singleEvents=True,
-        orderBy="startTime",
-        q=nombre,
-        maxResults=20,
-    ).execute().get("items", [])
     nombre_low = nombre.lower()
-    for ev in events:
-        priv = ((ev.get("extendedProperties") or {}).get("private") or {})
-        client_name_low = (priv.get("client_name") or "").lower().strip()
-        # Match A: client_name — lo más fiable.
-        if client_name_low and (
-            client_name_low == nombre_low
-            or nombre_low in client_name_low
-            or client_name_low in nombre_low
-        ):
-            return ev
-        # Match B: summary empieza por el nombre (convención "Nombre — Servicio").
-        summary = (ev.get("summary") or "").strip().lower()
-        if summary.startswith(nombre_low + " ") or summary.startswith(nombre_low + " —") \
-                or summary.startswith(nombre_low + "—") or summary == nombre_low:
-            return ev
-    # No match estricto → no devolvemos nada. Evita confundir peluqueros con
-    # clientes ("Mario" aparece en "Eva — Corte (con Mario)" pero NO es cita de Mario).
+
+    # Paginamos hasta 5 páginas de 100 resultados. Con calendarios muy
+    # densos, el nombre puede aparecer tantas veces (como peluquero, en
+    # descripción, en client_name) que el match real esté profundo. Con
+    # 500 eventos es más que suficiente para ~2 meses de agenda.
+    page_token: str | None = None
+    pages_seen = 0
+    while pages_seen < 5:
+        params = dict(
+            calendarId=cal,
+            timeMin=desde.isoformat(),
+            timeMax=hasta.isoformat(),
+            singleEvents=True,
+            orderBy="startTime",
+            q=nombre,
+            maxResults=100,
+        )
+        if page_token:
+            params["pageToken"] = page_token
+        resp = svc.events().list(**params).execute()
+        events = resp.get("items", [])
+        for ev in events:
+            priv = ((ev.get("extendedProperties") or {}).get("private") or {})
+            client_name_low = (priv.get("client_name") or "").lower().strip()
+            # Match A: client_name — lo más fiable.
+            if client_name_low and (
+                client_name_low == nombre_low
+                or nombre_low in client_name_low
+                or client_name_low in nombre_low
+            ):
+                return ev
+            # Match B: summary empieza por el nombre (convención "Nombre — Servicio").
+            summary = (ev.get("summary") or "").strip().lower()
+            if summary.startswith(nombre_low + " ") or summary.startswith(nombre_low + " —") \
+                    or summary.startswith(nombre_low + "—") or summary == nombre_low:
+                return ev
+        page_token = resp.get("nextPageToken")
+        pages_seen += 1
+        if not page_token:
+            break
+    # Ninguna página dio match estricto → no devolvemos nada. Evita
+    # confundir peluqueros con clientes ("Mario" aparece en
+    # "Eva — Corte (con Mario)" pero NO es cita de Mario).
     return None
 
 
