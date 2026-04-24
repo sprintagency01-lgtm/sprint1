@@ -6,6 +6,20 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (latencia — ronda 5 hotfix)
+
+### Corregido
+
+- **`force_pre_tool_speech` no se aplicaba vía el flag booleano suelto.** Al ejecutar `scripts/migrate_agent_latency.py` contra el agente remoto de `pelu_demo` se observó que el PATCH respondía 200 pero las 5 tools seguían con `force_pre_tool_speech=false`. El campo real que controla el comportamiento es el enum `pre_tool_speech: 'auto' | 'force' | 'off'`; solo con `'force'` se activa. Además, las tools NO se editan vía `PATCH /v1/convai/agents/{id}` — son entidades independientes con su propio `tool_id`, hay que patchearlas en `/v1/convai/tools/{tool_id}`.
+- `app/elevenlabs_client._build_tools` emite ahora `pre_tool_speech: "force"` además del booleano, para que los tenants creados desde el CMS nazcan con el TTS del filler paralelizado.
+- `scripts/migrate_agent_latency.py` refactorizado: (a) PATCH agente solo para TTS, (b) iteración por tool_id con PATCH `{tool_config: {...}}` para `pre_tool_speech='force'` + `calendar_id` en schemas. Verificado en vivo contra `pelu_demo`: las 5 tools quedan con `pre_tool_speech=force`, `force_pre_tool_speech=True`.
+
+### Notas
+
+- Esta entrada complementa al commit `e557dcb` que se pusheó fuera de la convención (sin tocar CHANGELOG). La convención pide tocar CHANGELOG antes de cada push; este hotfix lo arregla retroactivamente.
+
+---
+
 ## 2026-04-24 (latencia — ronda 5)
 
 Quinta ronda de optimización de latencia del canal voz. Las 4 anteriores recortaron lo obvio (cache del cliente Google, freebusy 8s, prompt 7KB→4,5KB, `thinking_budget:0`, `turn_timeout:1s`, `optimize_streaming_latency:4`, `ulaw_8000`, `tool_call_sound:typing`, `cascade_timeout:4s`, `max_tokens:300`, flujo RESERVA reordenado). Esta ronda ataca el siguiente escalón: caché de tenant, idempotencia, fast path de mover/cancelar, warm-up de Google y TTS flash.
