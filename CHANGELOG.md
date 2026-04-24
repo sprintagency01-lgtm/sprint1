@@ -6,6 +6,53 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (latencia — ronda 7)
+
+Ajustes finos + recorte de prompt + personalization endpoint + prefetch especulativo. Exploración exhaustiva de las palancas que quedaban tras la ronda 6.
+
+### Añadido
+
+- **`/tools/eleven/personalization`** (`app/eleven_tools.py`): webhook `conversation_initiation_client_data_webhook`. ElevenLabs lo llama UNA vez al inicio de cada conversación y recibe `dynamic_variables` precomputadas: `hoy_fecha_iso`, `manana_fecha_iso`, `pasado_fecha_iso`, `hoy_dia_semana`, `manana_dia_semana`, `hoy_natural` ("viernes 25 de abril"), `manana_natural`, `hora_local`, `caller_id_legible`, `tenant_id`, `tenant_name`. El prompt ahora usa `{{hoy_natural}}` / `{{manana_natural}}` en lugar de `{{system__time_utc}}` → Gemini ya no calcula weekday desde UTC, ahorra tokens de prefill y elimina el bug histórico de "mañana el jueves" / "pasado mañana el viernes".
+
+- **Prefetch especulativo de freebusy** dentro de `personalization`: tras responder las dynamic_variables, dispara un `asyncio.create_task` que precalienta `_FREEBUSY_CACHE` para hoy+2 días con duraciones 30 y 45 min. Cuando Ana llama a `consultar_disponibilidad` 2-5s después, el cache está caliente → tool devuelve en <50ms en vez de 500-900ms. Fire-and-forget, no bloquea la respuesta del webhook. **Ganancia estimada ~400-800ms en TT_final en llamadas reales.**
+
+- **Snapshots**: `docs/elevenlabs_agent_snapshot_post_round7_*.json` + `elevenlabs_agent_config.json` al estado final.
+
+### Cambiado
+
+- **Prompt recortado de ~4,6 KB a ~3,3 KB (-28%)** (`ana_prompt_new.txt`): eliminada sección "Fillers antes de tool calls" (redundante con `pre_tool_speech: force` de ronda 5), consolidadas "Reglas duras" 1-10 en una lista compacta, comprimido el paso 6 de "Flujo RESERVA", colapsado "Fechas al hablar" en un párrafo. Tool-calling sigue 4/4 correcto. TTFR medio bajó de ~1258ms a ~1208ms tras el recorte (-50ms).
+
+- **Ajustes finos de turn-taking y backup LLM**:
+  - `backup_llm_config.preference`: `default` → `disabled`. Libera el cascade de 4s y hace el camino hot más predecible.
+  - `turn.spelling_patience`: `auto` → `off`. El agente no espera a que el user deletree cosas.
+  - `tts.text_normalisation_type`: `system_prompt` → `elevenlabs`. Normalización server-side (más rápida que vía prompt).
+
+- **`conversation_initiation_client_data_webhook`** registrado en `platform_settings.workspace_overrides` apuntando a Railway + `overrides.enable_conversation_initiation_client_data_from_webhook: true`.
+
+### Evaluado y rechazado en esta ronda
+
+- **`gemini-3-pro-preview`**: 7-10s TTFR y **cero tool calls** en los dos escenarios probados. Descartado.
+- **`gemini-3.1-flash-lite-preview`**: 4/4 tools OK pero varianza 854-2170ms TTFR (empate estadístico con `gemini-3-flash-preview` pero con más ruido). Mantenemos el ganador de ronda 6.
+- **Asyncificar cliente Google Calendar (HTTP/2)**: ganancia real 50-100ms por tool call pero trade-off desfavorable — el cache freebusy 8s + el prefetch ya llevan el primer call a <50ms en la llamada real. Se queda como ronda 8 estratégica si aparece un caso de cold cache frecuente.
+
+### Notas
+
+- Los valores aceptados por la API de ElevenLabs descubiertos en esta ronda (para futuras referencias):
+  - `turn.spelling_patience`: `auto` | `off`.
+  - `turn.turn_model`: `turn_v2` | `turn_v3`.
+  - `turn.initial_wait_time`: `-1` (default, espera infinita) o `>=1` segundo. Valores <1 rechazados.
+  - `tts.text_normalisation_type`: `system_prompt` | `elevenlabs`.
+  - `agent.prompt.backup_llm_config.preference`: `default` | `disabled` | `override`.
+  - `tool.pre_tool_speech`: `auto` | `force` | `off` (ya documentado en ronda 5 hotfix).
+
+- Bench WS text-only no puede medir la ganancia del prefetch porque el bench no dispara `conversation_initiation_client_data_webhook` (eso ocurre solo en llamadas reales de voz). La ganancia se verá en la primera `consultar_disponibilidad` real tras una llamada.
+
+- **Objetivo <400ms end-to-end sigue sin alcanzarse** con esta stack. TTFR mínimo medido: ~1035ms. Mínimo teórico con LLM-as-a-service + ElevenLabs + webhook: ~800-1100ms. Bajar de ahí requiere custom LLM endpoint (Groq/Cerebras) o eliminar el round-trip webhook.
+
+- Suite de tests: **106/106 verdes** tras todos los cambios.
+
+---
+
 ## 2026-04-24 (latencia — ronda 6)
 
 Migración del LLM del agente de voz de `gemini-2.5-flash` a `gemini-3-flash-preview`, más `turn_v3` en turn-taking. La mayor ganancia de latencia medida hasta la fecha.
