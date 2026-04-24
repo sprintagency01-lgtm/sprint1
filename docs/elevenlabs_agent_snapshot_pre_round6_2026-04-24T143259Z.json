@@ -22,7 +22,7 @@
       "spelling_patience": "auto",
       "speculative_turn": true,
       "retranscribe_on_turn_timeout": false,
-      "turn_model": "turn_v3"
+      "turn_model": "turn_v2"
     },
     "tts": {
       "model_id": "eleven_flash_v2_5",
@@ -76,9 +76,9 @@
       "max_conversation_duration_message": "",
       "prompt": {
         "prompt": "<<see ana_prompt_new.txt>>",
-        "llm": "gemini-3-flash-preview",
+        "llm": "gemini-2.5-flash",
         "reasoning_effort": null,
-        "thinking_budget": null,
+        "thinking_budget": 0,
         "temperature": 0.3,
         "max_tokens": 300,
         "tool_ids": [
@@ -103,7 +103,8 @@
           "memory_entry_delete": null,
           "agent_prompt_change": null,
           "procedure_update": null,
-          "transfer_to_genesys_chat": null
+          "transfer_to_genesys_chat": null,
+          "search_documentation": null
         },
         "enable_parallel_tool_calls": false,
         "mcp_server_ids": [],
@@ -202,7 +203,6 @@
                   }
                 }
               },
-              "response_body_schema": null,
               "content_type": "application/json",
               "auth_connection": null
             }
@@ -304,7 +304,6 @@
                   }
                 }
               },
-              "response_body_schema": null,
               "content_type": "application/json",
               "auth_connection": null
             }
@@ -369,7 +368,6 @@
                   }
                 }
               },
-              "response_body_schema": null,
               "content_type": "application/json",
               "auth_connection": null
             }
@@ -442,7 +440,6 @@
                   }
                 }
               },
-              "response_body_schema": null,
               "content_type": "application/json",
               "auth_connection": null
             }
@@ -497,7 +494,6 @@
                   }
                 }
               },
-              "response_body_schema": null,
               "content_type": "application/json",
               "auth_connection": null
             }
@@ -508,7 +504,7 @@
   },
   "metadata": {
     "created_at_unix_secs": 1776798882,
-    "updated_at_unix_secs": 1777051427
+    "updated_at_unix_secs": 1777040901
   },
   "platform_settings": {
     "evaluation": {
@@ -813,7 +809,7 @@
   "procedures": {},
   "procedures_enabled": false,
   "procedure_settings": {
-    "compiler_mode": "append"
+    "compiler_mode": "llm"
   },
   "trust_context": "unknown"
 }

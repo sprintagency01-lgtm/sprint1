@@ -23,13 +23,21 @@ TTS (voz más natural que la inicial):
 - `optimize_streaming_latency`: `4`
 
 LLM (Gemini Flash con thinking OFF para bajar latencia):
-- `llm`: `gemini-2.5-flash`  (único que pasa reliability en tool-calls; gemini-2.0-flash, claude-haiku-4-5 y gpt-4.1-nano todos hallucinan huecos o se saltan tools)
+- `llm`: `gemini-3-flash-preview`  ⬅ **nuevo en ronda 6 (2026-04-24)**. Sustituye a `gemini-2.5-flash`. El bench con WS text-only midió TTFR ~1200ms vs ~4500ms del anterior (3.5x más rápido), TT_final post-tool ~3000ms vs ~7500-10400ms (2.5-3x). Tool-calling fiable en 4/4 escenarios (reserva simple, reserva con peluquero, mover, cancelar). Datos detallados en `CHANGELOG.md` → 2026-04-24 (latencia — ronda 6).
 - `thinking_budget`: `0`
 - `temperature`: `0.3`
 - `max_tokens`: `300`  (cap para evitar respuestas largas accidentales)
 - Prompt: comprimido a ~3.8 KB (antes 5.7 KB) para bajar prefill time cada turno.
 
+Modelos descartados en el bench de ronda 6 (guía anti-regresión):
+- `qwen3-30b-a3b` — TTFR 319ms ✓ rapidísimo pero **NO llama a tools** (0 tool calls en 8 turnos). Inútil para reservas.
+- `glm-45-air-fp8` — TTFR 557ms pero **alucina**: contesta "¡Hola Juan! Te apunto un corte para mañana por la tarde" sin haber llamado a `consultar_disponibilidad`. Agenda inventada.
+- `gpt-oss-120b` — TTFR 910-9134ms (muy alta varianza), experimental. Llama a tools pero tiempos inconsistentes.
+- `watt-tool-70b` — TTFR ~6400ms, TT_final 12s (muy lento para voz).
+- `gemini-2.5-flash-lite` — TTFR 1061ms pero no llama a tools.
+
 Turn-taking (agente responde rápido):
+- `turn_model`: `turn_v3`  ⬅ **nuevo en ronda 6**. Antes `turn_v2`.
 - `turn_eagerness`: `eager`
 - `turn_timeout`: `1.0`  (mínimo permitido por ElevenLabs; 5s era el default)
 - `speculative_turn`: `true`

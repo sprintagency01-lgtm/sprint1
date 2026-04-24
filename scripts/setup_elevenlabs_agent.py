@@ -249,6 +249,13 @@ def main() -> None:
                 "prompt": {
                     "prompt": system_prompt,
                     "tools": tools,
+                    # Ronda 6 (2026-04-24): gemini-3-flash-preview sustituye a
+                    # gemini-2.5-flash. Bench: TTFR ~1200ms vs ~4500ms, TT_final
+                    # ~3000ms vs ~7500-10400ms. 4/4 escenarios con tool-calling OK.
+                    "llm": "gemini-3-flash-preview",
+                    "temperature": 0.3,
+                    "max_tokens": 300,
+                    "thinking_budget": 0,
                 },
                 "first_message": "¡Hola! Soy Ana de la peluquería. ¿En qué te puedo ayudar?",
                 "language": "es",
@@ -257,7 +264,12 @@ def main() -> None:
                 "voice_id": voice_id,
                 "model_id": "eleven_flash_v2_5",
             },
-            "turn": {"turn_timeout": 7},
+            "turn": {
+                "turn_timeout": 1.0,
+                "turn_eagerness": "eager",
+                "speculative_turn": True,
+                "turn_model": "turn_v3",  # ronda 6
+            },
         },
     }
 

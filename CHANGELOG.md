@@ -6,6 +6,54 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (latencia — ronda 6)
+
+Migración del LLM del agente de voz de `gemini-2.5-flash` a `gemini-3-flash-preview`, más `turn_v3` en turn-taking. La mayor ganancia de latencia medida hasta la fecha.
+
+### Cambiado
+
+- **`llm: gemini-2.5-flash` → `gemini-3-flash-preview`** en el agente `pelu_demo`. Bench con WebSocket text-only contra el agente real:
+
+  | Modelo | TTFR (primer texto post user_msg) | TT_tool_response | TT_final (respuesta útil post-tool) | Tools OK |
+  |--------|-----|-----|-----|-----|
+  | **gemini-3-flash-preview** (nuevo) | **1062-1340ms** | 1867-2056ms | **2622-3944ms** | **4/4 ✓** |
+  | gemini-2.5-flash (antes) | 1803-6940ms | 2770-7871ms | 3900-10410ms | ✓ |
+  | gpt-oss-120b | 910-9134ms (alta varianza) | 1167-9567ms | 1615-10405ms | ✓ (experimental) |
+  | watt-tool-70b | ~6400ms | ~7000ms | ~12400ms | ✓ (muy lento) |
+  | qwen3-30b-a3b | 319ms | — | — | ✗ NO llama a tools |
+  | glm-45-air-fp8 | 557ms | — | — | ✗ **alucina** reservas |
+  | gemini-2.5-flash-lite | 1061ms | — | — | ✗ NO llama a tools |
+
+  Con `pre_tool_speech: force` activo (desde ronda 5 hotfix), el TTFR es lo que oye el usuario antes del filler "vale, te miro un momento..." — bajamos de ~4500ms a ~1200ms. Para la respuesta útil post-tool (los huecos que Ana dicta), de ~7500ms medio a ~3000ms medio. **Mejora percibida: ~3x más rápido al inicio del turno, ~2.5-3x al resultado.**
+
+- **`turn_model: turn_v2` → `turn_v3`** en `conversation_config.turn`. v3 es más rápido detectando fin de turno del usuario (propiedad interna de ElevenLabs — no hay docs públicos, pero el PATCH lo acepta y los bench posteriores siguen consistentes).
+
+- **`scripts/setup_elevenlabs_agent.py`**: tenants NUEVOS nacen con `llm: gemini-3-flash-preview`, `temperature: 0.3`, `max_tokens: 300`, `thinking_budget: 0`, `turn_model: turn_v3`, `turn_timeout: 1.0`, `speculative_turn: true`. Antes el script no fijaba explícitamente `llm` ni `turn_*` (heredaba defaults).
+
+### Añadido
+
+- **`scripts/bench_llm.py`** (orquestador) y **`scripts/bench_one.py`** (runner por modelo × escenario): harness contra `/v1/convai/agents/{id}/simulate-conversation` que valida tool-calling y mide TTFB. Útil para futuras rondas cuando aparezcan modelos nuevos.
+- **`scripts/bench_ws.py`**: harness WebSocket text-only para medir TTFR, TT_tool_response y TT_final con un mensaje real, captando `agent_response` + `agent_tool_response`. Mucho más rápido que `simulate-conversation` (~6-8s por test vs 35-40s). Ideal para iterar.
+- **`docs/elevenlabs_agent_snapshot_pre_round6_*.json`** y **`docs/elevenlabs_agent_snapshot_post_round6_*.json`**: snapshots pre/post migración (secrets redacted, prompt externalizado).
+- **`elevenlabs_agent_config.json`** actualizado al estado post-round6.
+- **`ELEVENLABS.md`** con sección "Modelos descartados en el bench de ronda 6 (guía anti-regresión)" para no repetir pruebas inútiles.
+
+### Notas de diseño
+
+- El objetivo de `<400ms end-of-speech → primer audio` que pedía Marcos NO se alcanza con esta stack: el LLM más rápido con tools fiables da ~1100ms TTFR, y aún hay que sumar ASR (~150-300ms) y TTS primer audio (~150-200ms). Realidad: **~1400-1700ms end-to-end para el primer audio** (el filler). Y ~3000-3500ms para la información útil (huecos reales).
+
+  Para bajar de ahí hace falta cambiar arquitectura (custom LLM endpoint en Groq/Cerebras con Llama 3.3 70B, modelos edge, o cache de respuestas frecuentes). Queda como ronda 7 estratégica si el nivel actual no basta.
+
+- `gemini-3-flash-preview` lleva el sufijo "preview" — si Google lo deprecata o lo renombra, hay que migrar a su sucesor. La versión "GA" equivalente cuando exista será el siguiente paso.
+
+- `turn_v3` aplicado sin tests A/B prolongados. Observación subjetiva en el bench: tiempos consistentes con `turn_v2`. Si surge regresión (cortes prematuros, agente que interrumpe), rollback con un PATCH a `turn_v2`.
+
+### Breaking
+
+- Ninguno visible al usuario final. Cambios son en la config remota del agente ElevenLabs; el backend sigue igual.
+
+---
+
 ## 2026-04-24 (latencia — ronda 5 hotfix)
 
 ### Corregido
