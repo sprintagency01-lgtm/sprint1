@@ -55,59 +55,19 @@ def get_agent(api_key: str, agent_id: str) -> dict[str, Any]:
     return r.json()
 
 
-def build_patch_payload(remote_agent: dict[str, Any]) -> dict[str, Any]:
-    """Construye el payload de PATCH sin pisar campos que no tocamos.
+def build_agent_patch_payload(remote_agent: dict[str, Any]) -> dict[str, Any]:
+    """Construye el payload de PATCH para el agente (solo TTS).
 
-    Estrategia: tomamos las `tools` remotas, mutamos lo necesario y las
-    devolvemos completas, igual con `tts`.
+    NOTA: las `tools` que devuelve GET /agents/{id} son un reflejo resuelto
+    de `tool_ids`, pero PATCH sobre `prompt.tools` NO las modifica — las
+    tools son entidades separadas en `/v1/convai/tools/{tool_id}`. Por eso
+    este payload solo toca `tts`; las tools se patchean aparte en
+    `patch_tools`.
     """
     conv = remote_agent.get("conversation_config") or {}
-    agent_block = conv.get("agent") or {}
-    prompt_block = (agent_block.get("prompt") or {}).copy()
-    tools = list(prompt_block.get("tools") or [])
-
-    tools_patched: list[dict[str, Any]] = []
-    for t in tools:
-        name = t.get("name") or ""
-        t = dict(t)
-        # (2) force_pre_tool_speech en todas las tools: arranca el filler TTS
-        #     en paralelo a la HTTP call.
-        t["force_pre_tool_speech"] = True
-
-        # (3) calendar_id opcional en mover_reserva y cancelar_reserva.
-        if name in ("mover_reserva", "cancelar_reserva"):
-            api_schema = dict(t.get("api_schema") or {})
-            body = dict(api_schema.get("request_body_schema") or {})
-            props = dict(body.get("properties") or {})
-            if "calendar_id" not in props:
-                props["calendar_id"] = {
-                    "type": "string",
-                    "description": (
-                        "calendar_id devuelto por buscar_reserva_cliente. "
-                        "Si lo pasas, el backend " +
-                        ("mueve" if name == "mover_reserva" else "cancela") +
-                        " directo sin iterar peluqueros — MÁS RÁPIDO."
-                    ),
-                    "enum": None,
-                    "is_system_provided": False,
-                    "dynamic_variable": "",
-                    "constant_value": "",
-                }
-                body["properties"] = props
-                api_schema["request_body_schema"] = body
-                t["api_schema"] = api_schema
-        tools_patched.append(t)
-
-    # (1) TTS → eleven_flash_v2_5
     tts_block = dict(conv.get("tts") or {})
     tts_block["model_id"] = "eleven_flash_v2_5"
-
-    return {
-        "conversation_config": {
-            "agent": {"prompt": {"tools": tools_patched}},
-            "tts": tts_block,
-        },
-    }
+    return {"conversation_config": {"tts": tts_block}}
 
 
 def patch_agent(api_key: str, agent_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -120,6 +80,68 @@ def patch_agent(api_key: str, agent_id: str, payload: dict[str, Any]) -> dict[st
     if r.status_code >= 400:
         raise RuntimeError(f"PATCH agent {agent_id} → HTTP {r.status_code}: {r.text[:400]}")
     return r.json()
+
+
+def get_tool(api_key: str, tool_id: str) -> dict[str, Any]:
+    r = httpx.get(
+        f"{API_BASE}/v1/convai/tools/{tool_id}",
+        headers=_headers(api_key),
+        timeout=15.0,
+    )
+    if r.status_code >= 400:
+        raise RuntimeError(f"GET tool {tool_id} → HTTP {r.status_code}: {r.text[:400]}")
+    return r.json()
+
+
+def patch_tool(api_key: str, tool_id: str, tool_config: dict[str, Any]) -> dict[str, Any]:
+    """PATCH a una tool. ElevenLabs envuelve el body en `tool_config`."""
+    r = httpx.patch(
+        f"{API_BASE}/v1/convai/tools/{tool_id}",
+        headers=_headers(api_key),
+        json={"tool_config": tool_config},
+        timeout=20.0,
+    )
+    if r.status_code >= 400:
+        raise RuntimeError(f"PATCH tool {tool_id} → HTTP {r.status_code}: {r.text[:400]}")
+    return r.json()
+
+
+def mutate_tool_for_latency(tool_config: dict[str, Any]) -> dict[str, Any]:
+    """Devuelve un tool_config mutado con las mejoras de latencia aplicadas.
+
+    Aplica:
+      - `pre_tool_speech: "force"` (enum: 'auto'|'force'|'off') — sin esto,
+        el booleano `force_pre_tool_speech` es ignorado por la API.
+      - `force_pre_tool_speech: True` (para que refleje el estado deseado).
+      - `calendar_id` opcional en el schema de mover_reserva/cancelar_reserva.
+    """
+    tc = dict(tool_config)
+    tc["pre_tool_speech"] = "force"
+    tc["force_pre_tool_speech"] = True
+
+    name = tc.get("name") or ""
+    if name in ("mover_reserva", "cancelar_reserva"):
+        api_schema = dict(tc.get("api_schema") or {})
+        body = dict(api_schema.get("request_body_schema") or {})
+        props = dict(body.get("properties") or {})
+        if "calendar_id" not in props:
+            props["calendar_id"] = {
+                "type": "string",
+                "description": (
+                    "calendar_id devuelto por buscar_reserva_cliente. "
+                    "Si lo pasas, el backend " +
+                    ("mueve" if name == "mover_reserva" else "cancela") +
+                    " directo sin iterar peluqueros — MÁS RÁPIDO."
+                ),
+                "enum": None,
+                "is_system_provided": False,
+                "dynamic_variable": "",
+                "constant_value": "",
+            }
+            body["properties"] = props
+            api_schema["request_body_schema"] = body
+            tc["api_schema"] = api_schema
+    return tc
 
 
 def main() -> None:
@@ -142,33 +164,59 @@ def main() -> None:
     name = remote.get("name")
     conv = remote.get("conversation_config") or {}
     current_tts_model = ((conv.get("tts") or {}).get("model_id")) or "(none)"
-    tools_count = len(((conv.get("agent") or {}).get("prompt") or {}).get("tools") or [])
+    prompt_block = (conv.get("agent") or {}).get("prompt") or {}
+    tool_ids: list[str] = list(prompt_block.get("tool_ids") or [])
     print(f"  nombre: {name}")
     print(f"  TTS model actual: {current_tts_model}")
-    print(f"  tools registradas: {tools_count}")
+    print(f"  tool_ids: {len(tool_ids)}")
 
-    payload = build_patch_payload(remote)
+    agent_payload = build_agent_patch_payload(remote)
 
     if dry_run:
         import json as _json
-        print("\n=== DRY RUN — no hago PATCH. Payload:\n")
-        print(_json.dumps(payload, ensure_ascii=False, indent=2))
+        print("\n=== DRY RUN — no hago PATCH. Payload del agente:\n")
+        print(_json.dumps(agent_payload, ensure_ascii=False, indent=2))
+        print("\nTools a patchear (una a una):")
+        for tid in tool_ids:
+            try:
+                tool_body = get_tool(api_key, tid)
+                tc = tool_body.get("tool_config") or tool_body
+                mutated = mutate_tool_for_latency(tc)
+                changed = {
+                    "pre_tool_speech": mutated.get("pre_tool_speech"),
+                    "force_pre_tool_speech": mutated.get("force_pre_tool_speech"),
+                    "has_calendar_id": "calendar_id" in (
+                        ((mutated.get("api_schema") or {}).get("request_body_schema") or {}).get("properties") or {}
+                    ),
+                }
+                print(f"  {tid} ({tc.get('name')}): {changed}")
+            except Exception as e:
+                print(f"  {tid}: GET falló: {e}")
         print("\nRe-ejecuta sin --dry-run para aplicar.")
         return
 
-    print(f"→ PATCH agent {agent_id} (TTS=flash, force_pre_tool_speech, calendar_id)")
-    resp = patch_agent(api_key, agent_id, payload)
+    print(f"→ PATCH agent {agent_id} (TTS=flash)")
+    resp = patch_agent(api_key, agent_id, agent_payload)
     new_tts = ((resp.get("conversation_config") or {}).get("tts") or {}).get("model_id") or "(none)"
-    new_tools = ((resp.get("conversation_config") or {}).get("agent") or {}).get("prompt", {}).get("tools") or []
-    n_with_fpts = sum(1 for t in new_tools if t.get("force_pre_tool_speech") is True)
     print(f"  OK. TTS model ahora: {new_tts}")
-    print(f"  force_pre_tool_speech activo en: {n_with_fpts}/{len(new_tools)} tools")
-    print("  calendar_id presente en mover/cancelar:",
-          all(
-              "calendar_id" in (((t.get("api_schema") or {}).get("request_body_schema") or {}).get("properties") or {})
-              for t in new_tools
-              if t.get("name") in ("mover_reserva", "cancelar_reserva")
-          ))
+
+    print(f"→ PATCH {len(tool_ids)} tool(s) individualmente (pre_tool_speech=force, calendar_id donde aplique)")
+    for tid in tool_ids:
+        try:
+            tool_body = get_tool(api_key, tid)
+            tc = tool_body.get("tool_config") or tool_body
+            mutated = mutate_tool_for_latency(tc)
+            after = patch_tool(api_key, tid, mutated)
+            after_tc = after.get("tool_config") or after
+            tname = after_tc.get("name") or tid
+            pts = after_tc.get("pre_tool_speech")
+            fpts = after_tc.get("force_pre_tool_speech")
+            has_cal = "calendar_id" in (
+                ((after_tc.get("api_schema") or {}).get("request_body_schema") or {}).get("properties") or {}
+            )
+            print(f"  [{tname}] OK pre_tool_speech={pts} force={fpts} calendar_id_in_schema={has_cal}")
+        except Exception as e:
+            print(f"  [{tid}] ERROR: {e}")
 
 
 if __name__ == "__main__":

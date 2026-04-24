@@ -109,6 +109,11 @@ def _build_tools(tool_base_url: str, tool_secret: str, tenant_id: str) -> list[d
             # Arranca el TTS del filler en paralelo a la HTTP call: el usuario
             # oye "vale, te miro un momento..." mientras el backend habla con
             # Google. Enmascara 200-600ms de latencia por tool call.
+            #
+            # Ojo: el flag booleano `force_pre_tool_speech: true` SIN `pre_tool_speech`
+            # lo ignora la API — hay que fijar el enum a "force" para que se
+            # active. Valores válidos: 'auto' | 'force' | 'off'.
+            "pre_tool_speech": "force",
             "force_pre_tool_speech": True,
             "api_schema": {
                 "url": f"{base}{path}?tenant_id={tenant_id}",
