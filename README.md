@@ -58,7 +58,9 @@ Variables mínimas (ver `.env.example`):
 
 ## Añadir un tenant nuevo
 
-Sigue la checklist de [`BOT_NUEVO_CONFIG.md`](./BOT_NUEVO_CONFIG.md). Resumen:
+Sigue la checklist de [`BOT_NUEVO_CONFIG.md`](./BOT_NUEVO_CONFIG.md). Para editar el prompt de voz, lee antes [`PROMPT_KNOWLEDGE.md`](./PROMPT_KNOWLEDGE.md) — contiene los gotchas y el proceso de iteración validado con tests.
+
+Resumen:
 
 1. Crear el tenant en el CMS (`/admin/clientes/nuevo`).
 2. Autorizar Google Calendar desde `/oauth/start?tenant=<id>`.

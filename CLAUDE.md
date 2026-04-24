@@ -17,6 +17,7 @@ Documentos canónicos que complementan este fichero:
 - `PLAYBOOK_CLIENTE_NUEVO.md` — alta de tenants.
 - `CMS_README.md` — panel de administración.
 - `BOT_NUEVO_CONFIG.md` — **config canónica de baja latencia** que debe aplicarse a cualquier bot nuevo (post-ronda 7). Valores de LLM, TTS, turn, tools, personalization webhook. Antes de crear un tenant nuevo, leerlo.
+- `PROMPT_KNOWLEDGE.md` — **sabiduría sobre el prompt de Ana y su mantenimiento**. Jerarquía inalterable (nombre al FINAL, UNA pregunta por turno), gotchas descubiertos (Gemini 3 ignora `{{system__time}}`, `pre_tool_speech` es enum, `simulate-conversation` no ejecuta tools...), proceso de iteración con `refresh_agent_prompt.py` + `test_dialog.py`, checklist pre-push. **Leer antes de tocar `ana_prompt_new.txt` o la config del agente.**
 - `HANDOFF_YYYY-MM-DD.md` — handoffs técnicos densos de sesiones puntuales.
 - `HANDOFF_PROTOCOL.md` — protocolo automático de cierre de jornada a `#bot-reservas`.
 - `scripts/handoff_closing_prompt.md` — prompt que ejecuta la scheduled task de cierre.

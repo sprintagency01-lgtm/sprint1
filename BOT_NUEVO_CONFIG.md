@@ -123,12 +123,21 @@ El endpoint devuelve `hoy_fecha_iso`, `manana_fecha_iso`, `pasado_fecha_iso`, `h
 
 ### Prompt (`ana_prompt_new.txt`)
 
-- Tamaño objetivo: **≤3,3 KB**. El prompt actual es el que hay en ese fichero. **No añadir secciones sin recortar otras.**
-- Usa `{{hoy_natural}}`, `{{manana_natural}}`, `{{manana_fecha_iso}}`, `{{hora_local}}`, `{{system__caller_id}}`.
-- No incluye sección "Fillers antes de tool calls" — `pre_tool_speech: force` ya lo inyecta.
-- No pide al LLM que calcule weekday desde UTC — el personalization endpoint se lo da precomputado.
+**Ver `PROMPT_KNOWLEDGE.md` para la referencia completa** (jerarquía inalterable, gotchas, proceso de iteración con `refresh_agent_prompt.py` y `test_dialog.py`).
 
-Cuando adaptes el prompt a un tenant distinto (peluquería → clínica dental, abogado, etc.), conserva: `## Contexto`, `## Reglas duras`, `## Flujo RESERVA/MOVER/CANCELAR` y `## Cierre`. Cambia solo `## Negocio`, los servicios y el nombre del asistente.
+Resumen operativo:
+- Tamaño actual: ~5 KB. Estructura fija y validada. **No recortar secciones ni reordenar el flujo sin permiso explícito.**
+- **Flujo RESERVA canónico**: `servicio → cuándo → consultar → ofrecer → elegir → NOMBRE → crear`. Nombre al FINAL, no antes de consultar.
+- **UNA pregunta por turno** con ejemplos BIEN/MAL explícitos (Gemini 3 Flash Preview los necesita).
+- Bloque `<!-- REFRESH_BLOCK -->` con macros (`__HOY_FECHA__`, `__ANO_ACTUAL__`, etc.) que `scripts/refresh_agent_prompt.py` renderiza con la fecha real. Gemini 3 ignora `{{system__time}}`, por eso necesitamos la fecha como texto literal.
+
+Antes de adaptar a un tenant distinto (clínica dental, abogado, etc.): conserva `## ATENCIÓN — FECHA ACTUAL`, `## UNA pregunta por turno`, `## Reglas duras`, `## Flujo RESERVA/MOVER/CANCELAR` y `## Cierre`. Cambia solo `## Negocio`, los servicios y el nombre del asistente.
+
+Proceso de edición:
+1. Editar `ana_prompt_new.txt`.
+2. `python scripts/refresh_agent_prompt.py` — sincroniza con fecha renderizada.
+3. `python scripts/test_dialog.py` — valida 4 escenarios × 7 checks.
+4. Si ≥3 escenarios ALL GREEN, commit + push.
 
 ## Verificaciones post-alta
 

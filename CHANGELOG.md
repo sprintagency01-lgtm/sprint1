@@ -6,6 +6,25 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (docs — consolidar knowledge del prompt)
+
+### Añadido
+
+- **`PROMPT_KNOWLEDGE.md`**: documento maestro con todo lo aprendido sobre el prompt de voz de Ana y su mantenimiento. Contenido:
+  - Principios inalterables (flujo RESERVA canónico, UNA pregunta por turno, reglas duras). Política de "no tocar sin permiso" + cambios permitidos sin permiso.
+  - 6 gotchas descubiertos con diagnóstico y solución (Gemini 3 ignora `{{system__time}}`, `dynamic_variable_placeholders` obligatorios, `pre_tool_speech` es enum, `simulate-conversation` no ejecuta tools, Gemini 3 encadena preguntas sin ejemplos explícitos, del hijoputa en el first_message).
+  - Proceso de mantenimiento paso a paso: editar prompt → refresh → test → commit. Incluye cron diario recomendado.
+  - Cómo añadir un escenario/check al harness, cómo añadir una dynamic_variable nueva.
+  - Tabla de los ~13 modelos LLM evaluados con criterio de sustitución.
+  - Checklist pre-push (7 items).
+  - Regla de oro: si no hay permiso explícito, no tocar.
+
+### Cambiado
+
+- **`CLAUDE.md`, `README.md`, `BOT_NUEVO_CONFIG.md`** enlazan a `PROMPT_KNOWLEDGE.md` como punto de entrada para cualquier edición del prompt de voz. `BOT_NUEVO_CONFIG.md` redirige el detalle del prompt ahí (una sola fuente de verdad).
+
+---
+
 ## 2026-04-24 (ronda 8 — restaurar jerarquía del prompt + test automatizado)
 
 Bug de producto: al recortar el prompt en la ronda 7, moví **"nombre al FINAL antes de crear_reserva"** a **"nombre antes de consultar"**, eliminé la repetición enfática de **"UNA pregunta por turno"** y suprimí la sección de fillers. Marcos cazó la regresión en una llamada real ("te pregunta 27 cosas, habíamos establecido una jerarquía"). Corregido.
