@@ -20,8 +20,9 @@ import time
 import traceback
 from datetime import datetime, timedelta
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from .config import settings
@@ -694,3 +695,101 @@ def cancelar_reserva(
     cal_id = tenant.get("calendar_id") or settings.default_calendar_id
     cal.cancelar_evento(req.event_id, calendar_id=cal_id, tenant_id=tid)
     return {"ok": True, "calendar_id": cal_id}
+
+
+# ---------- Personalization webhook (ElevenLabs conversation_initiation) ----------
+#
+# Este endpoint lo llama ElevenLabs UNA vez al inicio de cada llamada, antes
+# de que empiece la conversación real. Responde con `dynamic_variables` que
+# el agente puede interpolar en su prompt y en sus tools. Evita que Gemini
+# tenga que calcular weekday desde system__time_utc cada turno (ahorra
+# tokens de prefill y reduce alucinaciones de fecha).
+#
+# Formato que espera ElevenLabs (ver docs Convai):
+#   POST /tools/eleven/personalization
+#   Body: { "caller_id": "+34...", "agent_id": "...", "called_number": "...", "tenant_id": "..." }
+#   Respuesta: {
+#     "type": "conversation_initiation_client_data",
+#     "dynamic_variables": { "hoy_dia_semana": "viernes", ... }
+#   }
+#
+# Protegido por X-Tool-Secret. Sin tool_secret → 500.
+
+
+_DIA_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+_MES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+def _fecha_natural(d) -> str:
+    """'viernes 25 de abril' — formato hablable."""
+    return f"{_DIA_ES[d.weekday()]} {d.day} de {_MES_ES[d.month - 1]}"
+
+
+@router.post("/eleven/personalization")
+async def eleven_personalization(
+    request: Request,
+    x_tool_secret: str | None = Header(None),
+) -> dict[str, Any]:
+    """Devuelve dynamic_variables precomputadas para el agente.
+
+    Variables:
+      - hoy_fecha_iso, mañana_fecha_iso, pasado_fecha_iso: "YYYY-MM-DD" en TZ del tenant.
+      - hoy_dia_semana, mañana_dia_semana: "lunes".."domingo".
+      - hoy_natural, mañana_natural: "viernes 25 de abril".
+      - hora_local: "17:23" — útil para que Ana decida si "mañana" vs "esta tarde".
+      - tenant_name, tenant_id.
+      - caller_id_legible: el caller_id separado con espacios para que el TTS
+        hable dígito a dígito si es necesario (p.ej. "+34600 000 001").
+
+    El prompt puede usar {{hoy_dia_semana}}, {{mañana_natural}}, etc.
+    """
+    _check_secret(x_tool_secret)
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    # `tenant_id` puede venir en query param (configurable al registrar el
+    # webhook en ElevenLabs) o en el body. Prioridad: query > body > primer.
+    tenant_id = (
+        request.query_params.get("tenant_id")
+        or body.get("tenant_id")
+        or None
+    )
+    tenant = _resolve_tenant(tenant_id)
+    tz_name = tenant.get("timezone") or settings.default_timezone
+    tz = ZoneInfo(tz_name)
+
+    now = datetime.now(tz)
+    hoy = now.date()
+    manana = hoy + timedelta(days=1)
+    pasado = hoy + timedelta(days=2)
+
+    caller_id_raw = (body.get("caller_id") or "").strip()
+    caller_id_legible = " ".join(list(caller_id_raw.replace(" ", ""))) if caller_id_raw else ""
+
+    dynamic_variables = {
+        "tenant_id": tenant.get("id") or "",
+        "tenant_name": tenant.get("name") or "",
+        "hoy_fecha_iso": hoy.isoformat(),
+        "manana_fecha_iso": manana.isoformat(),
+        "pasado_fecha_iso": pasado.isoformat(),
+        "hoy_dia_semana": _DIA_ES[hoy.weekday()],
+        "manana_dia_semana": _DIA_ES[manana.weekday()],
+        "hoy_natural": _fecha_natural(hoy),
+        "manana_natural": _fecha_natural(manana),
+        "hora_local": now.strftime("%H:%M"),
+        "caller_id_legible": caller_id_legible,
+    }
+    log.info(
+        "personalization tenant=%s hoy=%s manana=%s caller=%s",
+        dynamic_variables["tenant_id"], dynamic_variables["hoy_dia_semana"],
+        dynamic_variables["manana_dia_semana"],
+        "yes" if caller_id_raw else "no",
+    )
+    return {
+        "type": "conversation_initiation_client_data",
+        "dynamic_variables": dynamic_variables,
+    }
