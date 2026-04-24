@@ -6,6 +6,14 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (parche pm 5)
+
+### Corregido
+
+- **Resumen de confirmación decía "con sin preferencia".** Caso real: *"Corte de hombre, sábado 25 a las 16:30 con sin preferencia, a nombre de Anabel Prueba. ¿Lo confirmo?"* — la composición automática `con {peluquero}` se rompía cuando `{peluquero}` era literalmente `"sin preferencia"`. Endurecida la description de `pedir_confirmacion`: estructura explícita, prohibición literal de `"con sin preferencia"` / `"con cualquiera"`, y ejemplo correcto sin peluquero (*"Corte mujer, sábado 25 a las 16:30. ¿Te lo confirmo?"*). Test de regresión en `test_prompt_confirmation_and_title.py`. Suite **95/95**.
+
+---
+
 ## 2026-04-24 (parche pm 4)
 
 ### Corregido

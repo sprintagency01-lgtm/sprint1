@@ -131,3 +131,28 @@ def test_crear_reserva_description_refuerza_llamar_tras_confirmacion():
         or "no reofrezcas" in low
         or "no consultes" in low
     ), desc
+
+
+# ---------------------------------------------------------------------------
+#  Fix "con sin preferencia" — pedir_confirmacion description
+# ---------------------------------------------------------------------------
+
+def _pedir_confirmacion_tool() -> dict:
+    for t in agent_mod.TOOLS:
+        if t.get("function", {}).get("name") == "pedir_confirmacion":
+            return t
+    raise AssertionError("no encuentro pedir_confirmacion")
+
+
+def test_pedir_confirmacion_prohibe_con_sin_preferencia():
+    """Caso real: Ana dijo 'Corte de hombre a las 16:30 con sin preferencia'
+    — composición automática horrible. La description ahora lo prohíbe
+    explícitamente y dice cómo formatear sin peluquero."""
+    tool = _pedir_confirmacion_tool()
+    desc = tool["function"]["parameters"]["properties"]["resumen"]["description"]
+    low = desc.lower()
+    # Debe prohibir explícitamente la frase.
+    assert "con sin preferencia" in low
+    assert "nunca" in low or "omite" in low
+    # Y debe dar ejemplo correcto sin peluquero.
+    assert "sin mención" in low or "omite" in low

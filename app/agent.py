@@ -450,9 +450,19 @@ TOOLS: list[dict[str, Any]] = [
                     "resumen": {
                         "type": "string",
                         "description": (
-                            "Resumen en UNA frase de todo lo acordado. Ej: "
-                            "'Corte de hombre, viernes 24 a las 10:00 con "
-                            "Mario. ¿Te lo confirmo?'"
+                            "Resumen en UNA frase de todo lo acordado. "
+                            "Estructura: '<Servicio>, <día de la semana> "
+                            "<día mes> a las <hora>[ con <Nombre del "
+                            "peluquero>]. ¿Te lo confirmo?'. "
+                            "Si el cliente NO tiene preferencia de "
+                            "peluquero, OMITE la parte 'con <nombre>' "
+                            "entera. NUNCA escribas 'con sin preferencia' "
+                            "ni 'con cualquiera'. "
+                            "Ejemplos correctos: "
+                            "'Corte hombre, viernes 24 a las 10:00 con "
+                            "Mario. ¿Te lo confirmo?' / "
+                            "'Corte mujer, sábado 25 a las 16:30. ¿Te lo "
+                            "confirmo?' (sin mención de peluquero)."
                         ),
                     },
                 },
