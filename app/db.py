@@ -159,10 +159,15 @@ class Tenant(Base):
     def assistant_rules(self, value: list[str]) -> None:
         self.assistant_rules_json = json.dumps(value, ensure_ascii=False)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, *, include_system_prompt: bool = True) -> dict[str, Any]:
         """Devuelve el tenant en el formato dict que espera el resto del código
-        (compatibilidad con el antiguo YAML)."""
-        return {
+        (compatibilidad con el antiguo YAML).
+
+        `include_system_prompt=False` omite el render del prompt de WhatsApp/
+        Telegram/CLI — el canal voz no usa ese campo (usa `voice.prompt`) y
+        rendering del prompt es ~1-3 ms innecesarios en el hot path de voz.
+        """
+        d: dict[str, Any] = {
             "id": self.id,
             "name": self.name,
             "sector": self.sector,
@@ -194,7 +199,6 @@ class Tenant(Base):
                 "rules": self.assistant_rules,
             },
             "system_prompt_override": self.system_prompt_override,
-            "system_prompt": render_system_prompt(self),
             "voice": {
                 "agent_id": self.voice_agent_id,
                 "prompt": self.voice_prompt,
@@ -207,6 +211,9 @@ class Tenant(Base):
             },
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+        if include_system_prompt:
+            d["system_prompt"] = render_system_prompt(self)
+        return d
 
 
 class Service(Base):

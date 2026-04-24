@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import time
 import traceback
 from datetime import datetime, timedelta
@@ -34,29 +35,52 @@ router = APIRouter(prefix="/tools", tags=["voice-agent-tools"])
 
 # ---------- Retry helper ----------
 
-def _retry_google(fn: Callable[[], Any], op_name: str, attempts: int = 2, sleep_s: float = 0.8):
+# Tokens típicos de errores transitorios en respuestas de googleapiclient:
+# códigos HTTP 5xx, límites de rate, errores internos, timeouts de red.
+_TRANSIENT_ERROR_TOKENS = (
+    "500", "502", "503", "504",
+    "rateLimit", "quotaExceeded",
+    "Internal Server Error",
+    "backendError", "timeout",
+)
+
+
+def _retry_google(
+    fn: Callable[[], Any],
+    op_name: str,
+    attempts: int = 2,
+    base_delay_s: float = 0.4,
+    max_delay_s: float = 1.5,
+):
     """Ejecuta `fn` reintentando ante errores transitorios de Google Calendar.
 
-    Google a veces tira 500/503/429 puntuales (rate-limits, hiccups). En un
-    flujo de voz hay que reintentar AL MENOS una vez antes de tirar a mano: si
-    no, el cliente oye "llame al 910" cuando el siguiente segundo todo funciona.
+    Backoff exponencial con jitter (AWS full jitter simplificado):
+        delay_n = random(0, min(max, base * 2^n))
+
+    Ventajas sobre la versión lineal anterior:
+    - Menos colisiones cuando varios workers chocan con el mismo rate-limit.
+    - En caso nominal con 2 intentos, el primer retry espera ~0-0,4s en lugar
+      de un fijo 0,8s → mediana de latencia más baja en el peor caso.
+    - El cap a 1,5s evita que un tercer reintento (si lo activamos) bloquee
+      el hilo demasiado tiempo.
     """
     last_exc = None
     for i in range(attempts):
         try:
             return fn()
-        except Exception as e:  # pragma: no cover - incluye HttpError, ConnectionError, etc.
+        except Exception as e:  # pragma: no cover - HttpError, ConnectionError, etc.
             msg = str(e)
             last_exc = e
-            transient = any(tok in msg for tok in ("500", "502", "503", "504",
-                                                     "rateLimit", "quotaExceeded",
-                                                     "Internal Server Error",
-                                                     "backendError", "timeout"))
-            log.warning("[%s] intento %d/%d falló (transient=%s): %s",
-                         op_name, i + 1, attempts, transient, msg)
+            transient = any(tok in msg for tok in _TRANSIENT_ERROR_TOKENS)
             if not transient or i == attempts - 1:
+                log.warning("[%s] intento %d/%d falló (transient=%s, final): %s",
+                             op_name, i + 1, attempts, transient, msg[:200])
                 raise
-            time.sleep(sleep_s * (i + 1))
+            capped = min(max_delay_s, base_delay_s * (2 ** i))
+            delay = random.uniform(0, capped)
+            log.warning("[%s] intento %d/%d falló (transient) — retry en %.2fs: %s",
+                         op_name, i + 1, attempts, delay, msg[:200])
+            time.sleep(delay)
     # no debería llegar aquí
     raise last_exc  # type: ignore[misc]
 
@@ -76,13 +100,22 @@ def _check_secret(x_tool_secret: str | None) -> None:
 
 
 def _resolve_tenant(tenant_id: str | None) -> dict:
-    """Devuelve el dict del tenant. Si no se especifica, usa el primero del YAML."""
-    all_tenants = tn.load_tenants()
+    """Devuelve el dict del tenant. Si no se especifica, usa el primero.
+
+    Hot path de voz: NO necesita `system_prompt` (usa `voice.prompt` en
+    ElevenLabs), así que pide la versión ligera para ahorrar el render del
+    prompt en cada tool call. Además se apoya en el caché in-memory de
+    `tenants.py` (TTL 30s): típicamente <0,1ms por llamada en caché
+    caliente vs ~10-30ms con lectura BD + YAML + render.
+    """
     if tenant_id:
-        for t in all_tenants:
-            if t.get("id") == tenant_id:
-                return t
-        raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' no encontrado")
+        t = tn.get_tenant(tenant_id, include_system_prompt=False)
+        if t is None:
+            raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' no encontrado")
+        return t
+    all_tenants = tn.load_tenants()
+    if not all_tenants:
+        raise HTTPException(status_code=500, detail="No hay tenants configurados")
     return all_tenants[0]
 
 
@@ -130,10 +163,18 @@ class MoverReq(BaseModel):
     nuevo_inicio_iso: str
     nuevo_fin_iso: str
     peluquero: str | None = None  # si se mueve entre peluqueros
+    # Opcional: calendar_id devuelto por `buscar_reserva_cliente`. Si viene,
+    # se hace un PATCH directo sin iterar peluqueros (ahorra 200-1500 ms en
+    # el peor caso). Si falta, se mantiene el comportamiento legacy de
+    # probar calendario a calendario.
+    calendar_id: str | None = None
 
 
 class CancelarReq(BaseModel):
     event_id: str
+    # Mismo razonamiento que MoverReq.calendar_id: si ElevenLabs nos pasa el
+    # calendar_id que ya obtuvo de buscar_reserva_cliente, borramos directo.
+    calendar_id: str | None = None
 
 
 # ---------- Helpers internos ----------
@@ -408,6 +449,42 @@ def crear_reserva(
         cid = caller_id.strip()
         if cid.lower() not in ("none", "null", "n/a", "na", "-", "unknown", "anonymous", ""):
             tel = cid
+    # ---------- Idempotencia ---------------------------------------------
+    # ElevenLabs reintenta una tool call tras timeout de red (20s). Si el
+    # insert contra Google Calendar llegó, pero la respuesta HTTP se perdió
+    # en vuelo, el reintento creaba una SEGUNDA reserva: cita duplicada para
+    # el mismo cliente a la misma hora. Antes de insertar, buscamos evento
+    # existente del mismo teléfono en una ventana ±5min alrededor del inicio;
+    # si lo encontramos, devolvemos ok:true + duplicate:true con el event_id
+    # existente, y Ana cierra con naturalidad sin duplicar la agenda.
+    #
+    # Best-effort: si la búsqueda falla (404, 5xx), caemos a insert normal
+    # para no bloquear la reserva por un fallo del "check" secundario.
+    if tel:
+        try:
+            ventana_desde = inicio_dt - timedelta(minutes=5)
+            ventana_hasta = inicio_dt + timedelta(minutes=5)
+            ev_existente = cal.buscar_evento_por_telefono(
+                tel, ventana_desde, ventana_hasta,
+                calendar_id=destino_cal,
+                tenant_id=tenant.get("id", "default"),
+            )
+            if ev_existente:
+                log.info(
+                    "crear_reserva idempotente: ya existe evento=%s para tel=%s en ventana, no duplico",
+                    ev_existente.get("id"), tel,
+                )
+                return {
+                    "ok": True,
+                    "event_id": ev_existente.get("id"),
+                    "peluquero": peluquero or "sin preferencia",
+                    "duplicate": True,
+                }
+        except Exception:
+            # Log y sigue: mejor crear (y tolerar duplicado en el peor caso)
+            # que bloquear la reserva por un fallo del check secundario.
+            log.exception("idempotency check falló — continúo con insert")
+
     # Reintenta ante errores transitorios de Google. Si aun así falla,
     # devolvemos 200 con ok:false + mensaje legible para que Ana pueda decidir
     # si reintenta o deriva al número de tienda, en vez de oír un 500 mudo.
@@ -531,29 +608,52 @@ def mover_reserva(
 ) -> dict[str, Any]:
     _check_secret(x_tool_secret)
     tenant = _resolve_tenant(tenant_id)
-    # En MVP el evento vive en el calendario de su peluquero original; si el
-    # agente quiere cambiar de peluquero, eso requiere borrar y crear de nuevo.
+    nuevo_inicio = datetime.fromisoformat(req.nuevo_inicio_iso)
+    nuevo_fin = datetime.fromisoformat(req.nuevo_fin_iso)
+    tid = tenant.get("id", "default")
+
+    # Fast path: si `buscar_reserva_cliente` ya devolvió `calendar_id` y el
+    # agente lo re-envía, hacemos un PATCH directo sin iterar peluqueros.
+    # Ahorra hasta (N-1) × ~200-500ms en tenants con varios calendarios.
+    if req.calendar_id:
+        try:
+            cal.mover_evento(
+                event_id=req.event_id,
+                nuevo_inicio=nuevo_inicio,
+                nuevo_fin=nuevo_fin,
+                calendar_id=req.calendar_id,
+                tenant_id=tid,
+            )
+            return {"ok": True, "calendar_id": req.calendar_id}
+        except Exception as e:
+            # Si el calendar_id del body falla, caemos al fallback legacy.
+            log.warning(
+                "mover_reserva fast-path calendar=%s falló (%s) — fallback a iteración",
+                req.calendar_id, str(e)[:200],
+            )
+
+    # Fallback legacy: el agente no nos pasó calendar_id (o el fast path falló).
+    # Probamos peluqueros uno a uno, luego el calendario principal.
     cal_id = tenant.get("calendar_id") or settings.default_calendar_id
-    # Intenta detectar en qué calendario está (peluqueros primero, luego main)
     pelus = tenant.get("peluqueros") or []
     for p in pelus:
         try:
             cal.mover_evento(
                 event_id=req.event_id,
-                nuevo_inicio=datetime.fromisoformat(req.nuevo_inicio_iso),
-                nuevo_fin=datetime.fromisoformat(req.nuevo_fin_iso),
+                nuevo_inicio=nuevo_inicio,
+                nuevo_fin=nuevo_fin,
                 calendar_id=p["calendar_id"],
-                tenant_id=tenant.get("id", "default"),
+                tenant_id=tid,
             )
             return {"ok": True, "calendar_id": p["calendar_id"]}
         except Exception:
             continue
     cal.mover_evento(
         event_id=req.event_id,
-        nuevo_inicio=datetime.fromisoformat(req.nuevo_inicio_iso),
-        nuevo_fin=datetime.fromisoformat(req.nuevo_fin_iso),
+        nuevo_inicio=nuevo_inicio,
+        nuevo_fin=nuevo_fin,
         calendar_id=cal_id,
-        tenant_id=tenant.get("id", "default"),
+        tenant_id=tid,
     )
     return {"ok": True, "calendar_id": cal_id}
 
@@ -566,22 +666,31 @@ def cancelar_reserva(
 ) -> dict[str, Any]:
     _check_secret(x_tool_secret)
     tenant = _resolve_tenant(tenant_id)
+    tid = tenant.get("id", "default")
+
+    # Fast path: calendar_id del body (devuelto por buscar_reserva_cliente).
+    if req.calendar_id:
+        try:
+            cal.cancelar_evento(
+                req.event_id, calendar_id=req.calendar_id, tenant_id=tid,
+            )
+            return {"ok": True, "calendar_id": req.calendar_id}
+        except Exception as e:
+            log.warning(
+                "cancelar_reserva fast-path calendar=%s falló (%s) — fallback a iteración",
+                req.calendar_id, str(e)[:200],
+            )
+
+    # Fallback legacy: iterar calendarios del tenant.
     pelus = tenant.get("peluqueros") or []
-    # Intentar borrar en cada calendario hasta que funcione
     for p in pelus:
         try:
             cal.cancelar_evento(
-                req.event_id,
-                calendar_id=p["calendar_id"],
-                tenant_id=tenant.get("id", "default"),
+                req.event_id, calendar_id=p["calendar_id"], tenant_id=tid,
             )
             return {"ok": True, "calendar_id": p["calendar_id"]}
         except Exception:
             continue
     cal_id = tenant.get("calendar_id") or settings.default_calendar_id
-    cal.cancelar_evento(
-        req.event_id,
-        calendar_id=cal_id,
-        tenant_id=tenant.get("id", "default"),
-    )
+    cal.cancelar_evento(req.event_id, calendar_id=cal_id, tenant_id=tid)
     return {"ok": True, "calendar_id": cal_id}

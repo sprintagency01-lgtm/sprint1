@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import pathlib
 import re
+import time
 
 from fastapi import FastAPI, Header, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -37,6 +38,38 @@ logging.basicConfig(
 log = logging.getLogger("bot")
 
 app = FastAPI(title="Bot reservas voz (ElevenLabs) + CMS")
+
+
+# ---------- Middleware de timing para /tools/* y /_diag/* ----------
+#
+# Medir la latencia del backend es prerrequisito para iterar: sin este dato
+# no sabemos si una palanca (cache de tenant, force_pre_tool_speech, etc.)
+# rinde. Logea path, tenant_id, status y ms; también emite el header
+# `X-Backend-Duration-MS` para que ElevenLabs pueda correlacionarlo.
+#
+# Solo se aplica a endpoints del hot path (/tools/*) y a /_diag/* para
+# observar los healthchecks. Evitamos timing de /admin, /app y landing
+# porque son colas distintas y no nos dicen nada sobre voz.
+_TIMED_PREFIXES = ("/tools/", "/_diag/")
+
+
+@app.middleware("http")
+async def timing_middleware(request: Request, call_next):
+    path = request.url.path
+    if not any(path.startswith(p) for p in _TIMED_PREFIXES):
+        return await call_next(request)
+    t0 = time.monotonic()
+    response = await call_next(request)
+    dur_ms = (time.monotonic() - t0) * 1000.0
+    tenant_id = request.query_params.get("tenant_id") or "-"
+    log.info(
+        "timing path=%s tenant=%s status=%d dur_ms=%.0f",
+        path, tenant_id, response.status_code, dur_ms,
+    )
+    # Header legible para curl/debug; ElevenLabs lo descarta pero no estorba.
+    response.headers["X-Backend-Duration-MS"] = f"{dur_ms:.0f}"
+    return response
+
 
 # Bootstrap del usuario admin en arranque (si ADMIN_EMAIL + ADMIN_PASSWORD están
 # definidos y no existe todavía). Si algo falla aquí (p.ej. versión de bcrypt
@@ -73,6 +106,48 @@ app.include_router(oauth_web.router)
 # Endpoints /_diag/* de mantenimiento (listar/crear calendarios, verificar ids).
 # Protegidos con X-Tool-Secret igual que /tools/*.
 app.include_router(diag.router)
+
+
+# ---------- Warm-up de Google Calendar en startup ----------
+#
+# La primera llamada a googleapiclient.discovery.build() lee el descriptor
+# del servicio y construye el cliente (~200-400ms). Después la reutilizamos
+# vía `_SERVICE_CACHE` por tenant. Si no calentamos, la primera tool call
+# de ElevenLabs tras un redeploy paga ese coste entero encima del RTT Google
+# — típico "la primera llamada de la mañana suena lenta".
+#
+# Lo hacemos en el startup event (no en import) para no bloquear el import
+# del módulo y para que Railway considere el servicio ready solo cuando el
+# warm-up ha terminado.
+@app.on_event("startup")
+async def _warmup_google_client() -> None:
+    try:
+        from . import tenants as tn
+        from . import calendar_service as cal
+        # Precalentamos solo tenants contracted+active; los leads no reciben
+        # llamadas de voz.
+        tenants = tn.load_tenants()
+        warmed: list[str] = []
+        for t in tenants:
+            if (t.get("kind") or "").lower() != "contracted":
+                continue
+            if (t.get("status") or "").lower() != "active":
+                continue
+            tid = t.get("id")
+            if not tid:
+                continue
+            try:
+                cal._service(tid)
+                warmed.append(tid)
+            except Exception as e:
+                log.warning("warm-up Google falló para tenant=%s: %s", tid, str(e)[:200])
+        if warmed:
+            log.info("warm-up Google OK tenants=%s", ",".join(warmed))
+        else:
+            log.info("warm-up Google: ningún tenant elegible, skip")
+    except Exception:
+        log.exception("warm-up Google falló en arranque — seguimos")
+
 
 
 # ---------- Landing pública ----------
