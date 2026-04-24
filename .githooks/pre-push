@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# .githooks/pre-push
+#
+# Bloquea el push si hay commits nuevos que no tocan CHANGELOG.md.
+# La convención está documentada en CLAUDE.md.
+#
+# Para activar este hook en tu clon local (una sola vez):
+#   git config core.hooksPath .githooks
+#
+# Para saltar el hook en un push puntual (desaconsejado):
+#   git push --no-verify
+
+set -euo pipefail
+
+REMOTE="$1"
+URL="$2"
+
+while read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+
+  # Push de borrado: no verificar.
+  if [ "$LOCAL_SHA" = "0000000000000000000000000000000000000000" ]; then
+    continue
+  fi
+
+  # Rama nueva en remoto: comparar contra origin/HEAD si existe, si no saltar.
+  if [ "$REMOTE_SHA" = "0000000000000000000000000000000000000000" ]; then
+    if git rev-parse --verify --quiet refs/remotes/origin/HEAD >/dev/null; then
+      RANGE="refs/remotes/origin/HEAD..${LOCAL_SHA}"
+    else
+      continue
+    fi
+  else
+    RANGE="${REMOTE_SHA}..${LOCAL_SHA}"
+  fi
+
+  # ¿Hay commits en el rango?
+  COMMITS=$(git rev-list --count "$RANGE" 2>/dev/null || echo 0)
+  if [ "$COMMITS" -eq 0 ]; then
+    continue
+  fi
+
+  # ¿Algún commit del rango toca CHANGELOG.md?
+  if git diff --name-only "$RANGE" | grep -qx 'CHANGELOG.md'; then
+    continue
+  fi
+
+  cat <<EOF >&2
+
+✖  pre-push bloqueado: vas a pushear $COMMITS commit(s) en $LOCAL_REF
+   pero ninguno toca CHANGELOG.md.
+
+Convención del proyecto (ver CLAUDE.md):
+   Antes de cada push debes actualizar CHANGELOG.md con un resumen
+   de los cambios nuevos.
+
+Rápido:
+   scripts/update_changelog.sh        # genera un borrador
+   \$EDITOR CHANGELOG.md               # pega y edita
+   git add CHANGELOG.md
+   git commit -m "docs(changelog): update for push \$(date +%Y-%m-%d)"
+   git push
+
+Si REALMENTE quieres saltártelo esta vez:
+   git push --no-verify
+
+EOF
+  exit 1
+
+done
+
+exit 0
