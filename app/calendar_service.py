@@ -487,11 +487,18 @@ def buscar_evento_por_nombre(
 
     Usa el parámetro `q` de Google Calendar `events.list`, que hace
     búsqueda full-text sobre summary, description, location, attendees,
-    etc. Devuelve el PRIMER evento ordenado por startTime que matchee.
+    etc. Filtra los resultados para evitar matchear al peluquero/profesional:
 
-    Si el nombre es ambiguo ("María") o muy corto, puede devolver un
-    match erróneo. El caller debería leer `summary` y confirmar con el
-    cliente antes de mover/cancelar.
+    - **Match estricto A**: `extendedProperties.private.client_name` coincide
+      (exacto o como substring) con el nombre buscado. Este es el más fiable
+      porque `crear_evento` escribe el nombre del cliente en este campo.
+
+    - **Match estricto B**: el `summary` empieza por el nombre buscado. Título
+      canónico es `Nombre — Servicio (con Peluquero)`, así que si el summary
+      empieza por "Mario —" es cita DE Mario; si aparece "con Mario" al final
+      es el peluquero, NO matchea.
+
+    - Si ninguno matchea, devolvemos `None` (mejor vacío que falso positivo).
     """
     nombre = (nombre or "").strip()
     if not nombre:
@@ -507,21 +514,27 @@ def buscar_evento_por_nombre(
         singleEvents=True,
         orderBy="startTime",
         q=nombre,
-        maxResults=10,
+        maxResults=20,
     ).execute().get("items", [])
-    # Google `q` hace fuzzy match en muchos campos. Filtramos un poco para
-    # evitar falsos positivos: el nombre debe aparecer en el summary o en
-    # el nombre del cliente (extendedProperties.private.client_name).
     nombre_low = nombre.lower()
     for ev in events:
-        summary = (ev.get("summary") or "").lower()
         priv = ((ev.get("extendedProperties") or {}).get("private") or {})
-        client_name = (priv.get("client_name") or "").lower()
-        if nombre_low in summary or nombre_low in client_name:
+        client_name_low = (priv.get("client_name") or "").lower().strip()
+        # Match A: client_name — lo más fiable.
+        if client_name_low and (
+            client_name_low == nombre_low
+            or nombre_low in client_name_low
+            or client_name_low in nombre_low
+        ):
             return ev
-    # Fallback: si no encontramos match estricto pero `q` devolvió algo,
-    # devolvemos el primero (mejor un falso positivo confirmable que nada).
-    return events[0] if events else None
+        # Match B: summary empieza por el nombre (convención "Nombre — Servicio").
+        summary = (ev.get("summary") or "").strip().lower()
+        if summary.startswith(nombre_low + " ") or summary.startswith(nombre_low + " —") \
+                or summary.startswith(nombre_low + "—") or summary == nombre_low:
+            return ev
+    # No match estricto → no devolvemos nada. Evita confundir peluqueros con
+    # clientes ("Mario" aparece en "Eva — Corte (con Mario)" pero NO es cita de Mario).
+    return None
 
 
 def listar_eventos(
