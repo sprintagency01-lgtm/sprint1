@@ -6,6 +6,31 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (ronda 9 hotfix — paginación + filtro por nombre)
+
+Tras subir la búsqueda por nombre en la ronda 9, Marcos probó con una cita real (`"Mario — Corte hombre (Mario)"` del lunes 27 a las 12:30) y el endpoint respondió `encontrada:false` aunque el evento existe. Dos fixes consecutivos:
+
+### Corregido
+
+- **Filtro demasiado laxo**: la primera versión matcheaba cualquier ocurrencia del nombre en el summary, de modo que buscar `"Mario"` devolvía citas como `"Eva Test — Corte (con Mario)"` donde Mario es el peluquero, no el cliente. Endurecido a dos criterios estrictos:
+  - **Match A**: `extendedProperties.private.client_name` coincide (exacto o substring bidireccional).
+  - **Match B**: `summary` empieza por `"<nombre> —"` (convención del título canónico "Nombre — Servicio (con Peluquero)").
+  Si ninguno matchea, `encontrada:false` — mejor vacío que falso positivo.
+
+- **maxResults=20 cortaba la respuesta antes del evento real**: el calendario de `pelu_demo` tiene decenas de citas donde "Mario" aparece como peluquero en `(con Mario)`; `events.list?q=Mario` devolvía 27+ resultados y el evento real estaba hacia el final. Ahora **paginamos hasta 5 páginas × 100 resultados (500 eventos máx)** con `pageToken`. Cubre >2 meses de agenda densa.
+
+Verificado contra producción:
+- `"Mario"` → `Mario — Corte hombre (Mario)` del lunes 27 a las 12:30 ✓
+- `"Eva"` → `Eva Test — Corte hombre (con Mario)` ✓
+- `"Marcos"` → cita del cliente Marcos (no del peluquero) ✓
+- Falsos positivos del peluquero Mario → descartados ✓
+
+### Notas
+
+- `scripts/setup_elevenlabs_agent.py` y `app/elevenlabs_client.create_agent_for_tenant` declaran los `dynamic_variable_placeholders` por defecto al crear un agente. Tenants nuevos nacen con el schema correcto y no caen en el bug.
+
+---
+
 ## 2026-04-24 (ronda 9 — búsqueda por nombre, soft_timeout y end_call)
 
 Tres fallos de UX observados en llamadas reales; corregidos los tres.
