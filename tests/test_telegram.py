@@ -222,6 +222,7 @@ class _FakeTgClient:
         self.sent: list[dict] = []
         self.actions: list[str] = []
         self.callbacks_acked: list[str] = []
+        self.documents_sent: list[dict] = []
 
     def send_message(self, chat_id=None, text=None, **kwargs):
         record = {"chat_id": chat_id, "text": text}
@@ -236,6 +237,17 @@ class _FakeTgClient:
     def answer_callback_query(self, callback_query_id, **_kw):
         self.callbacks_acked.append(callback_query_id)
         return {}
+
+    def send_document(self, chat_id, *, content, filename, caption="", mime_type="application/octet-stream"):
+        self.documents_sent.append({
+            "chat_id": chat_id,
+            "filename": filename,
+            "mime_type": mime_type,
+            "caption": caption,
+            "content_len": len(content),
+            "content": content if isinstance(content, (bytes, bytearray)) else None,
+        })
+        return {"message_id": 2}
 
 
 @pytest.fixture
@@ -313,6 +325,109 @@ def test_handle_update_mensaje_feliz(patched_world):
     assert len(client.sent) == 1
     assert client.sent[0]["chat_id"] == 12345
     assert client.sent[0]["text"] == "vale, a las 10 te va bien?"
+
+
+def test_handle_update_envia_ics_cuando_reply_trae_calendar_event(monkeypatch):
+    """Si la reply del agente trae calendar_event, handle_update debe
+    llamar a send_document con el .ics además del send_message de texto.
+    """
+    from datetime import datetime
+
+    # Parcheamos tenants + db + agent con un reply que tiene calendar_event.
+    tenant = {
+        "id": "default", "name": "Peluquería Demo",
+        "kind": "contracted", "status": "active",
+        "system_prompt": "x", "timezone": "Europe/Madrid",
+    }
+    monkeypatch.setattr("app.tenants.get_tenant", lambda tid: tenant)
+    monkeypatch.setattr("app.tenants.load_tenants", lambda: [tenant])
+    monkeypatch.setattr("app.db.load_history", lambda **_kw: [])
+    monkeypatch.setattr("app.db.save_message", lambda **_kw: None)
+
+    def _fake_reply(user_message, history, tenant, caller_phone):
+        return _FakeReply(
+            text="¡Listo, reservado! Mañana a las 11:00.",
+            interactive=None,
+        ).__class__(  # build a proper AgentReply-lookalike
+            text="¡Listo, reservado! Mañana a las 11:00.",
+        )
+
+    # Usamos la clase real AgentReply para tener calendar_event bien.
+    from app.agent import AgentReply
+
+    def _fake_reply_real(user_message, history, tenant, caller_phone):
+        return AgentReply(
+            text="¡Listo, reservado! Mañana a las 11:00.",
+            calendar_event={
+                "titulo": "Cliente Test — Corte hombre (sin preferencia)",
+                "inicio_iso": "2026-04-25T11:00:00+02:00",
+                "fin_iso": "2026-04-25T11:30:00+02:00",
+                "descripcion": "",
+                "ubicacion": "Peluquería Demo",
+                "tz": "Europe/Madrid",
+                "event_id": "evt_abc",
+                "add_to_calendar_url": "https://calendar.google.com/x",
+            },
+        )
+
+    monkeypatch.setattr("app.agent.reply", _fake_reply_real)
+
+    clients: list[_FakeTgClient] = []
+
+    def _factory(token, timeout=None):
+        c = _FakeTgClient(token, timeout=timeout)
+        clients.append(c)
+        return c
+
+    monkeypatch.setattr(tg, "TelegramClient", _factory)
+
+    out = tg.handle_update(
+        {"message": {"chat": {"id": 424242}, "text": "sí"}},
+        bot_token="FAKE",
+        preferred_tenant_id="default",
+    )
+    assert out["ok"] is True
+
+    client = clients[0]
+    # send_message normal primero.
+    assert len(client.sent) == 1
+    assert "¡Listo, reservado!" in client.sent[0]["text"]
+    # Y además un send_document con el .ics.
+    assert len(client.documents_sent) == 1
+    doc = client.documents_sent[0]
+    assert doc["mime_type"] == "text/calendar"
+    assert doc["filename"].endswith(".ics")
+    assert doc["filename"].startswith("cita-20260425-1100")
+    # Contenido debe tener la estructura iCal.
+    assert b"BEGIN:VCALENDAR" in doc["content"]
+    assert b"SUMMARY:Cliente Test" in doc["content"]
+    assert b"DTSTART;TZID=Europe/Madrid:20260425T110000" in doc["content"]
+
+
+def test_handle_update_no_envia_ics_si_reply_no_trae_calendar_event(monkeypatch):
+    """Si no hay calendar_event, no se manda documento (el turno no creó
+    reserva, es solo un turno intermedio)."""
+    tenant = {"id": "default", "name": "x", "kind": "contracted",
+              "status": "active", "system_prompt": "y", "timezone": "Europe/Madrid"}
+    monkeypatch.setattr("app.tenants.get_tenant", lambda tid: tenant)
+    monkeypatch.setattr("app.tenants.load_tenants", lambda: [tenant])
+    monkeypatch.setattr("app.db.load_history", lambda **_kw: [])
+    monkeypatch.setattr("app.db.save_message", lambda **_kw: None)
+
+    from app.agent import AgentReply
+    monkeypatch.setattr("app.agent.reply", lambda **_kw: AgentReply(text="hola"))
+
+    clients: list[_FakeTgClient] = []
+    def _factory(token, timeout=None):
+        c = _FakeTgClient(token, timeout=timeout)
+        clients.append(c)
+        return c
+    monkeypatch.setattr(tg, "TelegramClient", _factory)
+
+    tg.handle_update({"message": {"chat": {"id": 1}, "text": "hola"}}, bot_token="FAKE", preferred_tenant_id="default")
+
+    assert len(clients[0].sent) == 1
+    assert len(clients[0].documents_sent) == 0
 
 
 def test_handle_update_callback_query_acknowledged(patched_world):

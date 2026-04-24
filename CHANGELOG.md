@@ -10,7 +10,12 @@ Entrada más reciente arriba.
 
 ### Corregido
 
-- **Resumen de confirmación decía "con sin preferencia".** Caso real: *"Corte de hombre, sábado 25 a las 16:30 con sin preferencia, a nombre de Anabel Prueba. ¿Lo confirmo?"* — la composición automática `con {peluquero}` se rompía cuando `{peluquero}` era literalmente `"sin preferencia"`. Endurecida la description de `pedir_confirmacion`: estructura explícita, prohibición literal de `"con sin preferencia"` / `"con cualquiera"`, y ejemplo correcto sin peluquero (*"Corte mujer, sábado 25 a las 16:30. ¿Te lo confirmo?"*). Test de regresión en `test_prompt_confirmation_and_title.py`. Suite **95/95**.
+- **Resumen de confirmación decía "con sin preferencia".** Caso real: *"Corte de hombre, sábado 25 a las 16:30 con sin preferencia, a nombre de Anabel Prueba. ¿Lo confirmo?"* — la composición automática `con {peluquero}` se rompía cuando `{peluquero}` era literalmente `"sin preferencia"`. Endurecida la description de `pedir_confirmacion`: estructura explícita, prohibición literal de `"con sin preferencia"` / `"con cualquiera"`, y ejemplo correcto sin peluquero (*"Corte mujer, sábado 25 a las 16:30. ¿Te lo confirmo?"*). Verificado en producción: Ana dice ahora *"Corte hombre, sábado 25 a las 19:00. ¿Te lo confirmo?"* cuando no hay preferencia.
+
+### Tests
+
+- Test de regresión en `test_prompt_confirmation_and_title.py` sobre la description del tool.
+- 2 tests nuevos en `test_telegram.py` sobre el envío del .ics tras `handle_update`: verifica que cuando `AgentReply.calendar_event` está poblado, `handle_update` llama a `send_document` con el contenido iCal correcto y filename `cita-YYYYMMDD-HHMM.ics`; y que si no hay `calendar_event`, no se envía documento. Suite pasa a **97/97**.
 
 ---
 
