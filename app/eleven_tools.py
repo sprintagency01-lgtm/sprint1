@@ -789,6 +789,48 @@ async def eleven_personalization(
         dynamic_variables["manana_dia_semana"],
         "yes" if caller_id_raw else "no",
     )
+
+    # ---------- Prefetch especulativo de freebusy ----------
+    # Precalentamos el cache freebusy para los próximos 2 días sobre los
+    # calendarios del equipo. La mayoría de llamadas pide "mañana por la
+    # tarde" o "hoy tarde"; si tenemos el freebusy caliente, cuando Ana
+    # llame a `consultar_disponibilidad` 2-5s después, la tool devuelve en
+    # <50ms en vez de 500-900ms. Ganancia directa ~400-800ms en el turno
+    # donde el cliente pide hora.
+    #
+    # Se hace best-effort en background (threadpool); si falla, el
+    # personalization sigue devolviendo las dynamic_variables a tiempo.
+    import asyncio
+    async def _prefetch():
+        try:
+            peluqueros = tenant.get("peluqueros") or []
+            if not peluqueros:
+                return
+            desde = datetime.combine(hoy, datetime.min.time(), tzinfo=tz)
+            hasta = datetime.combine(pasado, datetime.min.time(), tzinfo=tz) + timedelta(days=1)
+            tid_val = tenant.get("id", "default")
+            horario = _horario(tenant)
+            # Duraciones típicas a precalentar: 30min (corte hombre) y 45min (mujer).
+            loop = asyncio.get_running_loop()
+            for duracion in (30, 45):
+                await loop.run_in_executor(
+                    None,
+                    lambda d=duracion: cal.listar_huecos_por_peluqueros(
+                        desde, hasta, d,
+                        peluqueros=peluqueros,
+                        tenant_id=tid_val,
+                        horario_apertura=horario,
+                        business_hours=tenant.get("business_hours"),
+                    ),
+                )
+            log.info("prefetch freebusy OK tenant=%s durs=30,45", tid_val)
+        except Exception as e:
+            log.warning("prefetch freebusy falló tenant=%s: %s",
+                        dynamic_variables["tenant_id"], str(e)[:150])
+
+    # fire-and-forget: no bloqueamos la respuesta al webhook
+    asyncio.create_task(_prefetch())
+
     return {
         "type": "conversation_initiation_client_data",
         "dynamic_variables": dynamic_variables,
