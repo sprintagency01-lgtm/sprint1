@@ -6,6 +6,30 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (parche pm 4)
+
+### Corregido
+
+- **Ana ofrecía huecos que ya habían pasado.** Caso real: Anabel preguntó a las 12:00 y el bot le propuso hueco a las 9:00 del mismo día. Añadido filtro `_descartar_huecos_pasados` / `_descartar_slots_pasados` en `app/eleven_tools.py` y filtro equivalente en `app/agent.py::_execute_tool(consultar_disponibilidad)`. Se descartan huecos cuyo `inicio < now + 10 min` (margen para no ofrecer algo inminente al que el cliente no llega físicamente). Se usa `_tz_now()` (timezone-aware en la TZ del tenant, por defecto Europe/Madrid) para evitar desfases con Railway corriendo en UTC.
+- **Como consecuencia, Ana a veces no ponía botones de horas cuando el cliente pedía cita "hoy"**: recibía una lista contaminada con slots pasados que la confundía. Al filtrar, si quedan ≥1 huecos válidos llama a `ofrecer_huecos` (botones); si no queda ninguno, dice en texto que no hay disponibilidad y ofrece otra fecha.
+
+### Añadido
+
+- **Archivo `.ics` adjunto tras crear una reserva.** Petición del cliente: el enlace "Añadir a Google Calendar" lleva a Google Workspace (web) en vez de abrir la app nativa del teléfono. Solución: nueva función `_build_ics_content` (RFC 5545 válido, con `TZID`, escape de `, ; \ \n`, folding a 75 cols). El canal Telegram envía el .ics vía `sendDocument` con MIME `text/calendar` justo después del mensaje de texto de confirmación. Al pulsarlo en móvil:
+  - iOS → pregunta si añadirlo a Apple Calendar (o Google Calendar si está instalada).
+  - Android → abre Google Calendar app (o Samsung Calendar, o cualquier app de calendario instalada que acepte .ics).
+  - Desktop → abre el cliente de correo / calendario configurado.
+  Sin depender de Google Workspace ni de login.
+- Nuevo campo en `AgentReply`: `calendar_event: dict | None`. `agent_anthropic.reply` (y equivalente OpenAI) lo rellena cuando `crear_reserva` devuelve `ok:true`, con los datos necesarios para generar el .ics (titulo, inicio_iso, fin_iso, descripcion, ubicacion, tz, event_id).
+- Método `TelegramClient.send_document` con multipart/form-data, tolerando errores de red con mensaje legible.
+- 12 tests nuevos en `tests/test_past_slots_and_ics.py`: filtros de pasado con objetos dict/namedtuple y buffer de 10 min, integración con `_execute_tool(consultar_disponibilidad)`, generación RFC 5545 (escapes, TZ aware, TZ inválida, omisión de campos vacíos), propiedad `AgentReply.has_calendar_attachment`. Suite **94/94**.
+
+### Notas
+
+- El enlace "Añadir a Google Calendar" en texto plano se mantiene como fallback (sirve a usuarios desktop que prefieran Google). La adjunto .ics es la vía principal para móvil.
+
+---
+
 ## 2026-04-24 (parche pm 3)
 
 ### Añadido

@@ -256,6 +256,11 @@ def consultar_disponibilidad(
             }
         huecos.sort(key=lambda h: h["inicio"])
 
+        # Filtrar huecos que ya pasaron (con margen de 10 min). Pasó en
+        # producción el 2026-04-24: Anabel preguntó a las 12h y el bot le
+        # ofreció hueco a las 9h del mismo día.
+        huecos = _descartar_huecos_pasados(huecos)
+
         # Caso 2: el cliente pidió peluquero concreto y no hay huecos, típicamente
         # porque ese día no trabaja (Marcos solo miércoles, por ejemplo). Sin
         # aviso Ana diría "no hay huecos" a secas y el cliente se queda perdido.
@@ -304,7 +309,54 @@ def consultar_disponibilidad(
             "retryable": True,
             "detail": str(e)[:200],
         }
+    # Mismo filtro antipasado que en la rama con peluqueros.
+    slots = _descartar_slots_pasados(slots)
     return {"huecos": [{"inicio": s.start.isoformat(), "fin": s.end.isoformat()} for s in slots[:limit]]}
+
+
+# ---------- Filtros de huecos futuros ----------
+
+def _tz_now_local() -> datetime:
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo(settings.default_timezone))
+
+
+def _to_aware(dt: datetime) -> datetime:
+    """Devuelve dt como timezone-aware en la zona configurada."""
+    from zoneinfo import ZoneInfo
+    if dt.tzinfo is not None:
+        return dt
+    return dt.replace(tzinfo=ZoneInfo(settings.default_timezone))
+
+
+# Margen mínimo entre "ahora" y el inicio del hueco. 10 min es suficiente
+# para que el cliente llegue desde donde esté y para no ofrecer algo
+# inminente que, aunque técnicamente libre, es poco práctico.
+_MIN_BUFFER_MINUTES = 10
+
+
+def _descartar_huecos_pasados(huecos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Filtra huecos (dicts con clave "inicio" datetime) a los futuros.
+
+    Tolera "inicio" naive o aware y usa la TZ del negocio como referencia.
+    """
+    cutoff = _tz_now_local() + timedelta(minutes=_MIN_BUFFER_MINUTES)
+    out: list[dict[str, Any]] = []
+    for h in huecos:
+        ini = h.get("inicio")
+        if ini is None:
+            continue
+        if _to_aware(ini) >= cutoff:
+            out.append(h)
+    return out
+
+
+def _descartar_slots_pasados(slots):
+    """Igual que `_descartar_huecos_pasados` pero sobre objetos tipo `Slot`
+    (namedtuple-like con `start`/`end`) que devuelve `listar_huecos_libres`.
+    """
+    cutoff = _tz_now_local() + timedelta(minutes=_MIN_BUFFER_MINUTES)
+    return [s for s in slots if _to_aware(s.start) >= cutoff]
 
 
 @router.post("/crear_reserva")

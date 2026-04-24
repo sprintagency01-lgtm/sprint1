@@ -117,6 +117,42 @@ class TelegramClient:
         """sendChatAction — pinta "escribiendo..." para que el UX no cuelgue."""
         return self._call("sendChatAction", {"chat_id": chat_id, "action": action})
 
+    def send_document(
+        self,
+        chat_id: int | str,
+        *,
+        content: bytes,
+        filename: str,
+        caption: str = "",
+        mime_type: str = "application/octet-stream",
+    ) -> dict[str, Any]:
+        """sendDocument — envía un archivo como adjunto.
+
+        Uso principal: mandar el .ics de la reserva para que el móvil del
+        cliente ofrezca guardarlo en su calendario nativo (Apple, Samsung,
+        Google) sin pasar por la web. Usa multipart/form-data porque la
+        API de Telegram así lo exige para ficheros.
+        """
+        url = self._url("sendDocument")
+        data = {"chat_id": str(chat_id)}
+        if caption:
+            data["caption"] = caption
+        files = {"document": (filename, content, mime_type)}
+        try:
+            r = httpx.post(url, data=data, files=files, timeout=self._timeout)
+        except httpx.HTTPError as e:
+            raise TelegramError(f"Red caída enviando documento a Telegram: {e}") from e
+        try:
+            body = r.json()
+        except ValueError as e:
+            raise TelegramError(
+                f"sendDocument respondió no-JSON: {r.text[:200]}"
+            ) from e
+        if r.status_code >= 400 or not body.get("ok"):
+            desc = body.get("description") or r.text[:200]
+            raise TelegramError(f"sendDocument → HTTP {r.status_code}: {desc}")
+        return body.get("result") or {}
+
     def answer_callback_query(
         self,
         callback_query_id: str,
@@ -446,4 +482,49 @@ def handle_update(
         log.exception("send_message inesperado falló")
         return {"ok": False, "error": str(e)[:200]}
 
+    # Si el turno creó una reserva con éxito, generamos un .ics y lo
+    # adjuntamos. Así el móvil del cliente (Apple Calendar, Samsung,
+    # Google Calendar app, etc.) ofrece guardarlo en su calendario nativo
+    # con un toque — sin depender de Google Workspace ni estar logueado
+    # en Google. Si falla, logeamos pero NO rompemos la respuesta OK a
+    # Telegram: el mensaje de texto ya se envió y la reserva está creada.
+    if getattr(reply, "has_calendar_attachment", False):
+        try:
+            _send_ics_attachment(client, chat_id, reply.calendar_event, tenant)
+        except Exception:
+            log.exception("Error enviando .ics al cliente — no crítico")
+
     return {"ok": True, "chat_id": chat_id, "tenant_id": tenant["id"]}
+
+
+def _send_ics_attachment(client: "TelegramClient", chat_id: int | str, event: dict, tenant: dict) -> None:
+    """Construye un .ics a partir del event_data y lo manda como documento."""
+    from datetime import datetime as _dt
+    # Import tardío para no circular.
+    from . import agent as agent_mod
+
+    try:
+        inicio = _dt.fromisoformat(event["inicio_iso"])
+        fin = _dt.fromisoformat(event["fin_iso"])
+    except Exception:
+        log.warning("calendar_event con inicio/fin inválidos: %s", event)
+        return
+
+    ics_text = agent_mod._build_ics_content(
+        titulo=event.get("titulo") or "Cita",
+        inicio=inicio,
+        fin=fin,
+        descripcion=event.get("descripcion") or "",
+        ubicacion=event.get("ubicacion") or (tenant.get("name") or ""),
+        tz=event.get("tz") or "Europe/Madrid",
+        organizer_name=(tenant.get("name") or "").strip(),
+        uid=event.get("event_id"),
+    )
+    filename = f"cita-{inicio.strftime('%Y%m%d-%H%M')}.ics"
+    client.send_document(
+        chat_id,
+        content=ics_text.encode("utf-8"),
+        filename=filename,
+        caption="Guárdalo en tu calendario 📅",
+        mime_type="text/calendar",
+    )

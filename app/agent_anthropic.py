@@ -107,6 +107,10 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
     tenant_id = tenant.get("id", "default")
     model_name = settings.anthropic_model
 
+    # Si en algún momento del loop ejecutamos crear_reserva con ok:true,
+    # guardamos aquí los datos para adjuntarlos como .ics al cliente.
+    calendar_event: dict[str, Any] | None = None
+
     for _ in range(6):  # límite defensivo contra loops de tool_use
         resp = _client.messages.create(
             model=model_name,
@@ -162,6 +166,24 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
                     # Una tool de oferta terminó el turno: devolvemos la
                     # AgentReply interactiva sin continuar la conversación.
                     return er.reply
+                # Si acabamos de crear una reserva con éxito, guarda los
+                # datos del evento para poder adjuntar el .ics al final.
+                if name == "crear_reserva":
+                    try:
+                        parsed = json.loads(result_json or "{}")
+                    except Exception:
+                        parsed = {}
+                    if parsed.get("ok") is True and isinstance(tool_input, dict):
+                        calendar_event = {
+                            "titulo": tool_input.get("titulo") or "",
+                            "inicio_iso": tool_input.get("inicio_iso") or "",
+                            "fin_iso": tool_input.get("fin_iso") or "",
+                            "descripcion": tool_input.get("notas") or "",
+                            "ubicacion": (tenant.get("name") or "").strip(),
+                            "tz": (tenant.get("timezone") or settings.default_timezone),
+                            "event_id": parsed.get("event_id"),
+                            "add_to_calendar_url": parsed.get("add_to_calendar_url"),
+                        }
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": getattr(b, "id", ""),
@@ -179,10 +201,14 @@ def reply(user_message: str, history: list[dict], tenant: dict, caller_phone: st
         if stop_reason not in ("end_turn", "max_tokens", "stop_sequence", None):
             log.warning("stop_reason inesperado: %s", stop_reason)
         clean = _agent_openai_mod._sanitize_whatsapp(text)
-        return _agent_openai_mod.AgentReply(text=clean or "¿En qué puedo ayudarte?")
+        return _agent_openai_mod.AgentReply(
+            text=clean or "¿En qué puedo ayudarte?",
+            calendar_event=calendar_event,
+        )
 
     return _agent_openai_mod.AgentReply(
-        text="Lo siento, no he podido completar la petición. ¿Puedes intentarlo de otra forma?"
+        text="Lo siento, no he podido completar la petición. ¿Puedes intentarlo de otra forma?",
+        calendar_event=calendar_event,
     )
 
 

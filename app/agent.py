@@ -58,14 +58,24 @@ class AgentReply:
           }
       El `id` de cada opción sigue el formato del módulo `interactive` —
       el backend lo genera, el LLM no lo inventa.
+    - `calendar_event`: si este turno creó una reserva exitosa, trae los
+      datos del evento (titulo, inicio, fin, tz, ubicacion, descripcion)
+      para que el canal (p.ej. Telegram) genere y adjunte un .ics al
+      cliente. Así su móvil ofrece guardar en el calendario NATIVO sin
+      depender de Google Workspace. None en cualquier otro turno.
     """
 
     text: str
     interactive: dict[str, Any] | None = None
+    calendar_event: dict[str, Any] | None = None
 
     @property
     def has_interactive(self) -> bool:
         return bool(self.interactive and self.interactive.get("options"))
+
+    @property
+    def has_calendar_attachment(self) -> bool:
+        return bool(self.calendar_event and self.calendar_event.get("inicio_iso"))
 
 
 class _EarlyReply(Exception):
@@ -480,6 +490,16 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
             slots = cal.listar_huecos_libres(
                 desde, hasta, dur, calendar_id=calendar_id, tenant_id=tenant_id
             )
+            # Filtrar los huecos que ya han pasado — incidencia real:
+            # un cliente preguntó por el día actual al mediodía y Ana le
+            # ofreció un hueco a las 9:00, que ya no existía. Añadimos
+            # un margen de 10 minutos para no ofrecer slots inminentes
+            # a los que el cliente no llegaría físicamente.
+            now_local = _tz_now()
+            min_start = now_local + timedelta(minutes=10)
+            def _to_aware(dt):
+                return dt if dt.tzinfo else dt.replace(tzinfo=now_local.tzinfo)
+            slots = [s for s in slots if _to_aware(s.start) >= min_start]
             limit = int(args.get("max_resultados", 5))
             out = [
                 {"inicio": s.start.isoformat(), "fin": s.end.isoformat()}
@@ -593,6 +613,111 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
     except Exception as e:
         log.exception("Error ejecutando tool %s", name)
         return json.dumps({"error": str(e)})
+
+
+# ---------- Builder del archivo .ics (iCalendar) ----------
+
+def _build_ics_content(
+    *,
+    titulo: str,
+    inicio: datetime,
+    fin: datetime,
+    descripcion: str = "",
+    ubicacion: str = "",
+    tz: str = "Europe/Madrid",
+    organizer_name: str = "",
+    uid: str | None = None,
+) -> str:
+    """Genera un archivo iCalendar (.ics) serializado como string.
+
+    El objetivo es que Telegram lo mande como `sendDocument` y el móvil
+    del cliente, al pulsarlo, ofrezca guardarlo en el CALENDARIO NATIVO
+    (Apple Calendar en iOS, Samsung Calendar en Samsung, Google Calendar
+    en Android). Así el cliente no tiene que tener Google Workspace ni
+    estar logueado en Google.
+
+    Formato RFC 5545 minimal + TZ IANA en el prop TZID. Usamos formato
+    "local time" con TZID (no UTC) porque las apps móviles respetan la
+    TZ natural y muestran la hora correcta.
+    """
+    from zoneinfo import ZoneInfo
+
+    try:
+        zone = ZoneInfo(tz)
+    except Exception:  # pragma: no cover - fallback seguro
+        zone = ZoneInfo("Europe/Madrid")
+        tz = "Europe/Madrid"
+
+    def _local(dt: datetime) -> datetime:
+        if dt.tzinfo is not None:
+            return dt.astimezone(zone)
+        return dt
+
+    def _fold_line(line: str) -> str:
+        """RFC 5545 §3.1: líneas de más de 75 octetos deben plegarse con
+        CRLF + espacio. Implementación simple por caracteres (suficiente
+        para ASCII y el mayor uso de UTF-8 en español)."""
+        if len(line) <= 75:
+            return line
+        parts = []
+        while len(line) > 75:
+            parts.append(line[:75])
+            line = line[75:]
+        parts.append(line)
+        return "\r\n ".join(parts)
+
+    def _escape(txt: str) -> str:
+        # RFC 5545 §3.3.11: escapar \, ;, ,, newlines.
+        return (
+            (txt or "")
+            .replace("\\", "\\\\")
+            .replace("\n", "\\n")
+            .replace(";", "\\;")
+            .replace(",", "\\,")
+        )
+
+    ini_local = _local(inicio)
+    fin_local = _local(fin)
+    fmt_local = "%Y%m%dT%H%M%S"
+    fmt_utc = "%Y%m%dT%H%M%SZ"
+
+    # DTSTAMP en UTC (momento de generación). Compara a ``datetime.now`` UTC
+    # para no depender de la TZ del negocio.
+    from datetime import timezone as _tz_module
+    dtstamp = datetime.now(_tz_module.utc).strftime(fmt_utc)
+
+    if uid is None:
+        import secrets as _secrets
+        uid = _secrets.token_hex(8) + "@sprintagency.bot"
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Sprint Agency//Bot reservas//ES",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VEVENT",
+        f"UID:{uid}",
+        f"DTSTAMP:{dtstamp}",
+        f"DTSTART;TZID={tz}:{ini_local.strftime(fmt_local)}",
+        f"DTEND;TZID={tz}:{fin_local.strftime(fmt_local)}",
+        f"SUMMARY:{_escape(titulo)}",
+    ]
+    if descripcion:
+        lines.append(f"DESCRIPTION:{_escape(descripcion)}")
+    if ubicacion:
+        lines.append(f"LOCATION:{_escape(ubicacion)}")
+    if organizer_name:
+        lines.append(f"ORGANIZER;CN={_escape(organizer_name)}:mailto:noreply@sprintagency.bot")
+    lines.extend([
+        "STATUS:CONFIRMED",
+        "SEQUENCE:0",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ])
+    folded = [_fold_line(l) for l in lines]
+    # RFC 5545 exige CRLF como separador.
+    return "\r\n".join(folded) + "\r\n"
 
 
 # ---------- Builder del "Add to Calendar" URL de Google ----------
@@ -1067,6 +1192,18 @@ _MONTHS_ES = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ]
+
+
+def _tz_now() -> datetime:
+    """Ahora timezone-aware en la zona horaria configurada del tenant.
+
+    Se usa para filtrar los huecos cuyo inicio ya pasó respecto al reloj
+    del negocio (Europe/Madrid por defecto). Railway corre en UTC y si
+    usamos `datetime.now()` sin zona nos desfasaríamos al pasar/dejar el
+    horario de verano.
+    """
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo(settings.default_timezone))
 
 
 def _format_date_es(d: datetime) -> str:
