@@ -6,6 +6,36 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (ronda 9 — búsqueda por nombre, soft_timeout y end_call)
+
+Tres fallos de UX observados en llamadas reales; corregidos los tres.
+
+### Corregido
+
+- **Ana no podía buscar una cita por nombre** cuando el cliente decía "está a nombre de Mario" o llamaba desde otro número. `buscar_reserva_cliente` solo aceptaba `telefono_cliente` → Ana quedaba bloqueada ("el sistema solo me deja buscar por teléfono"). Ahora la tool acepta `nombre_cliente` opcional y el backend usa `events.list?q=<nombre>` de Google Calendar, filtrando por `summary` y `extendedProperties.private.client_name` para evitar falsos positivos. Nuevo helper `cal.buscar_evento_por_nombre` en `app/calendar_service.py`. El handler `/tools/buscar_reserva_cliente` intenta primero por teléfono (body o caller_id) y si no encuentra, prueba por nombre; devuelve `via_busqueda: "telefono"` o `"nombre"` para que Ana sepa confirmarlo antes de mover/cancelar.
+
+- **"¿Sigues ahí?" se disparaba casi inmediatamente**. `turn.soft_timeout_config.timeout_seconds` estaba en `-1.0` (desactivado) pero el `turn_timeout` de 1s hacía que Ana retomara el turno casi al instante. Ahora `soft_timeout_config = {timeout_seconds: 3.5, use_llm_generated_message: true, message: "¿Sigues ahí?"}`. Espera 3.5s de silencio y entonces Ana improvisa un "¿sigues ahí, Juan?" natural (no el literal fijo).
+
+- **Llamada no colgaba al terminar**. `silence_end_call_timeout` estaba en `-1.0` y `built_in_tools.end_call` estaba en `null`. Ahora:
+  - `silence_end_call_timeout: 25.0` → si tras el "¿sigues ahí?" pasan otros ~25s sin respuesta, la llamada se cierra sola.
+  - `end_call` habilitado como built-in tool con una descripción que indica cuándo usarla: tras cierre natural, tras confirmar reserva sin nada más, o tras derivar al fallback.
+  - Prompt `ana_prompt_new.txt` añadida sección `## Cierre y colgar` que le dice a Ana que tras su última frase de despedida llame a `end_call`. Verificado: el bench muestra `tools=['consultar_disponibilidad', 'crear_reserva', 'end_call']` al final de un flujo de reserva completo.
+
+### Añadido / Cambiado
+
+- `app/calendar_service.py::buscar_evento_por_nombre(nombre, desde, hasta, ...)`: usa `events.list?q=<nombre>` con `maxResults=10` y filtra por `summary`/`client_name` para evitar matches falsos.
+- `app/eleven_tools.py`: `BuscarReq` tiene `nombre_cliente: str | None = None`. El handler busca por teléfono, si no encuentra prueba por nombre, devuelve `via_busqueda` distinguiendo origen. Mensaje de error graceful si fallan los dos.
+- `app/elevenlabs_client.create_agent_for_tenant` y `scripts/setup_elevenlabs_agent.py` aplican `soft_timeout_config`, `silence_end_call_timeout: 25`, `built_in_tools.end_call` y el schema nuevo de `buscar_reserva_cliente` por defecto. Cualquier bot nuevo nace con esto.
+- `ana_prompt_new.txt`: nueva sección `## Flujo MOVER / CANCELAR — si no encuentras por teléfono` para instruir explícitamente que pregunte el nombre tras un fallo de búsqueda; sección `## Cierre y colgar` con la regla de llamar a `end_call`.
+- Snapshot: `docs/elevenlabs_agent_snapshot_post_round9_*.json`.
+
+### Tests
+
+- Suite backend: 106/106 verdes.
+- `scripts/test_dialog.py` en `reserva_sin_peluquero`: **7/7 checks OK**. Detecta `end_call` al final del flujo como tool válida adicional.
+
+---
+
 ## 2026-04-24 (docs — consolidar knowledge del prompt)
 
 ### Añadido

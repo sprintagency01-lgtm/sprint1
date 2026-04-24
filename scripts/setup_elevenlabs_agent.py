@@ -161,16 +161,19 @@ def build_tools(tool_base_url: str, tool_secret: str) -> list[dict]:
         ),
         webhook(
             "buscar_reserva_cliente",
-            "Busca la próxima reserva de un cliente por su teléfono. Úsala "
-            "cuando pida mover/cancelar una cita suya.",
+            "Busca la próxima reserva del cliente cuando pide mover/cancelar. "
+            "Primero prueba con `telefono_cliente` (suele ser el caller_id). "
+            "Si el cliente dice que la cita está 'a nombre de X' o no recuerda "
+            "con qué teléfono reservó, llama otra vez con `nombre_cliente`.",
             "/tools/buscar_reserva_cliente",
             {
                 "type": "object",
                 "properties": {
                     "telefono_cliente": {"type": "string", "description": "Teléfono del cliente, con prefijo si lo da."},
+                    "nombre_cliente": {"type": "string", "description": "Nombre del cliente tal y como lo dio al reservar ('Mario', 'Ana López'). Alternativa al teléfono."},
                     "dias_adelante": {"type": "integer", "description": "Cuántos días mirar hacia adelante. Por defecto 30."},
                 },
-                "required": ["telefono_cliente"],
+                "required": [],
             },
         ),
         webhook(
@@ -276,6 +279,18 @@ def main() -> None:
                     "thinking_budget": 0,
                     # ronda 7 — desactiva cascade de 4s, camino hot más predecible
                     "backup_llm_config": {"preference": "disabled"},
+                    # ronda 9 — end_call built-in para cerrar la llamada
+                    "built_in_tools": {
+                        "end_call": {
+                            "name": "end_call",
+                            "description": (
+                                "Cuelga la llamada cuando la conversación ha terminado: "
+                                "tras un cierre natural, tras confirmar una reserva y que "
+                                "el cliente no quiera nada más, o tras derivar al teléfono "
+                                "de fallback por un error irreparable."
+                            ),
+                        },
+                    },
                 },
                 "first_message": "¡Hola! Soy Ana de la peluquería. ¿En qué te puedo ayudar?",
                 "language": "es",
@@ -296,6 +311,14 @@ def main() -> None:
                 "speculative_turn": True,
                 "turn_model": "turn_v3",                # ronda 6
                 "spelling_patience": "off",             # ronda 7
+                # Ronda 9: si el cliente calla 3.5s, Ana dice "¿sigues ahí?"
+                # generado por el LLM; tras otros ~25s de silencio cuelga sola.
+                "soft_timeout_config": {
+                    "timeout_seconds": 3.5,
+                    "use_llm_generated_message": True,
+                    "message": "¿Sigues ahí?",
+                },
+                "silence_end_call_timeout": 25.0,
             },
             "asr": {
                 "quality": "high",                      # obligatorio por la API

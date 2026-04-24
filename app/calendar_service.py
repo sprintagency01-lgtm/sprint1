@@ -476,6 +476,54 @@ def buscar_evento_por_telefono(
     return events[0] if events else None
 
 
+def buscar_evento_por_nombre(
+    nombre: str,
+    desde: datetime,
+    hasta: datetime,
+    calendar_id: str | None = None,
+    tenant_id: str = "default",
+) -> dict | None:
+    """Busca el próximo evento por nombre del cliente.
+
+    Usa el parámetro `q` de Google Calendar `events.list`, que hace
+    búsqueda full-text sobre summary, description, location, attendees,
+    etc. Devuelve el PRIMER evento ordenado por startTime que matchee.
+
+    Si el nombre es ambiguo ("María") o muy corto, puede devolver un
+    match erróneo. El caller debería leer `summary` y confirmar con el
+    cliente antes de mover/cancelar.
+    """
+    nombre = (nombre or "").strip()
+    if not nombre:
+        return None
+    svc = _service(tenant_id)
+    cal = calendar_id or settings.default_calendar_id
+    desde = _ensure_local_tz(desde)
+    hasta = _ensure_local_tz(hasta)
+    events = svc.events().list(
+        calendarId=cal,
+        timeMin=desde.isoformat(),
+        timeMax=hasta.isoformat(),
+        singleEvents=True,
+        orderBy="startTime",
+        q=nombre,
+        maxResults=10,
+    ).execute().get("items", [])
+    # Google `q` hace fuzzy match en muchos campos. Filtramos un poco para
+    # evitar falsos positivos: el nombre debe aparecer en el summary o en
+    # el nombre del cliente (extendedProperties.private.client_name).
+    nombre_low = nombre.lower()
+    for ev in events:
+        summary = (ev.get("summary") or "").lower()
+        priv = ((ev.get("extendedProperties") or {}).get("private") or {})
+        client_name = (priv.get("client_name") or "").lower()
+        if nombre_low in summary or nombre_low in client_name:
+            return ev
+    # Fallback: si no encontramos match estricto pero `q` devolvió algo,
+    # devolvemos el primero (mejor un falso positivo confirmable que nada).
+    return events[0] if events else None
+
+
 def listar_eventos(
     desde: datetime,
     hasta: datetime,

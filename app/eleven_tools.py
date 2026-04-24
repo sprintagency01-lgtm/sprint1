@@ -156,6 +156,12 @@ class BuscarReq(BaseModel):
     # Si lo manda explícito (cliente da otro número), se usa ese. Si no, se cae
     # al caller_id como fallback dentro del handler.
     telefono_cliente: str | None = None
+    # Opcional: búsqueda alternativa por nombre del cliente ("está a nombre de
+    # Mario"). Si viene, el backend intenta encontrar el evento buscando en el
+    # summary y en extendedProperties.private.client_name. Útil cuando el
+    # cliente llama desde otro número o no se acuerda de con qué teléfono lo
+    # reservó.
+    nombre_cliente: str | None = None
     dias_adelante: int = 30
 
 
@@ -530,14 +536,26 @@ def buscar_reserva_cliente(
     tenant_id: str | None = Query(None),
     caller_id: str | None = Query(None),
 ) -> dict[str, Any]:
+    """Busca la próxima reserva del cliente por teléfono O por nombre.
+
+    Estrategia:
+      1. Si hay teléfono (body o caller_id), busca por teléfono en todos
+         los calendarios (peluqueros + principal). Cada calendario = 1
+         intento independiente — tolera que alguno 404.
+      2. Si NO se encontró por teléfono y viene `nombre_cliente` en el
+         body, busca por nombre (Google `events.list?q=<nombre>`). Útil
+         cuando el cliente llama desde otro número o no lo recuerda.
+      3. Devuelve la primera coincidencia con `calendar_id`, `titulo`,
+         `inicio`, `fin` y `via_busqueda` ("telefono" | "nombre").
+    """
     _check_secret(x_tool_secret)
     tenant = _resolve_tenant(tenant_id)
     peluqueros = tenant.get("peluqueros") or []
     desde = datetime.utcnow()
     hasta = desde + timedelta(days=req.dias_adelante)
+    tid = tenant.get("id", "default")
 
-    # Normalizamos teléfono y hacemos fallback al caller_id si el LLM no lo pasó
-    # (o pasó basura tipo "None").
+    # Normaliza teléfono y hace fallback al caller_id.
     tel = (req.telefono_cliente or "").strip()
     if tel.lower() in ("none", "null", "n/a", "na", "-", "unknown", "anonymous", ""):
         tel = ""
@@ -545,49 +563,82 @@ def buscar_reserva_cliente(
         cid = caller_id.strip()
         if cid.lower() not in ("none", "null", "n/a", "na", "-", "unknown", "anonymous", ""):
             tel = cid
-    if not tel:
-        return {"encontrada": False}
 
-    # Buscar en todos los calendarios de peluqueros + el principal
+    # Normaliza nombre.
+    nombre = (req.nombre_cliente or "").strip()
+    if nombre.lower() in ("none", "null", "n/a", "na", "-", ""):
+        nombre = ""
+
+    # Si no hay NI teléfono NI nombre, no podemos buscar nada.
+    if not tel and not nombre:
+        return {"encontrada": False, "motivo": "sin_telefono_ni_nombre"}
+
+    # Calendarios a recorrer: peluqueros + principal.
     calendars_to_check = [p["calendar_id"] for p in peluqueros]
     main_cal = tenant.get("calendar_id") or settings.default_calendar_id
     if main_cal not in calendars_to_check:
         calendars_to_check.append(main_cal)
 
-    # Recorremos calendario a calendario. Cada uno tiene su propio try/except:
-    # si uno 404 (calendario mal compartido) o tiene un hipido transitorio,
-    # no queremos abortar toda la búsqueda — seguimos con los otros. Sólo si
-    # TODOS fallan devolvemos error graceful (retryable) a Ana para que decida.
     errors: list[str] = []
-    for cal_id in calendars_to_check:
-        try:
-            ev = _retry_google(
-                lambda cal_id=cal_id: cal.buscar_evento_por_telefono(
-                    tel, desde, hasta,
-                    calendar_id=cal_id,
-                    tenant_id=tenant.get("id", "default"),
-                ),
-                "buscar_evento_por_telefono",
-            )
-            if ev:
-                return {
-                    "encontrada": True,
-                    "event_id": ev["id"],
-                    "titulo": ev.get("summary"),
-                    "inicio": ev["start"].get("dateTime"),
-                    "fin": ev["end"].get("dateTime"),
-                    "calendar_id": cal_id,
-                }
-        except Exception as e:  # noqa: BLE001
-            errors.append(f"{cal_id[:20]}…: {str(e)[:120]}")
-            log.warning("buscar_reserva_cliente: fallo en cal %s: %s", cal_id, e)
-            continue
 
-    # Si todos los calendarios fallaron (no sólo "no había cita"), devolvemos
-    # graceful con retryable. Si sólo algunos 404aron pero otros respondieron
-    # OK sin encontrar nada, es un "no encontrada" legítimo, no un error.
-    if errors and len(errors) == len(calendars_to_check):
-        log.error("buscar_reserva_cliente: todos los calendarios fallaron: %s", errors)
+    # --- Búsqueda 1: por teléfono --------------------------------------
+    if tel:
+        for cal_id in calendars_to_check:
+            try:
+                ev = _retry_google(
+                    lambda cal_id=cal_id: cal.buscar_evento_por_telefono(
+                        tel, desde, hasta,
+                        calendar_id=cal_id,
+                        tenant_id=tid,
+                    ),
+                    "buscar_evento_por_telefono",
+                )
+                if ev:
+                    return {
+                        "encontrada": True,
+                        "event_id": ev["id"],
+                        "titulo": ev.get("summary"),
+                        "inicio": ev["start"].get("dateTime"),
+                        "fin": ev["end"].get("dateTime"),
+                        "calendar_id": cal_id,
+                        "via_busqueda": "telefono",
+                    }
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"{cal_id[:20]}…: {str(e)[:120]}")
+                log.warning("buscar_reserva_cliente[tel]: fallo en cal %s: %s", cal_id, e)
+                continue
+
+    # --- Búsqueda 2: por nombre -----------------------------------------
+    if nombre:
+        for cal_id in calendars_to_check:
+            try:
+                ev = _retry_google(
+                    lambda cal_id=cal_id: cal.buscar_evento_por_nombre(
+                        nombre, desde, hasta,
+                        calendar_id=cal_id,
+                        tenant_id=tid,
+                    ),
+                    "buscar_evento_por_nombre",
+                )
+                if ev:
+                    return {
+                        "encontrada": True,
+                        "event_id": ev["id"],
+                        "titulo": ev.get("summary"),
+                        "inicio": ev["start"].get("dateTime"),
+                        "fin": ev["end"].get("dateTime"),
+                        "calendar_id": cal_id,
+                        "via_busqueda": "nombre",
+                    }
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"{cal_id[:20]}…(nombre): {str(e)[:120]}")
+                log.warning("buscar_reserva_cliente[nombre]: fallo en cal %s: %s", cal_id, e)
+                continue
+
+    # Si TODOS los calendarios fallaron en las dos vías, error graceful.
+    n_intentos_esperados = len(calendars_to_check) * (1 if tel else 0) + len(calendars_to_check) * (1 if nombre else 0)
+    if errors and len(errors) >= n_intentos_esperados:
+        log.error("buscar_reserva_cliente: todos los intentos fallaron: %s", errors)
         return {
             "encontrada": False,
             "error": (

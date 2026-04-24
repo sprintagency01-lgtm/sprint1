@@ -159,13 +159,14 @@ def _build_tools(tool_base_url: str, tool_secret: str, tenant_id: str) -> list[d
         ),
         wh(
             "buscar_reserva_cliente",
-            "Busca reservas futuras de un cliente por su teléfono. Úsala antes de mover/cancelar para obtener el event_id.",
+            "Busca reservas futuras del cliente. Prueba primero por teléfono (el caller_id se pasa automáticamente). Si el cliente dice que la cita está 'a nombre de X' o llama desde otro número, llama a esta función con `nombre_cliente` para buscar por nombre. Úsala antes de mover/cancelar para obtener el event_id y el calendar_id.",
             "/tools/buscar_reserva_cliente",
             {
                 "type": "object",
                 "required": [],
                 "properties": {
                     "telefono_cliente": _prop("string", "Teléfono del cliente a buscar. Normalmente es {{system__caller_id}}."),
+                    "nombre_cliente": _prop("string", "Alternativa al teléfono: nombre del cliente tal como lo dio en la reserva ('Mario', 'Ana López'). Útil cuando el cliente llama desde otro número o no recuerda con qué teléfono reservó. El backend busca en summary y client_name del evento."),
                     "dias_adelante": _prop("integer", "Cuántos días mirar hacia adelante. Por defecto 30."),
                 },
             },
@@ -269,6 +270,20 @@ def create_agent_for_tenant(
                     "max_tokens": 300,
                     "thinking_budget": 0,
                     "backup_llm_config": {"preference": "disabled"},
+                    # Ronda 9: habilitado end_call built-in para que Ana pueda
+                    # cerrar la llamada tras un cierre natural.
+                    "built_in_tools": {
+                        "end_call": {
+                            "name": "end_call",
+                            "description": (
+                                "Cuelga la llamada cuando la conversación ha terminado: "
+                                "tras un cierre natural ('gracias, hasta luego' del cliente y "
+                                "tu respuesta de despedida), tras confirmar una reserva y que "
+                                "el cliente no quiera nada más, o tras haber derivado al "
+                                "teléfono de fallback por un error irreparable."
+                            ),
+                        },
+                    },
                 },
                 "first_message": f"¡Hola! Soy Ana de {tenant.get('name') or 'la peluquería'}. ¿En qué te puedo ayudar?",
                 "language": "es",
@@ -292,6 +307,15 @@ def create_agent_for_tenant(
                 "speculative_turn": True,
                 "turn_model": "turn_v3",
                 "spelling_patience": "off",
+                # Ronda 9: si el cliente no responde en 3.5s, Ana dice un
+                # "¿sigues ahí?" generado por el LLM. Si tras otros ~25s sigue
+                # en silencio, cuelga sola.
+                "soft_timeout_config": {
+                    "timeout_seconds": 3.5,
+                    "use_llm_generated_message": True,
+                    "message": "¿Sigues ahí?",
+                },
+                "silence_end_call_timeout": 25.0,
             },
             "asr": {
                 "quality": "high",
