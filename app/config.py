@@ -49,5 +49,17 @@ class Settings:
     # ID del agente en ElevenLabs (se guarda tras crear con scripts/setup_elevenlabs_agent.py).
     elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
 
+    # ---- Telegram Bot (canal de staging / texto) ----------------------------
+    # Token que da @BotFather al crear el bot. Gratuito.
+    telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    # Secreto compartido con Telegram para autenticar webhook entrantes. Se pasa
+    # a `setWebhook` como `secret_token` y Telegram lo devuelve en cada update
+    # en el header `X-Telegram-Bot-Api-Secret-Token`. Si está vacío el endpoint
+    # rechaza (no es aceptable exponer el webhook abierto).
+    telegram_webhook_secret: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    # Tenant al que van los mensajes entrantes del bot. Si vacío se usa el
+    # primer tenant contracted+active como fallback (ver app/telegram.py).
+    telegram_default_tenant_id: str = os.getenv("TELEGRAM_DEFAULT_TENANT_ID", "")
+
 
 settings = Settings()

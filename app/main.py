@@ -4,6 +4,10 @@ Nota: el producto ha virado a llamadas de voz únicamente (ElevenLabs
 Conversational AI). El webhook de WhatsApp (Meta / Twilio) se eliminó en
 2026-04. Las reservas entrantes se crean desde los server tools
 `/tools/*` que llama ElevenLabs durante la llamada.
+
+Adicionalmente exponemos un webhook de Telegram (`/telegram/webhook`) para
+usar el mismo agente como bot de texto en pruebas / staging. No reemplaza a
+voz, solo complementa.
 """
 from __future__ import annotations
 
@@ -11,7 +15,7 @@ import logging
 import pathlib
 import re
 
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Header, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from .config import settings
@@ -19,6 +23,7 @@ from . import db
 from . import eleven_tools
 from . import oauth_web
 from . import diag
+from . import telegram as tg_module
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
 from .portal import router as portal_router
@@ -171,3 +176,51 @@ async def create_lead(
         log.exception("Error creando tenant desde lead")
 
     return {"ok": True, "id": lead_id}
+
+
+# ---------- Telegram webhook ----------
+#
+# Flujo: Telegram → `POST /telegram/webhook` con JSON del update y header
+# `X-Telegram-Bot-Api-Secret-Token` que debe coincidir con
+# TELEGRAM_WEBHOOK_SECRET. El handler reutiliza el agente canal-agnóstico.
+#
+# La URL exacta de este webhook se registra una vez tras deploy con
+# `scripts/setup_telegram_bot.py`. Si TELEGRAM_BOT_TOKEN no está
+# configurado, el endpoint devuelve 501 (Not Implemented) para distinguir
+# del 401 de autenticación mal hecha.
+
+
+@app.post("/telegram/webhook")
+async def telegram_webhook(
+    request: Request,
+    x_telegram_bot_api_secret_token: str | None = Header(None),
+):
+    if not settings.telegram_bot_token:
+        return JSONResponse(
+            {"error": "Telegram no está configurado en este despliegue."},
+            status_code=501,
+        )
+    if not settings.telegram_webhook_secret:
+        # Sin secreto compartido no exponemos el webhook: cualquiera podría
+        # forjar updates y gastar tokens de OpenAI a nuestra costa.
+        return JSONResponse(
+            {"error": "TELEGRAM_WEBHOOK_SECRET no configurado. Webhook cerrado por seguridad."},
+            status_code=501,
+        )
+    if x_telegram_bot_api_secret_token != settings.telegram_webhook_secret:
+        log.warning("Telegram webhook: secret_token no coincide. Ignorado.")
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+
+    try:
+        payload = await request.json()
+    except Exception:
+        log.exception("Telegram webhook: body no es JSON válido")
+        return JSONResponse({"error": "body no es JSON"}, status_code=400)
+
+    result = tg_module.handle_update(
+        payload,
+        bot_token=settings.telegram_bot_token,
+        preferred_tenant_id=settings.telegram_default_tenant_id,
+    )
+    # Telegram solo espera 200; el cuerpo JSON lo usamos nosotros para logs.
+    return result

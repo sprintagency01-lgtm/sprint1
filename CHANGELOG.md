@@ -10,9 +10,28 @@ Entrada más reciente arriba.
 
 ### Añadido
 
+- **Canal Telegram como entorno de staging del agente.** `app/telegram.py` (350 líneas) con cliente mínimo de Bot API, handler de updates defensivo, y traducción de `AgentReply.interactive` a `inline_keyboard` (listas 1-por-fila, botones horizontales hasta 3). Endpoint nuevo `POST /telegram/webhook` autenticado por header `X-Telegram-Bot-Api-Secret-Token`. El agente canal-agnóstico (`app.agent.reply`) se reutiliza sin tocar una línea. Persiste histórico en `messages.customer_phone` con el convenio `tg:<chat_id>`.
+- **Script `scripts/setup_telegram_bot.py`** para registrar el webhook en Telegram con una orden (llama a `getMe` + `setWebhook` + `getWebhookInfo`).
+- **Diagnóstico `/_diag/telegram/status`**: valida token, obtiene info del bot y estado del webhook. Protegido con `X-Tool-Secret`.
+- **Diagnóstico `/_diag/elevenlabs/healthcheck`**: valida API key, TOOL_SECRET, existencia del agente remoto del tenant y que las 5 tools esperadas (`consultar_disponibilidad`, `crear_reserva`, `buscar_reserva_cliente`, `mover_reserva`, `cancelar_reserva`) están registradas. Protegido con `X-Tool-Secret`. No gasta dinero — solo GET.
+- **Tests nuevos (`tests/test_telegram.py`, 20 tests)**: payload builder con/sin interactivos, truncado UTF-8 de `callback_data` a 64 bytes, `handle_update` feliz con mocks de agente/db/tenants/client, callback_query acknowledged, fallback sin tenants, resolución de tenant preferido vs primer `contracted+active`, y 3 tests de integración contra el endpoint FastAPI. Suite completa: **56 tests, 0 fallos**.
 - Convención de actualización de `CHANGELOG.md` antes de cada push, documentada en el nuevo `CLAUDE.md`.
 - Hook git opcional `.githooks/pre-push` que bloquea el push si los commits nuevos no tocan `CHANGELOG.md`.
 - Script auxiliar `scripts/update_changelog.sh` para generar un borrador de entrada a partir de los commits no pusheados.
+
+### Env / despliegue
+
+- Nuevas env vars opcionales (el backend arranca sin ellas y el endpoint Telegram responde 501 hasta que se configuren):
+  - `TELEGRAM_BOT_TOKEN` — token del bot dado por @BotFather (gratuito).
+  - `TELEGRAM_WEBHOOK_SECRET` — secreto compartido con Telegram para autenticar los webhook entrantes. Generable con `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+  - `TELEGRAM_DEFAULT_TENANT_ID` — tenant al que dirigir los mensajes entrantes. Si vacío se usa el primer `contracted+active` como fallback.
+- Después de desplegar: ejecutar `python scripts/setup_telegram_bot.py https://web-production-98b02b.up.railway.app` (o el dominio que toque) **una sola vez** para registrar el webhook.
+
+### Notas de diseño
+
+- Telegram es canal secundario / de staging — no sustituye a voz. Mismo agente, mismas tools, mismo histórico en BD (con prefijo `tg:` para no mezclarse con teléfonos).
+- `handle_update` nunca lanza: cualquier error se captura y se devuelve 200 OK a Telegram para evitar reintentos infinitos, mientras logeamos el fallo.
+- `callback_data` se trunca a 64 bytes respetando UTF-8 (Telegram lo exige). Con el formato actual de ids (`slot:YYYY-MM-DDTHH:MM:...`) no se alcanza el límite, pero la salvaguarda queda por si crecemos.
 
 ### Breaking
 

@@ -21,6 +21,7 @@ from . import tenants as tn
 from . import db as db_module
 from . import agent as agent_module
 from . import elevenlabs_client
+from . import telegram as tg_module
 
 log = logging.getLogger(__name__)
 
@@ -445,4 +446,176 @@ def recent_messages(
             }
             for m in rows
         ],
+    }
+
+
+# ---------------------------------------------------------------------------
+#  Healthchecks de canales externos
+# ---------------------------------------------------------------------------
+
+@router.get("/elevenlabs/healthcheck")
+def elevenlabs_healthcheck(
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    """Valida el estado del stack de voz para un tenant (o el primero si no se pasa).
+
+    Comprueba y devuelve por separado (cada bloque con `ok` bool):
+
+    - `api_key`: hay ELEVENLABS_API_KEY configurada.
+    - `tool_secret`: hay TOOL_SECRET configurada (lo que permite que ElevenLabs
+      llame a /tools/* con autenticación).
+    - `agent`: el `voice_agent_id` del tenant (o el ELEVENLABS_AGENT_ID global
+      si el tenant no tiene) existe en ElevenLabs y responde al GET.
+    - `agent_tools`: el agente remoto tiene las 5 tools esperadas registradas
+      (consultar_disponibilidad, crear_reserva, buscar_reserva_cliente,
+      mover_reserva, cancelar_reserva).
+    - `tenant_voice_config`: el tenant tiene prompt + voice_id rellenos.
+
+    No gasta dinero: solo lee. No lanza: cualquier fallo se reporta en el
+    bloque correspondiente. El frontend del CMS puede pintar luz verde/roja
+    por bloque.
+    """
+    _check_secret(x_tool_secret)
+    resolved_id = _resolve_tenant_id(tenant_id)
+    tenant = tn.get_tenant(resolved_id) or {}
+
+    report: dict[str, Any] = {
+        "tenant_id": resolved_id,
+        "api_key": {"ok": bool(settings.elevenlabs_api_key.strip()),
+                     "hint": "Configura ELEVENLABS_API_KEY en Railway." if not settings.elevenlabs_api_key.strip() else ""},
+        "tool_secret": {"ok": bool(settings.tool_secret.strip()),
+                         "hint": "Configura TOOL_SECRET en Railway (lo usan las tools /tools/*)." if not settings.tool_secret.strip() else ""},
+    }
+
+    tenant_agent_id = (tenant.get("voice_agent_id") or "").strip()
+    effective_agent_id = tenant_agent_id or (settings.elevenlabs_agent_id or "").strip()
+
+    report["tenant_voice_config"] = {
+        "ok": bool((tenant.get("voice_prompt") or "").strip() and (tenant.get("voice_voice_id") or "").strip()),
+        "prompt_len": len((tenant.get("voice_prompt") or "")),
+        "voice_id_set": bool((tenant.get("voice_voice_id") or "").strip()),
+        "agent_id": effective_agent_id or "(none)",
+        "agent_id_source": "tenant" if tenant_agent_id else ("global_env" if effective_agent_id else "missing"),
+    }
+
+    if not effective_agent_id:
+        report["agent"] = {"ok": False, "error": "Sin voice_agent_id y sin ELEVENLABS_AGENT_ID global."}
+        report["agent_tools"] = {"ok": False, "skipped": "Sin agente al que consultar."}
+        return report
+
+    if not settings.elevenlabs_api_key.strip():
+        report["agent"] = {"ok": False, "error": "No consulto ElevenLabs sin API key."}
+        report["agent_tools"] = {"ok": False, "skipped": "Sin API key."}
+        return report
+
+    # Consulta remota protegida contra fallos de red/auth.
+    try:
+        remote = elevenlabs_client.get_agent(effective_agent_id)
+    except Exception as e:  # noqa: BLE001
+        report["agent"] = {"ok": False, "error": str(e)[:280]}
+        report["agent_tools"] = {"ok": False, "skipped": "get_agent falló."}
+        return report
+
+    report["agent"] = {
+        "ok": True,
+        "agent_id": effective_agent_id,
+        "name": remote.get("name"),
+    }
+
+    # Introspección de las tools registradas en el agente remoto. La API de
+    # Eleven las pone bajo conversation_config.agent.prompt.tools.
+    expected_tools = {
+        "consultar_disponibilidad",
+        "crear_reserva",
+        "buscar_reserva_cliente",
+        "mover_reserva",
+        "cancelar_reserva",
+    }
+    remote_tools: list[dict[str, Any]] = (
+        ((remote.get("conversation_config") or {}).get("agent") or {})
+        .get("prompt", {})
+        .get("tools") or []
+    )
+    remote_tool_names = {
+        (t.get("name") or "").strip()
+        for t in remote_tools if isinstance(t, dict)
+    }
+    missing = sorted(expected_tools - remote_tool_names)
+    extra = sorted(remote_tool_names - expected_tools - {""})
+    report["agent_tools"] = {
+        "ok": not missing,
+        "registered": sorted(remote_tool_names - {""}),
+        "missing": missing,
+        "extra": extra,
+    }
+    return report
+
+
+@router.get("/telegram/status")
+def telegram_status(
+    x_tool_secret: str | None = Header(None),
+) -> dict[str, Any]:
+    """Verifica que el bot de Telegram está conectado y el webhook configurado.
+
+    Llama a `getMe` y `getWebhookInfo`. No gasta nada (Telegram es gratuito).
+    Si TELEGRAM_BOT_TOKEN no está configurado, devuelve `configured: false`
+    explícitamente en vez de fallar, para que el CMS pueda pintar "canal
+    desactivado" limpiamente.
+    """
+    _check_secret(x_tool_secret)
+
+    token = settings.telegram_bot_token.strip()
+    if not token:
+        return {
+            "configured": False,
+            "hint": "Añade TELEGRAM_BOT_TOKEN en Railway para activar el canal.",
+        }
+
+    try:
+        client = tg_module.TelegramClient(token)
+        me = client.get_me()
+    except tg_module.TelegramError as e:
+        return {
+            "configured": True,
+            "ok": False,
+            "error": str(e)[:280],
+        }
+    except Exception as e:  # noqa: BLE001
+        return {
+            "configured": True,
+            "ok": False,
+            "error": f"getMe falló: {str(e)[:260]}",
+        }
+
+    # Info del webhook es útil para ver si está registrado y sin errores de entrega.
+    webhook_info: dict[str, Any] = {}
+    try:
+        # Reutilizamos el canal interno del cliente para no duplicar URL.
+        # Telegram getWebhookInfo acepta GET sin payload.
+        import httpx
+        r = httpx.get(f"https://api.telegram.org/bot{token}/getWebhookInfo", timeout=10.0)
+        if r.status_code < 400:
+            webhook_info = (r.json() or {}).get("result") or {}
+    except Exception as e:  # noqa: BLE001
+        webhook_info = {"error": str(e)[:200]}
+
+    return {
+        "configured": True,
+        "ok": True,
+        "bot": {
+            "id": me.get("id"),
+            "username": me.get("username"),
+            "first_name": me.get("first_name"),
+            "can_join_groups": me.get("can_join_groups"),
+        },
+        "webhook": {
+            "url": webhook_info.get("url"),
+            "has_custom_certificate": webhook_info.get("has_custom_certificate"),
+            "pending_update_count": webhook_info.get("pending_update_count"),
+            "last_error_date": webhook_info.get("last_error_date"),
+            "last_error_message": webhook_info.get("last_error_message"),
+            "secret_token_configured": bool(settings.telegram_webhook_secret.strip()),
+        },
+        "default_tenant_id": settings.telegram_default_tenant_id or "(fallback al primer contracted)",
     }
