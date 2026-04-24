@@ -816,7 +816,18 @@ def _build_flujo_reserva(has_team: bool, professional_word: str) -> str:
         "huecos, NO pidas datos adicionales. Ese ya es el momento de\n"
         "ejecutar la reserva. Solo tras ejecutar crear_reserva y recibir\n"
         "ok:true del backend, confirma al cliente con una frase breve\n"
-        '(p.ej. "¡listo, reservado!").'
+        '(p.ej. "¡listo, reservado!").\n'
+        "\n"
+        "REGLA ANTI-ALUCINACIÓN — crítica:\n"
+        'NUNCA digas al cliente "reservado", "confirmado", "hecho", "listo"\n'
+        "o equivalente si en ESE mismo turno no has ejecutado la función\n"
+        "crear_reserva. Si estás a punto de escribir una frase de cierre y\n"
+        "no has llamado a la función todavía, para, llama a crear_reserva\n"
+        "con los datos y solo entonces, tras recibir ok:true, confirma al\n"
+        "cliente. Si la función devuelve ok:false con retryable:true,\n"
+        "reinténtalo una vez; si sigue fallando, di que ha habido un\n"
+        "problema técnico y ofrece volver a intentarlo en un momento, NO\n"
+        "asegures que la cita está hecha cuando no lo está."
     )
     return header + "\n".join(numbered) + tail
 

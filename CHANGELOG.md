@@ -12,10 +12,11 @@ Entrada más reciente arriba.
 
 - **Agente no llamaba a `crear_reserva` cuando el cliente confirmaba en texto libre.** Flujo observado en producción: Ana pedía "¿lo confirmo?", cliente respondía "Sí, confirma", y el modelo volvía a ofrecer huecos en lugar de ejecutar la reserva. Arreglado con una **REGLA DE CIERRE** añadida al final de `_build_flujo_reserva` en `app/db.py`: ante variantes afirmativas ("sí", "confirma", "ok", "dale", "perfecto", "adelante", "venga") tras un "¿lo confirmo?", el agente llama a `crear_reserva` inmediatamente sin reconsultar disponibilidad. La `description` de la tool `crear_reserva` en `app/agent.py::TOOLS` también se ha reforzado en esa línea.
 - **Título del evento guardaba el servicio antes del nombre**. Ejemplo real: `"Corte hombre — Javier Test (sin preferencia)"` cuando la convención (y el canal voz) era `"Javier Test — Corte hombre (sin preferencia)"`. Se endurece la `description` de `titulo` en la tool `crear_reserva` con formato exacto "Nombre — Servicio (con Peluquero)", un ejemplo correcto y un ejemplo INCORRECTO explícito para que el LLM no caiga en la inversa.
+- **Alucinación: decir "reservado" sin haber ejecutado la tool.** Tras los dos fixes anteriores, en 1 de 4 tests end-to-end el modelo decía *"¡listo, reservado!"* sin llamar realmente a `crear_reserva`. La cita no se creaba en calendario pero el cliente creía que sí. Se añade **REGLA ANTI-ALUCINACIÓN** al prompt: *"NUNCA digas 'reservado/confirmado/hecho/listo' si en ESE turno no ejecutaste crear_reserva. Si `retryable:true`, reinténtalo; si sigue fallando, avisa de problema técnico"*. Verificado: tras el parche, 6/6 tests posteriores crean la reserva en el calendario real y los bloqueos cuando falta info siguen comportándose bien (Ana pide hora válida en vez de alucinar).
 
 ### Añadido
 
-- `tests/test_prompt_confirmation_and_title.py` con 6 tests de regresión que verifican: la regla de cierre existe y menciona las variantes afirmativas; el prompt prohíbe reconsultar disponibilidad; la tool `crear_reserva` documenta nombre primero con ejemplo incorrecto; la description de la tool insiste en no reconsultar. Suite **70/70**.
+- `tests/test_prompt_confirmation_and_title.py` con 8 tests de regresión: regla de cierre presente con variantes afirmativas, prohibición de reconsultar disponibilidad, anti-alucinación con palabras concretas ("reservado", "confirmado", "hecho", "listo"), manejo de `retryable`, título con Nombre primero, ejemplo incorrecto explícito, description reforzada. Suite **72/72**.
 
 ---
 

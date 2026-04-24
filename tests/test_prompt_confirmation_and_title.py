@@ -60,6 +60,26 @@ def test_flujo_habla_de_ok_true_tras_ejecutar():
     assert "ok:true" in flujo or "ok: true" in flujo
 
 
+def test_flujo_tiene_regla_anti_alucinacion():
+    """Alucinación observada en producción: con flujos largos tras
+    rechazos de hora, el modelo decía "reservado" sin ejecutar la tool.
+    El prompt lo prohíbe explícitamente con "NUNCA digas reservado si no
+    ejecutaste crear_reserva".
+    """
+    flujo = _render_prompt_for_pelu_mock()
+    low = flujo.lower()
+    assert "anti-alucin" in low or "nunca digas" in low
+    # Debe mencionar palabras de cierre concretas que no se deben decir
+    # sin tool call real.
+    for key in ("reservado", "confirmado", "hecho", "listo"):
+        assert key in low, f"falta referencia a '{key}' en regla anti-alucinación"
+
+
+def test_flujo_menciona_retryable_manejo():
+    flujo = _render_prompt_for_pelu_mock()
+    assert "retryable" in flujo
+
+
 # ---------------------------------------------------------------------------
 #  Fix 2 — título en formato Nombre — Servicio
 # ---------------------------------------------------------------------------
