@@ -6,6 +6,29 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (ronda 7 — hotfix fechas alucinadas)
+
+Bug crítico descubierto al probar el bot con una llamada real: Ana alucinaba fechas de **mayo 2025** cuando hoy era abril 2026, creaba la cita pero en el año pasado, y respondía "no hay huecos" en cuanto el cliente mencionaba cualquier día.
+
+### Corregido
+
+- **Placeholders de dynamic_variables no estaban declarados**. ElevenLabs **ignora** lo que devuelve el personalization webhook si las keys custom NO están pre-registradas como `conversation_config.agent.dynamic_variables.dynamic_variable_placeholders`. Sin esto, el prompt veía literal `{{manana_fecha_iso}}` y el LLM improvisaba. Se han declarado las 11 keys (`hoy_fecha_iso`, `manana_fecha_iso`, `pasado_fecha_iso`, `hoy_dia_semana`, `manana_dia_semana`, `hoy_natural`, `manana_natural`, `hora_local`, `caller_id_legible`, `tenant_id`, `tenant_name`) en el agente remoto `pelu_demo` vía PATCH.
+- **Prompt revertido a usar `{{system__time}}` (variable del sistema, siempre inyectada)** como fuente primaria de fecha, con regla 11 explícita "el año de las fechas ISO SIEMPRE coincide con el año de {{system__time}}". Así el bot funciona con o sin webhook; las custom dynamic_variables son ahora una mejora (tokens ahorrados), no requisito.
+- **Evento fantasma creado en 2025-05-20 12:30 borrado** (`event_id=8bh7rp74o477sum6cuuj9govb8` en el calendario principal del tenant). Diagnosticado via `GET /v1/convai/conversations/{id}` que mostró args de tool_calls con fechas de mayo 2025.
+
+### Cambiado
+
+- **`scripts/setup_elevenlabs_agent.py`** y **`app/elevenlabs_client.create_agent_for_tenant`** declaran los `dynamic_variable_placeholders` por defecto al crear un agente. Tenants nuevos nacen con esto resuelto.
+- **`BOT_NUEVO_CONFIG.md`**: nueva sección "Placeholders de dynamic_variables (OBLIGATORIO)" con el gotcha y la lista completa. Mantiene el checklist alineado.
+- **`ana_prompt_new.txt`**: usa `{{system__time}}` en lugar de `{{manana_fecha_iso}}` etc. Incluye regla dura sobre año.
+
+### Notas
+
+- El personalization webhook sigue desplegado y funcional (`/tools/eleven/personalization` responde 200 con las variables correctas). Con los placeholders declarados ahora ElevenLabs debería inyectarlas en la próxima llamada real via Twilio. En WS text-only el webhook puede saltarse porque el cliente envía su propio `conversation_initiation_client_data` en el primer frame — verificación real requiere llamada inbound Twilio.
+- Snapshot post-fix: `docs/elevenlabs_agent_snapshot_post_round7_hotfix_2026-04-24T181207Z.json`.
+
+---
+
 ## 2026-04-24 (latencia — ronda 7)
 
 Ajustes finos + recorte de prompt + personalization endpoint + prefetch especulativo. Exploración exhaustiva de las palancas que quedaban tras la ronda 6.

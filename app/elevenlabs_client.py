@@ -241,6 +241,22 @@ def create_agent_for_tenant(
 
     tools = _build_tools(tool_base_url, secret, tenant_id)
     # Config ganadora tras rondas 1-7 de latencia. Ver BOT_NUEVO_CONFIG.md.
+    # Placeholders obligatorios: sin esta declaración, ElevenLabs ignora las
+    # variables que devuelve el personalization webhook y el prompt ve
+    # literal "{{manana_fecha_iso}}" (bug real 2026-04-24).
+    dynamic_placeholders = {
+        "hoy_fecha_iso": "",
+        "manana_fecha_iso": "",
+        "pasado_fecha_iso": "",
+        "hoy_dia_semana": "",
+        "manana_dia_semana": "",
+        "hoy_natural": "",
+        "manana_natural": "",
+        "hora_local": "",
+        "caller_id_legible": "",
+        "tenant_id": "",
+        "tenant_name": "",
+    }
     payload = {
         "name": f"Ana · {tenant.get('name') or tenant_id}",
         "conversation_config": {
@@ -256,6 +272,9 @@ def create_agent_for_tenant(
                 },
                 "first_message": f"¡Hola! Soy Ana de {tenant.get('name') or 'la peluquería'}. ¿En qué te puedo ayudar?",
                 "language": "es",
+                "dynamic_variables": {
+                    "dynamic_variable_placeholders": dynamic_placeholders,
+                },
             },
             "tts": {
                 "voice_id": voice.voice_id.strip() or "1eHrpOW5l98cxiSRjbzJ",

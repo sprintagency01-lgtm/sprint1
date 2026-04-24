@@ -91,6 +91,32 @@ Contrato de los schemas (definidos en `app/elevenlabs_client._build_tools`):
 | `conversation_initiation_client_data_webhook.request_headers.X-Tool-Secret` | El `TOOL_SECRET` del `.env` | Autenticación. |
 | `overrides.enable_conversation_initiation_client_data_from_webhook` | `true` | Activa la interpolación de dynamic_variables en el prompt. |
 
+### Placeholders de dynamic_variables (OBLIGATORIO)
+
+**Gotcha encontrado en producción el 2026-04-24**: ElevenLabs **ignora** lo que devuelve el personalization webhook si las keys NO están pre-declaradas como `dynamic_variable_placeholders` en el agente. Sin esto, el prompt ve literalmente `{{manana_fecha_iso}}` como texto y el LLM alucina fechas (observado: cita creada en mayo 2025 cuando hoy era abril 2026).
+
+Declaración obligatoria en `conversation_config.agent.dynamic_variables.dynamic_variable_placeholders`:
+
+```json
+{
+  "hoy_fecha_iso": "",
+  "manana_fecha_iso": "",
+  "pasado_fecha_iso": "",
+  "hoy_dia_semana": "",
+  "manana_dia_semana": "",
+  "hoy_natural": "",
+  "manana_natural": "",
+  "hora_local": "",
+  "caller_id_legible": "",
+  "tenant_id": "",
+  "tenant_name": ""
+}
+```
+
+`setup_elevenlabs_agent.py` y `elevenlabs_client.create_agent_for_tenant` ya incluyen estos placeholders por defecto. Si algún día añades una variable nueva en `app/eleven_tools.py::eleven_personalization`, **añádela también a esta lista en los dos sitios**.
+
+**Failsafe**: el prompt actual (`ana_prompt_new.txt`) usa `{{system__time}}` como fuente primaria de fecha (variable de sistema, siempre inyectada por ElevenLabs sin depender del webhook). Las variables custom son *mejora* (prefetch + tokens ahorrados), no requisito para que el bot funcione. Si el webhook falla o los placeholders se borran, el bot sigue sabiendo la fecha.
+
 El endpoint devuelve `hoy_fecha_iso`, `manana_fecha_iso`, `pasado_fecha_iso`, `hoy_dia_semana`, `manana_dia_semana`, `hoy_natural`, `manana_natural`, `hora_local`, `caller_id_legible`, `tenant_id`, `tenant_name`. El prompt los usa como `{{manana_natural}}`, `{{manana_fecha_iso}}`, etc.
 
 **Efecto colateral crítico**: tras responder, el handler dispara un `asyncio.create_task` que precalienta el cache freebusy para hoy + 2 días con duraciones 30 y 45 min. Cuando Ana llama a `consultar_disponibilidad` 2-5 s después, el cache está caliente → tool devuelve en <50 ms.

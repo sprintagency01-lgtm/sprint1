@@ -244,6 +244,25 @@ def main() -> None:
 
     # Config ganadora tras rondas 1-7 de optimización de latencia.
     # Ver BOT_NUEVO_CONFIG.md para el detalle y la justificación de cada valor.
+    #
+    # Placeholders de dynamic_variables: ElevenLabs ignora lo que devuelve el
+    # personalization webhook si las keys no están pre-declaradas aquí como
+    # `dynamic_variable_placeholders`. Sin esto, el prompt ve literal
+    # "{{manana_fecha_iso}}" y el LLM alucina fechas (bug real detectado en
+    # producción 2026-04-24).
+    dynamic_placeholders = {
+        "hoy_fecha_iso": "",
+        "manana_fecha_iso": "",
+        "pasado_fecha_iso": "",
+        "hoy_dia_semana": "",
+        "manana_dia_semana": "",
+        "hoy_natural": "",
+        "manana_natural": "",
+        "hora_local": "",
+        "caller_id_legible": "",
+        "tenant_id": "",
+        "tenant_name": "",
+    }
     payload = {
         "name": f"Ana - {tenant.get('name', 'Peluquería')}",
         "conversation_config": {
@@ -260,6 +279,9 @@ def main() -> None:
                 },
                 "first_message": "¡Hola! Soy Ana de la peluquería. ¿En qué te puedo ayudar?",
                 "language": "es",
+                "dynamic_variables": {
+                    "dynamic_variable_placeholders": dynamic_placeholders,
+                },
             },
             "tts": {
                 "voice_id": voice_id,
