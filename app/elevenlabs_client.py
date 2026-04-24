@@ -24,6 +24,13 @@ log = logging.getLogger(__name__)
 API_BASE = "https://api.elevenlabs.io"
 _TIMEOUT = httpx.Timeout(20.0, connect=5.0)
 
+# Modelo de TTS por defecto. `eleven_flash_v2_5` está optimizado para
+# latencia (150-250ms al primer audio), frente a `eleven_v3_conversational`
+# (300-500ms). Este producto prioriza latencia sobre expresividad. Si en el
+# futuro se quiere experimentar con v3, cámbialo aquí y/o pasa `model_id`
+# explícito a create_agent_for_tenant / sync_agent.
+DEFAULT_TTS_MODEL_ID = "eleven_flash_v2_5"
+
 
 class ElevenLabsError(Exception):
     """Error 4xx/5xx al hablar con ElevenLabs, con mensaje ya formateado."""
@@ -99,6 +106,10 @@ def _build_tools(tool_base_url: str, tool_secret: str, tenant_id: str) -> list[d
             "type": "webhook",
             "name": name,
             "description": description,
+            # Arranca el TTS del filler en paralelo a la HTTP call: el usuario
+            # oye "vale, te miro un momento..." mientras el backend habla con
+            # Google. Enmascara 200-600ms de latencia por tool call.
+            "force_pre_tool_speech": True,
             "api_schema": {
                 "url": f"{base}{path}?tenant_id={tenant_id}",
                 "method": "POST",
@@ -156,7 +167,7 @@ def _build_tools(tool_base_url: str, tool_secret: str, tenant_id: str) -> list[d
         ),
         wh(
             "mover_reserva",
-            "Mueve una reserva existente a otra hora. Usa event_id obtenido de buscar_reserva_cliente.",
+            "Mueve una reserva existente a otra hora. Usa event_id obtenido de buscar_reserva_cliente. Pasa también calendar_id si lo recibiste.",
             "/tools/mover_reserva",
             {
                 "type": "object",
@@ -166,18 +177,20 @@ def _build_tools(tool_base_url: str, tool_secret: str, tenant_id: str) -> list[d
                     "nuevo_inicio_iso": _prop("string", "Nuevo inicio, ISO 8601."),
                     "nuevo_fin_iso": _prop("string", "Nuevo fin, ISO 8601."),
                     "peluquero": _prop("string", "Nombre del miembro si se mueve a otro peluquero/profesional. Vacío = no cambia."),
+                    "calendar_id": _prop("string", "calendar_id devuelto por buscar_reserva_cliente. Si lo pasas, el backend mueve directo sin iterar peluqueros — MÁS RÁPIDO. Si falta, el backend lo busca."),
                 },
             },
         ),
         wh(
             "cancelar_reserva",
-            "Cancela una reserva existente. Usa event_id obtenido de buscar_reserva_cliente.",
+            "Cancela una reserva existente. Usa event_id obtenido de buscar_reserva_cliente. Pasa también calendar_id si lo recibiste.",
             "/tools/cancelar_reserva",
             {
                 "type": "object",
                 "required": ["event_id"],
                 "properties": {
                     "event_id": _prop("string", "ID del evento a cancelar."),
+                    "calendar_id": _prop("string", "calendar_id devuelto por buscar_reserva_cliente. Si lo pasas, el backend cancela directo sin iterar peluqueros — MÁS RÁPIDO. Si falta, el backend lo busca."),
                 },
             },
         ),
@@ -232,7 +245,7 @@ def create_agent_for_tenant(
             },
             "tts": {
                 "voice_id": voice.voice_id.strip() or "1eHrpOW5l98cxiSRjbzJ",
-                "model_id": "eleven_flash_v2_5",
+                "model_id": DEFAULT_TTS_MODEL_ID,
                 "stability": round(float(voice.stability), 3),
                 "similarity_boost": round(float(voice.similarity_boost), 3),
                 "speed": round(float(voice.speed), 3),
@@ -272,11 +285,17 @@ def sync_agent(
     *,
     prompt: str | None = None,
     voice: VoiceParams | None = None,
+    model_id: str | None = None,
 ) -> dict[str, Any]:
     """PATCH al agente remoto con prompt y/o parámetros TTS.
 
     Solo se envían las secciones que se especifican explícitamente. Si pasas
     `prompt=None` no se tocará el prompt remoto; lo mismo para `voice`.
+
+    `model_id` (opcional): si viene, se envía como `tts.model_id` para forzar
+    un modelo de TTS concreto. Útil para migrar agentes que quedaron en v3
+    conversacional a `eleven_flash_v2_5` (más rápido). Si se pasa sin `voice`,
+    el payload solo actualiza el modelo.
 
     Devuelve el body JSON de la respuesta (contiene el estado actualizado del
     agente). Lanza `ElevenLabsError` en caso de fallo, con mensaje ya formateado
@@ -284,9 +303,10 @@ def sync_agent(
     """
     aid = _resolve_agent_id(agent_id)
 
-    if prompt is None and voice is None:
+    if prompt is None and voice is None and model_id is None:
         raise ElevenLabsError(
-            "Nada que sincronizar: ni prompt ni voz. Rellena al menos uno de los dos."
+            "Nada que sincronizar: ni prompt, ni voz, ni modelo. "
+            "Rellena al menos uno."
         )
 
     # Construimos solo las secciones tocadas. ElevenLabs hace merge parcial,
@@ -299,6 +319,7 @@ def sync_agent(
             raise ElevenLabsError("El prompt está vacío. Añade texto antes de sincronizar.")
         conversation_config["agent"] = {"prompt": {"prompt": prompt_text}}
 
+    tts_payload: dict[str, Any] = {}
     if voice is not None:
         if not voice.voice_id or not voice.voice_id.strip():
             raise ElevenLabsError(
@@ -312,12 +333,19 @@ def sync_agent(
             raise ElevenLabsError("similarity_boost debe estar entre 0.0 y 1.0.")
         if not (0.5 <= voice.speed <= 1.5):
             raise ElevenLabsError("speed debe estar entre 0.5 y 1.5.")
-        conversation_config["tts"] = {
+        tts_payload.update({
             "voice_id": voice.voice_id.strip(),
             "stability": round(float(voice.stability), 3),
             "similarity_boost": round(float(voice.similarity_boost), 3),
             "speed": round(float(voice.speed), 3),
-        }
+        })
+    if model_id is not None:
+        mid = model_id.strip()
+        if not mid:
+            raise ElevenLabsError("model_id vacío. Pasa el nombre del modelo TTS o None.")
+        tts_payload["model_id"] = mid
+    if tts_payload:
+        conversation_config["tts"] = tts_payload
 
     payload = {"conversation_config": conversation_config}
     url = f"{API_BASE}/v1/convai/agents/{aid}"

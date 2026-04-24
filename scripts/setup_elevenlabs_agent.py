@@ -175,7 +175,7 @@ def build_tools(tool_base_url: str, tool_secret: str) -> list[dict]:
         ),
         webhook(
             "mover_reserva",
-            "Mueve una reserva a nueva fecha/hora.",
+            "Mueve una reserva a nueva fecha/hora. Reenvía calendar_id si lo obtuviste de buscar_reserva_cliente — el backend mueve directo y baja latencia.",
             "/tools/mover_reserva",
             {
                 "type": "object",
@@ -183,18 +183,20 @@ def build_tools(tool_base_url: str, tool_secret: str) -> list[dict]:
                     "event_id": {"type": "string", "description": "ID del evento devuelto por buscar_reserva_cliente."},
                     "nuevo_inicio_iso": {"type": "string", "description": "Nuevo inicio, ISO 8601."},
                     "nuevo_fin_iso": {"type": "string", "description": "Nuevo fin, ISO 8601."},
+                    "calendar_id": {"type": "string", "description": "calendar_id devuelto por buscar_reserva_cliente. Si viene, el backend mueve directo sin iterar peluqueros."},
                 },
                 "required": ["event_id", "nuevo_inicio_iso", "nuevo_fin_iso"],
             },
         ),
         webhook(
             "cancelar_reserva",
-            "Cancela una reserva. SOLO tras confirmación explícita.",
+            "Cancela una reserva. SOLO tras confirmación explícita. Reenvía calendar_id si lo obtuviste de buscar_reserva_cliente.",
             "/tools/cancelar_reserva",
             {
                 "type": "object",
                 "properties": {
                     "event_id": {"type": "string", "description": "ID del evento a cancelar."},
+                    "calendar_id": {"type": "string", "description": "calendar_id devuelto por buscar_reserva_cliente. Si viene, el backend cancela directo sin iterar peluqueros."},
                 },
                 "required": ["event_id"],
             },
