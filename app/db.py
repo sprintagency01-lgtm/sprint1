@@ -799,7 +799,26 @@ def _build_flujo_reserva(has_team: bool, professional_word: str) -> str:
         '   pregunta "¿lo confirmo?". Espera un "sí" claro antes de crear.'
     )
     numbered = [p.format(n=i + 1) for i, p in enumerate(pasos)]
-    return header + "\n".join(numbered)
+    # Regla dura tras el flujo: evita el bug en que, al responder el cliente
+    # "sí/confirma" tras la pregunta de confirmación, el modelo reconsultaba
+    # disponibilidad en vez de crear la reserva a la primera. Ocurrió en
+    # producción con Telegram y se corrige con esta instrucción literal.
+    tail = (
+        "\n\n"
+        "REGLA DE CIERRE — muy importante:\n"
+        "Si tu turno anterior terminó pidiendo confirmación (por ejemplo\n"
+        '"¿lo confirmo?", "¿reservo?", "¿confirmo la cita?") y el cliente\n'
+        'responde con cualquier variante afirmativa ("sí", "sí, confirma",\n'
+        '"ok", "dale", "perfecto", "adelante", "venga"...), llama\n'
+        "INMEDIATAMENTE a crear_reserva con los datos del turno de\n"
+        "confirmación (servicio, hora, nombre, peluquero que ya habías\n"
+        "acordado). NO vuelvas a consultar_disponibilidad, NO reofrerezcas\n"
+        "huecos, NO pidas datos adicionales. Ese ya es el momento de\n"
+        "ejecutar la reserva. Solo tras ejecutar crear_reserva y recibir\n"
+        "ok:true del backend, confirma al cliente con una frase breve\n"
+        '(p.ej. "¡listo, reservado!").'
+    )
+    return header + "\n".join(numbered) + tail
 
 
 def _professional_word_for(sector: str | None) -> str:

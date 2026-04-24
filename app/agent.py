@@ -146,9 +146,15 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "crear_reserva",
             "description": (
-                "Crea una cita en el calendario. SOLO tras confirmación explícita "
-                "del cliente. NUNCA la llames sin tener 'nombre_cliente' ni "
-                "'peluquero_preferido' — si falta alguno, pregúntalo antes."
+                "Crea una cita en el calendario. LLÁMALA EN CUANTO el cliente "
+                "confirme (un 'sí', 'confirma', 'ok', 'dale', 'perfecto', "
+                "'adelante'...) después de que tú hayas preguntado '¿lo confirmo?'. "
+                "NO reconsultes disponibilidad ni reofrerezcas huecos en ese "
+                "momento — los datos (servicio, hora, nombre, peluquero) ya "
+                "estaban en el turno de confirmación. Solo si falta "
+                "nombre_cliente o peluquero_preferido, pregúntalo ANTES, pero "
+                "una vez todo está acordado y el cliente dice sí, ejecuta esta "
+                "función al primer intento."
             ),
             "parameters": {
                 "type": "object",
@@ -156,9 +162,14 @@ TOOLS: list[dict[str, Any]] = [
                     "titulo": {
                         "type": "string",
                         "description": (
-                            "Título de la cita en formato 'Servicio — Nombre (con Peluquero)'. "
-                            "Ej: 'Corte hombre — Marcos (con Laura)'. Si no hay "
-                            "preferencia de peluquero: 'Corte hombre — Marcos (sin preferencia)'."
+                            "Título de la cita. FORMATO EXACTO: "
+                            "'Nombre — Servicio (con Peluquero)'. "
+                            "El NOMBRE DEL CLIENTE va PRIMERO, nunca el "
+                            "servicio. Ejemplos correctos: "
+                            "'Marcos — Corte hombre (con Laura)', "
+                            "'Javier Test — Corte hombre (sin preferencia)'. "
+                            "Ejemplo INCORRECTO (NO hagas esto): "
+                            "'Corte hombre — Marcos'."
                         ),
                     },
                     "nombre_cliente": {
