@@ -6,6 +6,47 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (latencia — ronda 5)
+
+Quinta ronda de optimización de latencia del canal voz. Las 4 anteriores recortaron lo obvio (cache del cliente Google, freebusy 8s, prompt 7KB→4,5KB, `thinking_budget:0`, `turn_timeout:1s`, `optimize_streaming_latency:4`, `ulaw_8000`, `tool_call_sound:typing`, `cascade_timeout:4s`, `max_tokens:300`, flujo RESERVA reordenado). Esta ronda ataca el siguiente escalón: caché de tenant, idempotencia, fast path de mover/cancelar, warm-up de Google y TTS flash.
+
+### Añadido
+
+- **Middleware de timing en `/tools/*` y `/_diag/*`** en `app/main.py`: log `timing path=... tenant=... status=... dur_ms=...` y header `X-Backend-Duration-MS` en cada respuesta. Base para medir el impacto real de las palancas que vienen detrás.
+- **Caché in-memory del tenant en `app/tenants.py`** (TTL 30s, clave por `tenant_id`), con invalidación automática vía listener `before_commit`/`after_commit` de SQLAlchemy cuando se escribe un `Tenant`, `Service` o `MiembroEquipo`. Ahorra ~10-30ms por tool call en caché caliente. Incluye helper `invalidate_tenant_cache(tid|None)` para casos manuales.
+- **`Tenant.to_dict(include_system_prompt: bool = True)`** en `app/db.py`: el hot path de voz NO usa `system_prompt` (usa `voice.prompt`) — `eleven_tools._resolve_tenant` ahora pide la versión ligera y se ahorra ~1-3ms de render por llamada.
+- **Fast path en `/tools/mover_reserva` y `/tools/cancelar_reserva`**: aceptan `calendar_id` opcional en el body. Si el agente lo reenvía (lo devuelve `buscar_reserva_cliente`), el backend hace un único PATCH/DELETE sin iterar peluqueros. Ahorra 200-1500ms en tenants con varios calendarios. Schemas remotos actualizados en `elevenlabs_client._build_tools` y `scripts/setup_elevenlabs_agent.py`.
+- **Idempotencia en `/tools/crear_reserva`**: antes de insertar, busca un evento del mismo teléfono en ±5min; si existe, devuelve `ok:true, duplicate:true, event_id=<existente>`. Evita cita duplicada cuando ElevenLabs reintenta tras timeout de red (observado en el audit como H-3).
+- **Warm-up de Google Calendar en startup** (`@app.on_event("startup")` en `app/main.py`): precalienta `_service(tid)` para tenants `contracted+active`, de modo que la primera tool call tras un redeploy no paga el coste (~200-400ms) de construir el cliente googleapiclient.
+- **`force_pre_tool_speech: true`** por defecto en las 5 tools generadas por `elevenlabs_client._build_tools`. Arranca el TTS del filler en paralelo a la HTTP call. Palanca 4 documentada en memoria, ahora aplicada por defecto en agentes nuevos.
+- **`scripts/migrate_agent_latency.py`**: script one-shot que patchea un agente existente en ElevenLabs a: (1) `tts.model_id = eleven_flash_v2_5`, (2) `force_pre_tool_speech: true` en las 5 tools, (3) `calendar_id` opcional en los schemas de mover/cancelar. Soporta `--dry-run`.
+- **Tests nuevos**: `tests/test_eleven_tools_latency.py` con 8 tests (fast path con/sin `calendar_id`, idempotencia con/sin duplicado previo, caché de tenant sirve sin re-query, invalidación borra entrada, retry con backoff reintenta transitorios y aborta permanentes). `tests/conftest.py` aísla DB/tokens/env de los tests para que no toquen `data.db` real. Suite completa: **106 tests, 0 fallos**.
+- **`AUDITORIA_2026-04-24.md`**: auditoría profunda previa (arquitectura, seguridad, fiabilidad, testing, observabilidad, latencia con presupuesto por tramo y plan priorizado). Documento de referencia en el workspace; no va al repo.
+
+### Cambiado
+
+- **`_retry_google` con backoff exponencial + jitter y cap** (`app/eleven_tools.py`): sustituye `time.sleep(0.8 * (i + 1))` lineal por `random.uniform(0, min(max, base * 2^i))` con `base=0.4s` y `max=1.5s`. Reduce la mediana del backoff y limita el peor caso. Sin cambio funcional en el caso nominal (0 reintentos).
+- **`elevenlabs_client.sync_agent(...)`** acepta `model_id: str | None`: ahora se puede propagar el TTS model desde código (además de `prompt` y `voice`). Usado por `scripts/migrate_agent_latency.py` para migrar agentes ya creados.
+- **`DEFAULT_TTS_MODEL_ID = "eleven_flash_v2_5"`** en `app/elevenlabs_client.py`: constante explícita para el TTS de baja latencia. `create_agent_for_tenant` ya la usaba; ahora queda centralizada.
+
+### Corregido
+
+- **TTS drift `eleven_v3_conversational` → `eleven_flash_v2_5`** en el agente remoto (pelu_demo). `ELEVENLABS.md` ya documentaba flash pero el agente vivo quedaba en v3 — más expresivo pero con 150-400ms extra al primer audio. El script `scripts/migrate_agent_latency.py` lo revierte. Requiere ejecución manual tras este deploy (ver abajo).
+
+### Env / despliegue
+
+- Sin variables de entorno nuevas. `TOOL_SECRET`, `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, `DATABASE_URL`, `TOKENS_DIR` siguen igual.
+- **Post-deploy manual (una vez)**: ejecutar `python scripts/migrate_agent_latency.py` contra Railway local o con `ELEVENLABS_API_KEY` en el entorno. Aplica: TTS flash + `force_pre_tool_speech` + `calendar_id` en schemas de mover/cancelar del agente remoto. Usar `--dry-run` antes de aplicar.
+- El middleware de timing emite logs nuevos con prefijo `timing path=...`. Si se centralizan logs en Railway, crear una query/filtro por ese prefijo para ver p50/p95.
+
+### Notas de diseño
+
+- El caché de tenant tiene TTL intencionalmente corto (30s) + invalidación automática por listener. Si alguien escribe a la BD por fuera del CMS (p.ej. ejecutando SQL directo en el volumen de Railway), el caché tarda como mucho 30s en refrescarse. Aceptable.
+- `force_pre_tool_speech: true` hace que ElevenLabs empiece a hablar el filler ("vale, te miro un momento...") ANTES de recibir el resultado de la tool. Si el backend responde súper rápido (caso cache hit freebusy), el filler suena un poco "de más"; pero si tarda 500ms+, enmascara la latencia auditivamente. Trade-off aceptado.
+- Palancas no aplicadas en esta ronda: región EU en Railway (L5), HTTP/2 + async Google client (L8), LLM custom en Groq/Cerebras (L10), prefetch especulativo (L9). Ver `AUDITORIA_2026-04-24.md` § 4.3 para el roadmap.
+
+---
+
 ## 2026-04-24 (parche pm 5)
 
 ### Corregido
