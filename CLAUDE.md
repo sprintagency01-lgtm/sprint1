@@ -90,12 +90,12 @@ Resumen para agentes que abren sesión por primera vez:
 2. Si el usuario dice algo como "manda el handoff", "cierra la jornada" o "resumen a Slack", ejecuta el procedimiento manualmente siguiendo `scripts/handoff_closing_prompt.md`.
 3. La primera vez que abras Claude en esta máquina sobre este repo, instala la scheduled task local:
    - `taskId`: `bot-reservas-handoff`
-   - `cronExpression`: `*/30 * * * *`
+   - `cronExpression`: `59 23 * * *`  (una sola ejecución al día, 23:59 Europe/Madrid)
    - `prompt`: el contenido literal de `scripts/handoff_closing_prompt.md`
    - Se registra con `mcp__scheduled-tasks__create_scheduled_task`.
 4. El estado local vive en `.handoff_state.json` (ignorado por git). Para evitar handoffs duplicados, antes de publicar el agente chequea los últimos mensajes de `#bot-reservas`.
 
-Trigger: >3h sin actividad en el repo + hay actividad hoy + no se ha publicado ya. Contenido: bullets de avances, quién tocó qué, bloqueos/pendientes, próximos pasos. Formato completo en `HANDOFF_PROTOCOL.md`.
+Trigger: hay actividad hoy (commits o cambios sin commitear) + no se ha publicado ya + son las 23:59 (hora de la scheduled task). Contenido: bullets de avances, quién tocó qué, bloqueos/pendientes, próximos pasos. Formato completo en `HANDOFF_PROTOCOL.md`.
 
 ## Otras convenciones relevantes
 
