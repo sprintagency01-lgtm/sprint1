@@ -367,10 +367,17 @@ TOOLS: list[dict[str, Any]] = [
             "name": "ofrecer_equipo",
             "description": (
                 "Ofrece al cliente elegir miembro del equipo como LISTA "
-                "CLICABLE en WhatsApp. Úsalo SÓLO cuando equipo_disponible_en "
-                "devuelva >1 miembros libres para el hueco elegido. Si sólo "
-                "hay 1, NO llames a esta función — pasa directo a "
-                "pedir_confirmacion con ese miembro. TERMINA el turno."
+                "CLICABLE. Úsalo en DOS escenarios: "
+                "(a) al principio, cuando preguntas por preferencia de "
+                "peluquero antes de mirar huecos — en ese caso pasa "
+                "modo_preferencia=true y lista TODOS los miembros del "
+                "equipo; el backend añadirá un botón 'Me da igual' al "
+                "final. "
+                "(b) tras equipo_disponible_en con >1 miembros libres en un "
+                "hueco concreto — en ese caso modo_preferencia=false (o "
+                "omitido) y el backend añade 'Otro miembro' para volver "
+                "al paso anterior. "
+                "TERMINA el turno — no añadas texto en la respuesta."
             ),
             "parameters": {
                 "type": "object",
@@ -378,14 +385,17 @@ TOOLS: list[dict[str, Any]] = [
                     "body": {
                         "type": "string",
                         "description": (
-                            "Frase corta. Ej: '¿Con quién prefieres?'."
+                            "Frase corta. Ej: '¿Tienes preferencia?' o "
+                            "'¿Con quién prefieres?'."
                         ),
                     },
                     "miembros": {
                         "type": "array",
                         "description": (
-                            "Lista de miembros disponibles a esa hora. Usa los "
-                            "IDs tal cual te los devolvió equipo_disponible_en."
+                            "Lista de miembros a ofrecer. En modo_preferencia "
+                            "incluye TODO el equipo. En modo normal incluye "
+                            "solo los libres a esa hora (IDs de "
+                            "equipo_disponible_en)."
                         ),
                         "items": {
                             "type": "object",
@@ -398,6 +408,16 @@ TOOLS: list[dict[str, Any]] = [
                             },
                             "required": ["id", "nombre"],
                         },
+                    },
+                    "modo_preferencia": {
+                        "type": "boolean",
+                        "description": (
+                            "True si es la pregunta inicial de "
+                            "preferencia (el botón extra será 'Me da "
+                            "igual'). False/omitido si es tras "
+                            "equipo_disponible_en en un hueco (el botón "
+                            "extra será 'Otro miembro')."
+                        ),
                     },
                 },
                 "required": ["body", "miembros"],
@@ -493,7 +513,25 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
                 calendar_id=calendar_id,
                 tenant_id=tenant_id,
             )
-            return json.dumps({"ok": True, "event_id": ev.get("id"), "link": ev.get("htmlLink")})
+            # Además del link interno al evento del calendario del negocio,
+            # construimos un "add to calendar" que el cliente puede pulsar
+            # para añadir la cita a SU propio Google Calendar. Esto mejora
+            # mucho el UX: recordatorio nativo en el móvil del cliente sin
+            # que tengamos que mandarle nada más.
+            add_url = _build_google_add_to_calendar_url(
+                titulo=args["titulo"],
+                inicio=datetime.fromisoformat(args["inicio_iso"]),
+                fin=datetime.fromisoformat(args["fin_iso"]),
+                descripcion=args.get("notas", "") or "",
+                ubicacion=(tenant.get("name") or "").strip(),
+                tz=(tenant.get("timezone") or settings.default_timezone),
+            )
+            return json.dumps({
+                "ok": True,
+                "event_id": ev.get("id"),
+                "link": ev.get("htmlLink"),
+                "add_to_calendar_url": add_url,
+            })
 
         if name == "buscar_reserva_cliente":
             desde = datetime.utcnow()
@@ -555,6 +593,69 @@ def _execute_tool(name: str, args: dict, tenant: dict, caller_phone: str) -> str
     except Exception as e:
         log.exception("Error ejecutando tool %s", name)
         return json.dumps({"error": str(e)})
+
+
+# ---------- Builder del "Add to Calendar" URL de Google ----------
+
+def _build_google_add_to_calendar_url(
+    *,
+    titulo: str,
+    inicio: datetime,
+    fin: datetime,
+    descripcion: str = "",
+    ubicacion: str = "",
+    tz: str = "Europe/Madrid",
+) -> str:
+    """Construye la URL de "añadir a mi Google Calendar" para el cliente.
+
+    Este URL abre el formulario de creación de evento de Google Calendar
+    precargado con los datos. Pensado para enviarse tras `crear_reserva`
+    para que el cliente lo añada a su calendario personal (recordatorios,
+    visibilidad en su agenda, sin que tengamos que integrarnos con él).
+
+    Formato documentado por Google (no forma parte de la API oficial pero
+    es público y estable desde hace años):
+
+        https://calendar.google.com/calendar/render?action=TEMPLATE
+            &text=<título URL-encoded>
+            &dates=<YYYYMMDDTHHMMSS>/<YYYYMMDDTHHMMSS>   (hora local)
+            &ctz=<IANA timezone>                         (p.ej. Europe/Madrid)
+            &details=<descripción URL-encoded>
+            &location=<ubicación URL-encoded>
+
+    Nota: pasamos el intervalo en la zona horaria del negocio + `ctz=` para
+    que quien abra el enlace vea la hora correcta en su Google Calendar,
+    independientemente de dónde esté. Si las fechas de entrada traen
+    tzinfo, las convertimos a la TZ del tenant; si no, las tratamos como
+    hora local de esa TZ.
+    """
+    from urllib.parse import urlencode
+    from zoneinfo import ZoneInfo
+
+    try:
+        zone = ZoneInfo(tz)
+    except Exception:  # pragma: no cover - TZ inválida no debería darse
+        zone = ZoneInfo("Europe/Madrid")
+
+    def _local(dt: datetime) -> datetime:
+        if dt.tzinfo is not None:
+            return dt.astimezone(zone)
+        return dt  # naive ya se asume local; no lo "movemos" artificialmente
+
+    ini_local = _local(inicio)
+    fin_local = _local(fin)
+    fmt = "%Y%m%dT%H%M%S"
+    params = {
+        "action": "TEMPLATE",
+        "text": titulo,
+        "dates": f"{ini_local.strftime(fmt)}/{fin_local.strftime(fmt)}",
+        "ctz": tz,
+    }
+    if descripcion:
+        params["details"] = descripcion
+    if ubicacion:
+        params["location"] = ubicacion
+    return "https://calendar.google.com/calendar/render?" + urlencode(params)
 
 
 # ---------- Builders de AgentReply para las tools de oferta ----------
@@ -680,16 +781,24 @@ def _build_reply_ofrecer_huecos(args: dict, tenant: dict) -> AgentReply:
 
 
 def _build_reply_ofrecer_equipo(args: dict, tenant: dict) -> AgentReply:
-    """Construye AgentReply para ofrecer_equipo: lista + fila 'Otro miembro'.
+    """Construye AgentReply para ofrecer_equipo.
 
-    "Otro miembro" devuelve el cliente al paso anterior (volver a elegir hora),
-    según el flujo acordado. Esa semántica la resuelve main.py al recibir
-    other:team.
+    Dos modos según `modo_preferencia` (default False):
+
+    - modo_preferencia=False (uso clásico, tras equipo_disponible_en):
+        el botón extra es "Otro miembro" (id `other:team`), y main.py
+        lo interpreta como "vuelve al paso anterior".
+
+    - modo_preferencia=True (pregunta inicial de preferencia):
+        el botón extra es "Me da igual" (id `team:none`), que el
+        backend resuelve como "sin preferencia" y continúa el flujo
+        con todo el equipo.
     """
     body = (args.get("body") or "").strip() or "¿Con quién prefieres?"
     miembros = args.get("miembros") or []
+    modo_pref = bool(args.get("modo_preferencia") or False)
     options: list[dict[str, str]] = []
-    # WhatsApp lista permite 10; dejamos 1 para "Otro miembro".
+    # WhatsApp lista permite 10; dejamos 1 para el botón extra.
     for m in miembros[:9]:
         mid = str(m.get("id") or "").strip()
         nombre = (m.get("nombre") or "").strip()
@@ -699,15 +808,26 @@ def _build_reply_ofrecer_equipo(args: dict, tenant: dict) -> AgentReply:
             "id": interactive_ids.make_team_id(mid),
             "title": nombre[:24],
         })
-    options.append({
-        "id": interactive_ids.make_other_id("team"),
-        "title": "Otro miembro",
-    })
+    if modo_pref:
+        # "Me da igual" en la pregunta inicial; equivalente a "sin preferencia".
+        options.append({
+            "id": interactive_ids.make_team_id(None),  # team:none
+            "title": "Me da igual",
+        })
+        section_title = "Equipo"
+        button_label = "Elegir"
+    else:
+        options.append({
+            "id": interactive_ids.make_other_id("team"),
+            "title": "Otro miembro",
+        })
+        section_title = "Equipo disponible"
+        button_label = "Elegir"
     spec = {
         "type": "list",
         "body": body,
-        "button": "Elegir",
-        "section_title": "Equipo disponible",
+        "button": button_label,
+        "section_title": section_title,
         "options": options,
     }
     return AgentReply(text=body, interactive=spec)

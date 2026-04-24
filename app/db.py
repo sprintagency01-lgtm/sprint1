@@ -783,20 +783,32 @@ def _build_flujo_reserva(has_team: bool, professional_word: str) -> str:
         "Antes de llamar a crear_reserva necesitas TODOS estos datos:\n\n"
     )
     pasos: list[str] = []
-    pasos.append('PASO {n} — SERVICIO. Si el cliente dice sólo "cita", pregúntaselo.')
+    pasos.append(
+        'PASO {n} — SERVICIO. Si el cliente dice sólo "cita", pregúntaselo.\n'
+        "   Cuando tengas que listar los servicios, usa la tool\n"
+        "   `ofrecer_servicio` (botones clicables), NO los escribas en texto."
+    )
     if has_team:
         pasos.append(
             f"PASO {{n}} — {professional_word.upper()}. OBLIGATORIO preguntar ANTES de\n"
-            f'   mirar huecos. Frase tipo: "¿tienes preferencia o te da igual?".'
+            f'   mirar huecos. Frase tipo: "¿tienes preferencia o te da igual?".\n'
+            f"   Usa SIEMPRE `ofrecer_equipo` con `modo_preferencia=true` y\n"
+            f"   todos los miembros del equipo como opciones — NUNCA listes\n"
+            f'   los nombres en texto. El backend añade el botón "Me da igual"\n'
+            f"   automáticamente."
         )
     pasos.append(
-        "PASO {n} — HORA. Consulta SIEMPRE disponibilidad con la función antes\n"
-        "   de proponer. Máximo 3 opciones, todas en la MISMA frase."
+        "PASO {n} — HORA. Consulta SIEMPRE disponibilidad con la función\n"
+        "   `consultar_disponibilidad` antes de proponer. JUSTO DESPUÉS\n"
+        "   llama a `ofrecer_huecos` con esos huecos como botones\n"
+        "   clicables. NO listes las horas en texto (aunque te parezca\n"
+        "   más rápido); los botones son la experiencia esperada."
     )
     pasos.append('PASO {n} — NOMBRE DEL CLIENTE. "¿a qué nombre pongo la cita?".')
     pasos.append(
-        "PASO {n} — CONFIRMACIÓN EXPLÍCITA. Resume en prosa (sin iconos) y\n"
-        '   pregunta "¿lo confirmo?". Espera un "sí" claro antes de crear.'
+        "PASO {n} — CONFIRMACIÓN EXPLÍCITA. Llama a `pedir_confirmacion`\n"
+        "   con un resumen de una frase (servicio, hora, peluquero, nombre).\n"
+        "   El backend genera botones Sí/No. Espera la respuesta."
     )
     numbered = [p.format(n=i + 1) for i, p in enumerate(pasos)]
     # Regla dura tras el flujo: evita el bug en que, al responder el cliente
@@ -827,7 +839,15 @@ def _build_flujo_reserva(has_team: bool, professional_word: str) -> str:
         "cliente. Si la función devuelve ok:false con retryable:true,\n"
         "reinténtalo una vez; si sigue fallando, di que ha habido un\n"
         "problema técnico y ofrece volver a intentarlo en un momento, NO\n"
-        "asegures que la cita está hecha cuando no lo está."
+        "asegures que la cita está hecha cuando no lo está.\n"
+        "\n"
+        "ENLACE AL CALENDAR DEL CLIENTE:\n"
+        "Cuando crear_reserva devuelva ok:true, el JSON trae también un\n"
+        'campo "add_to_calendar_url". INCLUYE ese enlace tal cual en tu\n'
+        "mensaje de confirmación, en una línea aparte, con una frase corta\n"
+        'del tipo "Puedes añadirlo a tu Google Calendar aquí: <url>". Así\n'
+        "el cliente tiene la cita también en su propia agenda. Si por\n"
+        "cualquier razón no viene ese campo, omite esa frase."
     )
     return header + "\n".join(numbered) + tail
 

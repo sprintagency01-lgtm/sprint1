@@ -6,6 +6,21 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-24 (parche pm 3)
+
+### Añadido
+
+- **Preferencia de peluquero y huecos de hora ahora son botones clicables** en Telegram. Ana ya ofrecía los servicios como `inline_keyboard` (gustó a Mario al probarlo), ahora extiende el patrón a los dos pasos que listaba en texto: preferencia inicial de equipo y propuesta de horas. Cambios técnicos:
+  - `ofrecer_equipo` acepta `modo_preferencia: bool` nuevo. Si `true`, el botón extra es **"Me da igual"** (id `team:none`) para la pregunta inicial. Si `false`/omitido, mantiene el comportamiento original "Otro miembro" (id `other:team`) para uso tras `equipo_disponible_en`.
+  - El FLUJO del prompt obliga ahora: paso peluquero → `ofrecer_equipo` con `modo_preferencia=true`; paso hora → `consultar_disponibilidad` seguido SIEMPRE de `ofrecer_huecos`. Prohibido listar en texto.
+- **Enlace "Añadir a mi Google Calendar"** en el mensaje de confirmación. Nueva función `_build_google_add_to_calendar_url` que construye la URL de Google Calendar TEMPLATE (patrón público oficial `calendar.google.com/calendar/render?action=TEMPLATE&...`) con título, fechas, timezone del tenant, descripción y ubicación. `crear_reserva` devuelve ahora `add_to_calendar_url` además del `event_id` y `link`. El prompt le dice a Ana que incluya ese enlace en el mensaje de confirmación para que el cliente lo añada a su propia agenda.
+
+### Tests
+
+- `tests/test_interactive_and_calendar_link.py` con 10 tests: modo_preferencia con "Me da igual", modo normal con "Otro miembro", instrucciones del flujo para ofrecer_equipo/ofrecer_huecos/add_to_calendar_url, construcción correcta de la URL (básico, con TZ aware, con details, con TZ inválida). Suite **82/82**.
+
+---
+
 ## 2026-04-24 (parche pm 2)
 
 ### Corregido
