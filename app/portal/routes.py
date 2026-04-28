@@ -16,6 +16,7 @@ import json
 import logging
 import pathlib
 from datetime import date, datetime, time, timedelta
+from time import time as unix_time
 from typing import Any
 
 from fastapi import (
@@ -103,6 +104,7 @@ async def portal_index(request: Request, session=Depends(portal_auth.current_ses
         {
             "request": request,
             "negocio_nombre": negocio_nombre,
+            "asset_version": str(int(unix_time())),
             # json.dumps con default=str para datetimes; el SPA sólo espera
             # strings ISO en fechas.
             "portal_data_json": json.dumps(data, ensure_ascii=False, default=str),
