@@ -201,6 +201,9 @@ def _build_initial_data(user_id: int, tenant_id: str) -> dict[str, Any]:
             .order_by(db_module.MiembroEquipo.orden.asc(), db_module.MiembroEquipo.id.asc())
             .all()
         )
+        # `googleOk` refleja si hay un token OAuth en disco para el miembro.
+        # No carga credenciales (es solo `path.exists()`), así que es barato.
+        from .. import calendar_service as _cal
         equipo = [
             {
                 "id": str(m.id),
@@ -210,6 +213,7 @@ def _build_initial_data(user_id: int, tenant_id: str) -> dict[str, Any]:
                 "turnos": m.turnos,
                 "vacaciones": m.vacaciones,
                 "calendar_id": m.calendar_id or "",
+                "googleOk": _cal.member_is_connected(tenant_id, m.id),
             }
             for m in miembros
         ]
@@ -687,6 +691,7 @@ async def api_servicios_delete(
 
 @router.get("/api/portal/equipo")
 async def api_equipo_list(t: db_module.Tenant = Depends(_current_tenant)):
+    from .. import calendar_service as cal
     with Session(db_module.engine) as s:
         rows = (
             s.query(db_module.MiembroEquipo)
@@ -703,6 +708,7 @@ async def api_equipo_list(t: db_module.Tenant = Depends(_current_tenant)):
                 "turnos": m.turnos,
                 "vacaciones": m.vacaciones,
                 "calendar_id": m.calendar_id or "",
+                "googleOk": cal.member_is_connected(t.id, m.id),
             } for m in rows
         ]
 
@@ -760,6 +766,121 @@ async def api_equipo_delete(
         s.delete(row)
         s.commit()
         return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+#  Conexión de Google Calendar por miembro (mismo flujo que el CMS, pero
+#  alcance reducido al tenant del usuario logueado en el portal).
+# ---------------------------------------------------------------------------
+#
+# Reusa los helpers públicos de `app.calendar_service`:
+#   - member_token_path(tenant_id, member_id)
+#   - member_is_connected(tenant_id, member_id)
+#   - member_google_service(tenant_id, member_id)
+#
+# El flujo OAuth en sí lo arranca el frontend con
+# `/oauth/start?tenant_id={tid}&member_id={mid}&back=portal` (ver oauth_web.py).
+# El callback redirige a /app#equipo cuando back=portal.
+
+def _ensure_member_in_tenant(s: Session, tenant_id: str, mid: int) -> db_module.MiembroEquipo:
+    row = s.get(db_module.MiembroEquipo, mid)
+    if row is None or row.tenant_id != tenant_id:
+        raise HTTPException(404, "miembro no encontrado")
+    return row
+
+
+@router.get("/api/portal/equipo/{mid}/calendars")
+async def api_equipo_member_calendars(
+    mid: int,
+    t: db_module.Tenant = Depends(_current_tenant),
+):
+    """Lista los calendarios accesibles desde el token OAuth del miembro.
+
+    Devuelve `connected:false` si el miembro aún no ha conectado Google,
+    en lugar de 400 — la UI prefiere reflejar el estado a tener que manejar
+    un error.
+    """
+    from .. import calendar_service as cal
+    with Session(db_module.engine) as s:
+        _ensure_member_in_tenant(s, t.id, mid)
+
+    if not cal.member_is_connected(t.id, mid):
+        return {"connected": False, "calendars": []}
+
+    try:
+        svc = cal.member_google_service(t.id, mid)
+        res = svc.calendarList().list(maxResults=250, showHidden=False).execute()
+    except RuntimeError:
+        return {"connected": False, "calendars": []}
+    except Exception as e:
+        raise HTTPException(502, f"Google Calendar: {e}")
+
+    items = [
+        {
+            "id": c.get("id"),
+            "summary": c.get("summary") or "(sin nombre)",
+            "primary": bool(c.get("primary")),
+            "accessRole": c.get("accessRole"),
+        }
+        for c in res.get("items", [])
+    ]
+    items.sort(key=lambda x: (0 if x["primary"] else 1, x["summary"].lower()))
+    return {"connected": True, "calendars": items}
+
+
+class CalendarCreate(BaseModel):
+    summary: str | None = None
+
+
+@router.post("/api/portal/equipo/{mid}/calendars/create")
+async def api_equipo_member_create_calendar(
+    mid: int,
+    body: CalendarCreate,
+    t: db_module.Tenant = Depends(_current_tenant),
+):
+    """Crea un calendario en la cuenta Google del miembro y lo asigna a él."""
+    from .. import calendar_service as cal
+    summary = (body.summary or "").strip()
+
+    with Session(db_module.engine) as s:
+        m = _ensure_member_in_tenant(s, t.id, mid)
+        if not summary:
+            summary = f"Trabajo — {m.nombre or 'Miembro'}"
+
+        try:
+            svc = cal.member_google_service(t.id, mid)
+            created = svc.calendars().insert(
+                body={"summary": summary, "timeZone": t.timezone or "Europe/Madrid"}
+            ).execute()
+        except RuntimeError:
+            raise HTTPException(400, "Conecta Google primero para este miembro.")
+        except Exception as e:
+            raise HTTPException(502, f"Google Calendar: {e}")
+
+        cal_id = created.get("id") or ""
+        m.calendar_id = cal_id
+        s.commit()
+
+    return {"ok": True, "id": cal_id, "summary": created.get("summary", summary)}
+
+
+@router.post("/api/portal/equipo/{mid}/disconnect")
+async def api_equipo_member_disconnect(
+    mid: int,
+    t: db_module.Tenant = Depends(_current_tenant),
+):
+    """Olvida el token del miembro localmente. No revoca en Google."""
+    from .. import calendar_service as cal
+    with Session(db_module.engine) as s:
+        _ensure_member_in_tenant(s, t.id, mid)
+
+    path = cal.member_token_path(t.id, mid)
+    try:
+        if path.exists():
+            path.unlink()
+    except Exception:  # pragma: no cover
+        pass
+    return {"ok": True, "connected": False}
 
 
 # ===========================================================================

@@ -8,6 +8,10 @@ function ScreenEquipo() {
   const m = equipo.find(x=>x.id===selId) || equipo[0];
   const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 
+  // ID del tenant (necesario para el oauth/start). El backend lo inyecta en
+  // window.__PORTAL_DATA__.negocio.id.
+  const tenantId = (window.__PORTAL_DATA__ || {}).negocio?.id || '';
+
   // Convierte el estado local del miembro al formato que acepta la API:
   // - vacaciones como lista de {desde, hasta} (agrupa días consecutivos)
   // - dias, turnos, color y nombre se envían tal cual
@@ -203,13 +207,11 @@ function ScreenEquipo() {
               )}
             </Card>
 
-            {!m.googleOk && (
-              <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-900/40 text-sm flex items-center gap-3">
-                <div className="text-amber-600 shrink-0">⚠</div>
-                <div className="flex-1 text-xs text-amber-900 dark:text-amber-200">Conecta el calendario de {m.nombre} para que el bot vea sus huecos reales.</div>
-                <button onClick={()=>updateMember(m.id, {googleOk:true})} className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-600 text-white whitespace-nowrap">Conectar</button>
-              </div>
-            )}
+            <GoogleCalendarPanel
+              member={m}
+              tenantId={tenantId}
+              onLocalUpdate={(patch)=> setEquipo(xs => xs.map(x => x.id === m.id ? { ...x, ...patch } : x)) }
+            />
           </div>
         )}
       </div>
@@ -217,6 +219,156 @@ function ScreenEquipo() {
       {/* Modal alta/edición persona */}
       {editor && <MemberEditor editor={editor} onClose={()=>setEditor(null)} onSave={saveMember}/>}
     </>
+  );
+}
+
+// -----------------------------------------------------------------------
+//  GoogleCalendarPanel — conectar / elegir / desconectar el Calendar de
+//  un miembro. Equivalente al bloque del CMS (tab_equipo.html), pero
+//  consumiendo /api/portal/equipo/{mid}/calendars*.
+// -----------------------------------------------------------------------
+
+function GoogleCalendarPanel({ member, tenantId, onLocalUpdate }) {
+  const [loading, setLoading] = useState(false);
+  const [calendars, setCalendars] = useState([]);
+  const [connected, setConnected] = useState(!!member.googleOk);
+  const [creating, setCreating] = useState(false);
+
+  // Si el id del miembro es 'u_*' (creación optimista no persistida),
+  // no podemos conectar Google todavía: el backend necesita el id real.
+  const isPersisted = String(member.id).match(/^\d+$/);
+
+  // Carga la lista de calendarios desde el backend cuando el miembro está
+  // conectado. Se relanza al cambiar de miembro.
+  useEffect(() => {
+    if (!isPersisted) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const data = await window.api.get(`/equipo/${member.id}/calendars`);
+        if (cancelled) return;
+        setConnected(!!data.connected);
+        setCalendars(data.calendars || []);
+        // Sincroniza el estado del padre por si Google se reconectó en otra
+        // pestaña y la lista de calendars revela un cambio.
+        if (data.connected !== member.googleOk) {
+          onLocalUpdate({ googleOk: !!data.connected });
+        }
+      } catch (e) {
+        console.warn('[equipo] no pude cargar calendarios', e);
+        setConnected(false);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [member.id]);
+
+  const onPickCalendar = async (calendarId) => {
+    onLocalUpdate({ calendar_id: calendarId });
+    try {
+      await window.api.patch(`/equipo/${member.id}`, { calendar_id: calendarId });
+    } catch (e) {
+      alert('No se pudo guardar el calendario: ' + (e.message || e));
+    }
+  };
+
+  const onCreate = async () => {
+    const name = prompt('Nombre del calendario nuevo:', `Trabajo — ${member.nombre || 'Miembro'}`);
+    if (!name) return;
+    setCreating(true);
+    try {
+      const data = await window.api.post(`/equipo/${member.id}/calendars/create`, { summary: name });
+      // Lo añadimos al desplegable y lo seleccionamos.
+      setCalendars(cs => [...cs, { id: data.id, summary: data.summary, primary: false }]);
+      onLocalUpdate({ calendar_id: data.id });
+    } catch (e) {
+      alert('No se pudo crear el calendario: ' + (e.message || e));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const onDisconnect = async () => {
+    if (!confirm(`¿Desconectar Google de ${member.nombre}?`)) return;
+    try {
+      await window.api.post(`/equipo/${member.id}/disconnect`, {});
+      setConnected(false);
+      setCalendars([]);
+      onLocalUpdate({ googleOk: false, calendar_id: '' });
+    } catch (e) {
+      alert('No se pudo desconectar: ' + (e.message || e));
+    }
+  };
+
+  // No-persisted aún: mostramos un aviso suave para que entiendan que tienen
+  // que guardar el miembro antes (el botón "Añadir persona" hace POST y
+  // recarga la lista, así que esto es solo durante el blink).
+  if (!isPersisted) {
+    return (
+      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-500">
+        Guarda este miembro para poder conectar Google.
+      </div>
+    );
+  }
+
+  if (!connected) {
+    const startUrl = `/oauth/start?tenant_id=${encodeURIComponent(tenantId)}&member_id=${member.id}&back=portal`;
+    return (
+      <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-900/40 text-sm flex items-center gap-3">
+        <div className="text-amber-600 shrink-0">⚠</div>
+        <div className="flex-1 text-xs text-amber-900 dark:text-amber-200">
+          Conecta el calendario de {member.nombre} para que el bot vea sus huecos reales.
+        </div>
+        <a
+          href={startUrl}
+          className="text-xs px-2.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white whitespace-nowrap"
+        >
+          Conectar Google
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="p-4 md:p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-sm font-semibold">Google Calendar conectado</div>
+          <div className="text-xs text-emerald-700 dark:text-emerald-400">Cuenta de {member.nombre} enlazada</div>
+        </div>
+        <button onClick={onDisconnect} className="text-xs text-slate-400 hover:text-rose-600">
+          Desconectar
+        </button>
+      </div>
+      <div className="text-xs text-slate-500 mb-2">
+        Calendario donde el bot escribirá las reservas de {member.nombre}
+      </div>
+      <div className="flex gap-2">
+        <select
+          value={member.calendar_id || ''}
+          onChange={(e)=>onPickCalendar(e.target.value)}
+          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+        >
+          {!member.calendar_id && <option value="">— elige un calendario —</option>}
+          {loading && <option value="">Cargando...</option>}
+          {calendars.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.summary}{c.primary ? ' (principal)' : ''}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={onCreate}
+          disabled={creating}
+          className="text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap disabled:opacity-50"
+          title="Crear un calendario nuevo en la cuenta del miembro"
+        >
+          {creating ? 'Creando...' : '+ Nuevo'}
+        </button>
+      </div>
+    </Card>
   );
 }
 

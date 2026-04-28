@@ -570,45 +570,37 @@ def _google_calendar_connected(tenant_id: str) -> bool:
 
 
 def _member_token_path(tenant_id: str, member_id: int):
-    """Path del token OAuth del miembro del equipo (separado del tenant)."""
+    """Wrapper fino sobre `calendar_service.member_token_path` (compat).
+
+    Antes esta función vivía aquí; ahora la lógica está en
+    `app/calendar_service.py` para que el portal del cliente la reuse.
+    """
     from .. import calendar_service as _cal
-    return _cal.TOKENS_DIR / f"{tenant_id}_member_{int(member_id)}.json"
+    return _cal.member_token_path(tenant_id, member_id)
 
 
 def _google_member_connected(tenant_id: str, member_id: int) -> bool:
-    try:
-        return _member_token_path(tenant_id, member_id).exists()
-    except Exception:
-        return False
+    from .. import calendar_service as _cal
+    return _cal.member_is_connected(tenant_id, member_id)
 
 
 def _member_google_service(tenant_id: str, member_id: int):
-    """Construye un Service de Google Calendar API usando el token del miembro.
-
-    Lanza HTTPException 400 si no hay token (= miembro no conectado).
+    """Wrapper que traduce `RuntimeError("miembro_no_conectado")` del helper
+    compartido a un `HTTPException(400)` legible para los endpoints del CMS.
     """
-    import json as _json
-    from google.oauth2.credentials import Credentials
-    from google.auth.transport.requests import Request as _GRequest
-    from googleapiclient.discovery import build as _build
-
-    path = _member_token_path(tenant_id, member_id)
-    if not path.exists():
-        raise HTTPException(
-            400,
-            f"Este miembro aún no ha conectado su cuenta Google. "
-            f"Pulsa 'Conectar Google' en la pestaña Equipo.",
-        )
-    data = _json.loads(path.read_text())
-    creds = Credentials.from_authorized_user_info(data)
-    # Refresca el access_token si caducó (refresh_token está guardado)
-    if not creds.valid and creds.refresh_token:
-        try:
-            creds.refresh(_GRequest())
-            path.write_text(creds.to_json())
-        except Exception as e:  # pragma: no cover
-            raise HTTPException(500, f"No se pudo refrescar el token del miembro: {e}")
-    return _build("calendar", "v3", credentials=creds, cache_discovery=False)
+    from .. import calendar_service as _cal
+    try:
+        return _cal.member_google_service(tenant_id, member_id)
+    except RuntimeError as e:
+        if "miembro_no_conectado" in str(e):
+            raise HTTPException(
+                400,
+                "Este miembro aún no ha conectado su cuenta Google. "
+                "Pulsa 'Conectar Google' en la pestaña Equipo.",
+            )
+        raise
+    except Exception as e:  # pragma: no cover
+        raise HTTPException(500, f"No se pudo construir el cliente Google del miembro: {e}")
 
 
 def _seed_voice_defaults_if_empty(s: Session, t: db_module.Tenant) -> None:

@@ -106,6 +106,57 @@ def _save_creds(creds: Credentials, tenant_id: str = "default") -> None:
     path.write_text(creds.to_json())
 
 
+# ---------------------------------------------------------------------------
+#  Tokens por miembro del equipo
+# ---------------------------------------------------------------------------
+#
+# Cada miembro del equipo puede tener su propia cuenta Google conectada
+# (separada del calendario principal del tenant). Ese token vive en
+# `TOKENS_DIR/{tenant_id}_member_{member_id}.json` y solo lo usan el CMS y
+# el portal del cliente para listar/crear calendarios bajo la cuenta del
+# miembro. El bot de voz NO usa este token (sigue trabajando contra el
+# calendario principal del tenant).
+#
+# Estos helpers son públicos (sin _ prefix) porque tanto `app/cms` como
+# `app/portal` los importan. Antes vivían como `_member_*` dentro del CMS,
+# pero al añadir el flujo en el portal duplicaba código y abría la puerta a
+# divergencias entre ambos lados.
+
+def member_token_path(tenant_id: str, member_id: int) -> pathlib.Path:
+    """Path del JSON con las credenciales OAuth del miembro del equipo."""
+    return TOKENS_DIR / f"{tenant_id}_member_{int(member_id)}.json"
+
+
+def member_is_connected(tenant_id: str, member_id: int) -> bool:
+    """True si el miembro tiene un token OAuth válido en disco."""
+    try:
+        return member_token_path(tenant_id, member_id).exists()
+    except Exception:  # pragma: no cover
+        return False
+
+
+def member_google_service(tenant_id: str, member_id: int):
+    """Construye un Google Calendar Service para el miembro del equipo.
+
+    Refresca el access_token si está caducado (el refresh_token persiste
+    entre arranques). Lanza `RuntimeError` si el miembro no está conectado
+    todavía — los routers (CMS y portal) lo capturan y lo traducen a un 400
+    legible.
+    """
+    path = member_token_path(tenant_id, member_id)
+    if not path.exists():
+        raise RuntimeError(
+            "miembro_no_conectado: este miembro aún no ha conectado su "
+            "cuenta Google."
+        )
+    data = json.loads(path.read_text())
+    creds = Credentials.from_authorized_user_info(data)
+    if not creds.valid and creds.refresh_token:
+        creds.refresh(Request())
+        path.write_text(creds.to_json())
+    return build("calendar", "v3", credentials=creds, cache_discovery=False)
+
+
 # Cache por tenant_id. El objeto Credentials se auto-refresca con su propio
 # refresh_token, así que podemos reutilizar el `service` construido. Reconstruirlo
 # en cada tool call cuesta ~100-300ms (lectura de disco + discovery). En voz

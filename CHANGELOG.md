@@ -6,6 +6,30 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-28 (portal — conectar Google Calendar por miembro)
+
+Hasta ahora el flujo de conectar Google Calendar a cada miembro del equipo solo existía en el CMS (`/admin/clientes/.../equipo`). El portal del cliente (`/app`) tenía un botón "Conectar" en la pestaña Equipo que era un placeholder y solo togglea un flag local. Ahora replica el mismo flujo del CMS, con el alcance acotado al tenant del usuario logueado.
+
+### Añadido
+
+- **Endpoints en el portal** (`app/portal/routes.py`):
+  - `GET /api/portal/equipo/{mid}/calendars` → devuelve `{connected, calendars}`. Si el miembro no tiene token, responde `connected:false` con lista vacía (no 400) para que la UI lo refleje sin manejar errores.
+  - `POST /api/portal/equipo/{mid}/calendars/create` → crea un calendario nuevo en la cuenta Google del miembro y lo asigna en BD (`MiembroEquipo.calendar_id`).
+  - `POST /api/portal/equipo/{mid}/disconnect` → borra el token local del miembro (no revoca en Google).
+  - El payload inicial (`/app`) y `GET /api/portal/equipo` ahora incluyen `googleOk: bool` por miembro (basado en si `TOKENS_DIR/{tid}_member_{mid}.json` existe).
+- **Helpers públicos** en `app/calendar_service.py`: `member_token_path`, `member_is_connected`, `member_google_service`. Antes vivían como `_member_*` privados dentro de `app/cms/routes.py`. Ahora ambos lados (CMS y portal) los reusan; el CMS conserva sus wrappers como compat fina.
+- **UI**: nuevo componente `GoogleCalendarPanel` en `screen_equipo.jsx`. Si el miembro no está conectado, muestra el aviso amarillo con un anchor `Conectar Google` que lanza `/oauth/start?...&back=portal`. Si está conectado, muestra una card con el `<select>` de calendarios (carga vía API), botón `+ Nuevo` (crear calendario nuevo en la cuenta del miembro) y botón `Desconectar`.
+
+### Cambiado
+
+- **`/oauth/start` admite ahora dos sesiones**: `back=admin` (CMS, comportamiento previo) o `back=portal` (portal del cliente). El nuevo helper `_resolve_caller` valida que la cookie corresponda al `back` solicitado y, en `back=portal`, exige además que el `tenant_id` del query coincida con el de la sesión del portal (un usuario del portal solo puede gestionar Google de SU tenant — devuelve 403 en otros casos).
+- **`/oauth/callback`** firma `back` en el `state` y lo usa para elegir la URL de retorno: `/admin/clientes/{tid}/equipo` (admin) o `/app#equipo` (portal). El `back` también aplica para conexiones a nivel de tenant (sin `member_id`): `/admin/.../general` vs `/app#ajustes`.
+
+### Notas
+
+- Tests sanity con `TestClient`: GET equipo OK con `googleOk`; calendars OK con `connected:false` cuando no hay token; disconnect idempotente; `/oauth/start?back=portal` redirige a Google con sesión válida y devuelve 403 si la sesión apunta a otro tenant.
+- El SPA del portal aterriza en `/app#equipo` tras el callback. La pestaña Equipo refresca al montarse y ve el nuevo estado conectado.
+
 ## 2026-04-28 (CMS — fix Guardar equipo cuando hay miembros con Google conectado)
 
 Fix de un bug que llevaba en el CMS desde que existe la conexión Google por miembro: el botón **Guardar equipo** del tab Equipo no enviaba nada cuando algún miembro tenía Google conectado. Causa: la fila del miembro conectado renderizaba un `<form>` para el botón "Desconectar" **dentro** del form principal (`#equipo-form`). HTML5 prohíbe forms anidados; los navegadores parsean el `<form>` interno como si cerrara al padre, y todo lo que viene después (resto de miembros + el botón "Guardar equipo") queda **fuera** del form, así que el submit ignora esos campos.
