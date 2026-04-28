@@ -27,6 +27,7 @@ from . import diag
 from . import telegram as tg_module
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
+from .cms.routes import router_mounts as cms_mounts
 from .portal import router as portal_router
 from .portal.routes import router_mounts as portal_mounts
 from .portal.auth import ensure_portal_users
@@ -91,6 +92,8 @@ except Exception:
 
 # Monta el CMS bajo /admin (las rutas ya incluyen el prefijo).
 app.include_router(cms_router)
+for mount_path, mount_app in cms_mounts:
+    app.mount(mount_path, mount_app, name=f"cms_{mount_path.strip('/').replace('/', '_')}")
 # Portal del cliente (/app + /api/portal/*).
 app.include_router(portal_router)
 for mount_path, mount_app in portal_mounts:

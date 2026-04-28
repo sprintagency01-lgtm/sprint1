@@ -1,0 +1,59 @@
+{
+  "name": "Sprint Admin",
+  "short_name": "Sprint Admin",
+  "description": "Panel de administración interno de Sprint: clientes, reservas, facturación.",
+  "start_url": "/admin/dashboard",
+  "scope": "/admin/",
+  "id": "/admin/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "lang": "es-ES",
+  "dir": "ltr",
+  "theme_color": "#1A100C",
+  "background_color": "#F5EFE4",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/admin/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/admin/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/admin/static/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Vista general",
+      "url": "/admin/dashboard",
+      "icons": [{ "src": "/admin/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "Listado de clientes",
+      "url": "/admin/clientes",
+      "icons": [{ "src": "/admin/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Reservas",
+      "short_name": "Reservas",
+      "description": "Reservas de todos los tenants",
+      "url": "/admin/reservas",
+      "icons": [{ "src": "/admin/static/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

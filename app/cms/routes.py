@@ -32,7 +32,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -90,8 +90,41 @@ templates.env.filters["fmt_int"] = _fmt_int
 templates.env.filters["initials"] = _initials
 templates.env.filters["avatar_color"] = _avatar_color
 
-# Static
-router.mount("/admin/static", StaticFiles(directory=str(_BASE / "static")), name="cms_static")
+# Static — montado desde main.py vía router_mounts (un mount declarado
+# dentro de un APIRouter no se propaga siempre al hacer include_router en
+# función de la versión de Starlette/FastAPI; lo exponemos como lista para
+# que main.py lo monte en la app raíz, igual que hace con el portal).
+router_mounts: list[tuple[str, "StaticFiles"]] = [
+    ("/admin/static", StaticFiles(directory=str(_BASE / "static"))),
+]
+
+
+# ==========================================================================
+#  PWA — service worker y manifest
+# ==========================================================================
+#
+# El SW se sirve desde la raíz del scope (/admin/sw.js) para cubrir todas
+# las rutas /admin/*. El manifest tiene también un alias en /admin/ por
+# si algún navegador prefiere encontrarlo ahí.
+
+@router.get("/admin/sw.js", include_in_schema=False)
+async def admin_service_worker():
+    return FileResponse(
+        _BASE / "static" / "sw.js",
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Service-Worker-Allowed": "/admin/",
+        },
+    )
+
+
+@router.get("/admin/manifest.webmanifest", include_in_schema=False)
+async def admin_manifest():
+    return FileResponse(
+        _BASE / "static" / "manifest.json",
+        media_type="application/manifest+json",
+    )
 
 
 # ==========================================================================

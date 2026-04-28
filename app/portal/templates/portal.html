@@ -2,8 +2,21 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sprintagency · {{ negocio_nombre }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Sprint · {{ negocio_nombre }}</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/app/static/manifest.json">
+<meta name="theme-color" content="#059669">
+<meta name="application-name" content="Sprint">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sprint">
+<link rel="apple-touch-icon" href="/app/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/app/static/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/app/static/icons/icon-192.png">
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -80,6 +93,17 @@
 <script type="text/babel" src="/app/static/screen_equipo.jsx?v={{ asset_version }}"></script>
 <script type="text/babel" src="/app/static/screen_ajustes.jsx?v={{ asset_version }}"></script>
 <script type="text/babel" src="/app/static/app.jsx?v={{ asset_version }}"></script>
+
+<!-- PWA: registro del service worker (scope /app/) -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/app/sw.js", { scope: "/app/" })
+        .catch((err) => console.warn("[pwa] sw register failed", err));
+    });
+  }
+</script>
 
 </body>
 </html>

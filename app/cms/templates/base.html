@@ -2,8 +2,21 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>{% block title %}ReservaBot · Panel{% endblock %}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>{% block title %}Sprint Admin{% endblock %}</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/admin/static/manifest.json">
+<meta name="theme-color" content="#1A100C">
+<meta name="application-name" content="Sprint Admin">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sprint Admin">
+<link rel="apple-touch-icon" href="/admin/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/admin/static/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/admin/static/icons/icon-192.png">
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -35,5 +48,16 @@
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased">
 {% block body %}{% endblock %}
+
+<!-- PWA: registro del service worker (scope /admin/). -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/admin/sw.js", { scope: "/admin/" })
+        .catch((err) => console.warn("[pwa] sw register failed", err));
+    });
+  }
+</script>
 </body>
 </html>

@@ -2,8 +2,20 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Entrar · Sprintagency</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Entrar · Sprint</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/app/static/manifest.json">
+<meta name="theme-color" content="#059669">
+<meta name="application-name" content="Sprint">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sprint">
+<link rel="apple-touch-icon" href="/app/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/app/static/icons/favicon-32.png">
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -52,7 +64,19 @@
         </button>
       </form>
     </div>
-    <div class="text-center text-xs text-slate-400 mt-4">¿Problemas para entrar? Escribe a tu contacto en Sprintagency.</div>
+    <div class="text-center text-xs text-slate-400 mt-4">¿Problemas para entrar? Escribe a tu contacto en Sprint.</div>
   </div>
+
+<!-- PWA: registramos el SW también desde login para que se pueda instalar
+     antes de pasar la autenticación. Scope /app/. -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/app/sw.js", { scope: "/app/" })
+        .catch((err) => console.warn("[pwa] sw register failed", err));
+    });
+  }
+</script>
 </body>
 </html>

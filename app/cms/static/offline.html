@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sin conexión · Sprint Admin</title>
+<style>
+  body{
+    margin:0; min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:#F5EFE4; color:#1A100C;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .wrap{ max-width:380px; text-align:center; }
+  .logo{
+    width:56px; height:56px; border-radius:14px;
+    background:#1A100C; color:#F5EFE4;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:24px;
+    margin-bottom:18px; position:relative;
+  }
+  .logo::after{
+    content:""; position:absolute; right:-2px; top:-2px;
+    width:14px; height:14px; border-radius:50%; background:#D96B3A;
+    border:2px solid #F5EFE4;
+  }
+  h1{ font-size:22px; margin:0 0 8px; letter-spacing:-0.01em; }
+  p{ color:#7A6E5E; line-height:1.5; margin:0 0 22px; }
+  button{
+    background:#1A100C; color:#F5EFE4; border:none;
+    padding:12px 22px; border-radius:10px; font-size:15px; font-weight:600;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">S</div>
+    <h1>Sin conexión</h1>
+    <p>El CMS necesita red para mostrar datos. Reintenta cuando vuelva la conexión.</p>
+    <button onclick="location.reload()">Reintentar</button>
+  </div>
+</body>
+</html>

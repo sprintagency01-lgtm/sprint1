@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import (
     APIRouter, Depends, Form, HTTPException, Request, Response, status,
 )
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -43,6 +43,37 @@ router = APIRouter()
 router_mounts: list[tuple[str, Any]] = [
     ("/app/static", StaticFiles(directory=str(_BASE / "static"))),
 ]
+
+
+# ===========================================================================
+#  PWA — service worker y manifest
+# ===========================================================================
+#
+# El SW se sirve desde la raíz del scope (/app/sw.js, no /app/static/sw.js)
+# para que el scope por defecto sea /app/ y pueda interceptar todas las
+# navegaciones del portal. Cache-Control: no-cache para que un cambio en
+# sw.js se propague rápido — el navegador siempre revalida.
+
+@router.get("/app/sw.js", include_in_schema=False)
+async def portal_service_worker():
+    return FileResponse(
+        _BASE / "static" / "sw.js",
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Service-Worker-Allowed": "/app/",
+        },
+    )
+
+
+@router.get("/app/manifest.webmanifest", include_in_schema=False)
+async def portal_manifest():
+    """Alias del manifest en la raíz del scope (algunos navegadores lo
+    prefieren así; el HTML linka a /app/static/manifest.json igualmente)."""
+    return FileResponse(
+        _BASE / "static" / "manifest.json",
+        media_type="application/manifest+json",
+    )
 
 
 # ===========================================================================
