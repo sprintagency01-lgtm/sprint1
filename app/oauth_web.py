@@ -154,33 +154,95 @@ async def oauth_start(
     return RedirectResponse(auth_url, status_code=302)
 
 
+def _error_page(title: str, detail: str, status: int = 500) -> HTMLResponse:
+    """Render mínimo para que el usuario vea algo legible cuando el callback
+    falla, en vez del 'Internal Server Error' pelado del default."""
+    body = f"""<!doctype html>
+<html lang=\"es\"><head><meta charset=\"utf-8\">
+<title>OAuth Google — {title}</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; max-width: 560px; margin: 4rem auto;
+          padding: 2rem; background: #0f172a; color: #e2e8f0; border-radius: 8px; }}
+  h1 {{ font-size: 22px; margin-top: 0; }}
+  pre {{ background: #1e293b; padding: 12px; border-radius: 6px; white-space: pre-wrap;
+         word-break: break-word; font-size: 13px; }}
+  a {{ color: #38bdf8; }}
+</style></head>
+<body>
+  <h1>{title}</h1>
+  <pre>{detail}</pre>
+  <p><a href=\"/app#equipo\">Volver al panel</a></p>
+</body></html>
+"""
+    return HTMLResponse(body, status_code=status)
+
+
 @router.get("/callback")
 async def oauth_callback(request: Request):
-    """Recibe `code` de Google, lo canjea y guarda los tokens."""
+    """Recibe `code` de Google, lo canjea y guarda los tokens.
+
+    Capturamos cualquier excepción para mostrar una página legible y, sobre
+    todo, dejar log con `exc_info=True` — sin esto, Railway nos devuelve un
+    'Internal Server Error' pelado cuando algo del intercambio con Google
+    falla y no hay forma de saber por qué.
+    """
     qp = request.query_params
     err = qp.get("error")
     if err:
-        raise HTTPException(status_code=400, detail=f"Google devolvió error: {err}")
+        return _error_page(
+            "Google devolvió un error",
+            f"error={err}\n\nReinicia el flujo desde el panel.",
+            status=400,
+        )
 
     code = qp.get("code")
     state = qp.get("state")
     if not code or not state:
-        raise HTTPException(status_code=400, detail="Faltan 'code' o 'state' en el callback")
+        return _error_page(
+            "Callback inválido",
+            "Faltan 'code' o 'state' — abre /oauth/start desde el panel para empezar de nuevo.",
+            status=400,
+        )
 
     # Validar y decodificar tenant_id del state.
     try:
         data = _state_serializer.loads(state, max_age=_STATE_TTL_SECONDS)
     except SignatureExpired:
-        raise HTTPException(status_code=400, detail="Flujo expirado, reinicia desde /oauth/start")
+        return _error_page(
+            "El flujo ha expirado",
+            "Han pasado más de 10 minutos desde que pulsaste 'Conectar Google'.\n"
+            "Reinicia desde el panel.",
+            status=400,
+        )
     except BadSignature:
-        raise HTTPException(status_code=400, detail="State inválido — posible CSRF")
+        return _error_page(
+            "State inválido",
+            "Esto suele pasar si el SESSION_SECRET cambió entre el inicio del flujo y\n"
+            "el callback (típico tras un redeploy). Reinicia desde el panel.",
+            status=400,
+        )
+
     tenant_id = str(data.get("tenant_id") or "default")
     member_id = data.get("member_id")
     back = str(data.get("back") or "admin")  # default histórico
 
-    flow = _build_flow(state=state)
-    flow.fetch_token(code=code)
-    creds = flow.credentials
+    try:
+        flow = _build_flow(state=state)
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+    except Exception as e:  # pragma: no cover
+        log.exception(
+            "oauth callback: fetch_token falló tenant=%s member=%s",
+            tenant_id, member_id,
+        )
+        return _error_page(
+            "No pude completar el intercambio con Google",
+            f"{type(e).__name__}: {e}\n\n"
+            "Causas frecuentes:\n"
+            "  - El redirect_uri en Google Cloud Console no coincide con\n"
+            "    GOOGLE_REDIRECT_URI del backend (mira logs de Railway).\n"
+            "  - El 'code' ya se usó (no se puede recargar la página del callback).",
+        )
 
     # Persistir tokens. Si es un miembro del equipo, el token vive con un
     # sufijo "_member_{id}" para no colisionar con el del tenant entero.
