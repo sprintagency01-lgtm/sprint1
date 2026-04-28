@@ -48,6 +48,16 @@ _STATE_TTL_SECONDS = 600  # 10 min para completar el flujo
 if os.getenv("OAUTHLIB_INSECURE_TRANSPORT"):
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
+# Google a veces devuelve un *superscope* del que pedimos: si la cuenta del
+# usuario ya tenía aprobado un permiso más amplio (típico:
+# `https://www.googleapis.com/auth/calendar` cuando nosotros pedimos solo
+# `calendar.events` + `calendar.readonly`), oauthlib detecta el mismatch y
+# lanza `Warning: Scope has changed from ... to ...` como excepción que
+# revienta el callback. La librería expone una env var para relajar esa
+# validación — es seguro porque (a) Google solo añade scopes, no quita; y
+# (b) el state firmado ya garantiza el origen del flow.
+os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
+
 
 def _build_flow(state: str | None = None) -> Flow:
     flow = Flow.from_client_config(
