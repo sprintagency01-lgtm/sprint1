@@ -192,6 +192,9 @@ def _build_initial_data(user_id: int, tenant_id: str) -> dict[str, Any]:
         "direccion": "",  # TODO: tenant no tiene dirección aún
         "tz": tenant.timezone or "Europe/Madrid",
         "telefono": tenant.phone_display,
+        # Horario de apertura del negocio (capa "negocio"). La capa "miembro"
+        # va dentro de cada equipo[i].turnos / equipo[i].dias.
+        "horarios": tenant.business_hours or {},
     }
 
     with Session(db_module.engine) as s:
@@ -1036,6 +1039,7 @@ async def api_negocio_get(t: db_module.Tenant = Depends(_current_tenant)):
         "sector": t.sector,
         "telefono": t.phone_display,
         "timezone": t.timezone,
+        "horarios": t.business_hours or {},
     }
 
 
@@ -1054,6 +1058,93 @@ async def api_negocio_update(
         if body.timezone is not None:  row.timezone = body.timezone.strip()
         s.commit()
         return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+#  Horario de apertura del negocio (capa "negocio" del horario; la capa
+#  "miembro" vive en MiembroEquipo.dias_trabajo + .turnos). El agente
+#  intersecta ambas: un miembro NO puede dar cita fuera de las franjas de
+#  apertura del negocio. La UI del portal usa este endpoint para que el
+#  cliente pueda editar el horario sin entrar al CMS.
+# ---------------------------------------------------------------------------
+
+_DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def _normalize_business_hours(raw: dict) -> dict[str, list[str]]:
+    """Acepta el dict que envía el frontend y lo deja en forma canónica.
+
+    Forma canónica esperada por el resto del backend:
+        {"mon": ["09:30","20:30"], "wed": ["09:00","13:00","17:00","20:00"], "sun": ["closed"]}
+
+    Reglas:
+      - Pares consecutivos (open, close) → una franja.
+      - Si el día no aparece, tiene una lista vacía o ["closed"], se guarda
+        como ["closed"].
+      - Pares con HH:MM inválido o open >= close se descartan.
+    """
+    out: dict[str, list[str]] = {}
+    if not isinstance(raw, dict):
+        raw = {}
+    for day in _DAYS:
+        franjas = raw.get(day)
+        if not franjas or franjas == ["closed"]:
+            out[day] = ["closed"]
+            continue
+        if not isinstance(franjas, list):
+            out[day] = ["closed"]
+            continue
+        flat: list[str] = []
+        # franjas puede llegar como lista plana ["09:00","13:00",...] o como
+        # lista de tuplas [["09:00","13:00"],["17:00","20:00"]]. Aceptamos
+        # las dos formas y aplanamos.
+        if franjas and isinstance(franjas[0], (list, tuple)):
+            pairs = [(p[0], p[1]) for p in franjas if len(p) >= 2]
+        else:
+            it = iter(franjas)
+            pairs = list(zip(it, it))
+        for o, c in pairs:
+            o = str(o or "").strip()
+            c = str(c or "").strip()
+            if not o or not c:
+                continue
+            try:
+                oh, om = o.split(":"); ch, cm = c.split(":")
+                int(oh); int(om); int(ch); int(cm)
+            except ValueError:
+                continue
+            if o >= c:
+                continue
+            flat.extend([o, c])
+        out[day] = flat if flat else ["closed"]
+    return out
+
+
+class HorariosUpdate(BaseModel):
+    # Aceptamos el dict tal cual; las claves son "mon".."sun" y los valores
+    # son la franja en lista plana o lista de pares. La validación va en
+    # `_normalize_business_hours`.
+    horarios: dict
+
+
+@router.get("/api/portal/negocio/horarios")
+async def api_horarios_get(t: db_module.Tenant = Depends(_current_tenant)):
+    return {"horarios": t.business_hours or {}}
+
+
+@router.patch("/api/portal/negocio/horarios")
+async def api_horarios_update(
+    body: HorariosUpdate,
+    t: db_module.Tenant = Depends(_current_tenant),
+):
+    normalized = _normalize_business_hours(body.horarios or {})
+    with Session(db_module.engine) as s:
+        row = s.get(db_module.Tenant, t.id)
+        if row is None:
+            raise HTTPException(404, "tenant no encontrado")
+        row.business_hours = normalized
+        s.commit()
+    return {"ok": True, "horarios": normalized}
 
 
 # ===========================================================================

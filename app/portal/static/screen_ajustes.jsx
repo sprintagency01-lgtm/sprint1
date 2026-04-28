@@ -76,26 +76,167 @@ function TabNegocio() {
           )}
         </div>
       </Card>
-      <Card className="p-5">
-        <div className="text-sm font-semibold mb-4">Horario de apertura</div>
-        <div className="space-y-2">
-          {['Lun','Mar','Mié','Jue','Vie'].map(d=>(
-            <div key={d} className="flex items-center justify-between text-sm py-1">
-              <span>{d}</span><span className="tabular-nums text-slate-600 dark:text-slate-300">09:30 – 20:30</span>
-            </div>
-          ))}
-          <div className="flex items-center justify-between text-sm py-1">
-            <span>Sáb</span><span className="tabular-nums text-slate-600 dark:text-slate-300">10:00 – 14:00</span>
-          </div>
-          <div className="flex items-center justify-between text-sm py-1 text-slate-400">
-            <span>Dom</span><span>cerrado</span>
-          </div>
-        </div>
-        <div className="mt-4 text-xs text-slate-500">
-          El horario se configura por miembro en la pestaña <b>Equipo</b>.
-        </div>
-      </Card>
+      <HorariosNegocio/>
     </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+//  Horario de apertura del negocio.
+//  Capa "negocio": cuándo está abierto el local. Cada miembro define sus
+//  turnos dentro de esta franja en la pestaña Equipo. El agente intersecta
+//  ambas capas — un miembro nunca ofrece huecos fuera del horario del
+//  negocio.
+// ----------------------------------------------------------------------
+
+function HorariosNegocio() {
+  const DIAS = [
+    ['mon','Lun'], ['tue','Mar'], ['wed','Mié'], ['thu','Jue'],
+    ['fri','Vie'], ['sat','Sáb'], ['sun','Dom'],
+  ];
+
+  // Convierte la lista plana ["09:00","13:00","17:00","20:00"] del backend a
+  // una lista de pares [["09:00","13:00"],["17:00","20:00"]] con la que es
+  // mucho más cómodo trabajar en la UI.
+  const flatToPairs = (flat) => {
+    if (!Array.isArray(flat) || flat[0] === 'closed') return [];
+    const out = [];
+    for (let i = 0; i + 1 < flat.length; i += 2) out.push([flat[i], flat[i+1]]);
+    return out;
+  };
+  const pairsToFlat = (pairs) => {
+    if (!pairs || !pairs.length) return ['closed'];
+    return pairs.flatMap(p => [p[0], p[1]]);
+  };
+
+  // Estado inicial: lo que vino del backend en NEGOCIO.horarios (const del
+  // closure, hidratada desde __PORTAL_DATA__.negocio.horarios). Si el dict
+  // está vacío (tenant sin configurar) sembramos un horario de oficina
+  // típico L-V 09:00-18:00 para que el cliente arranque editando algo, no
+  // a un lienzo en blanco.
+  const seed = (() => {
+    const h = (typeof NEGOCIO !== 'undefined' && NEGOCIO.horarios) || {};
+    const empty = !DIAS.some(([k]) => Array.isArray(h[k]) && h[k][0] !== 'closed');
+    if (empty) {
+      return {
+        mon: [['09:00','18:00']], tue: [['09:00','18:00']], wed: [['09:00','18:00']],
+        thu: [['09:00','18:00']], fri: [['09:00','18:00']], sat: [], sun: [],
+      };
+    }
+    const out = {};
+    for (const [k] of DIAS) out[k] = flatToPairs(h[k]);
+    return out;
+  })();
+
+  const [hours, setHours] = useState(seed);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const setDay = (k, pairs) => setHours(h => ({ ...h, [k]: pairs }));
+  const toggleDay = (k) => {
+    const open = (hours[k] || []).length > 0;
+    setDay(k, open ? [] : [['09:00','18:00']]);
+  };
+  const addFranja = (k) => {
+    const last = (hours[k] || []).slice(-1)[0];
+    const start = last ? last[1] : '09:00';
+    setDay(k, [...(hours[k] || []), [start, start < '20:00' ? '20:00' : '23:59']]);
+  };
+  const removeFranja = (k, idx) => {
+    setDay(k, (hours[k] || []).filter((_, i) => i !== idx));
+  };
+  const updateFranja = (k, idx, which, value) => {
+    setDay(k, (hours[k] || []).map((p, i) => i === idx ? (which === 'open' ? [value, p[1]] : [p[0], value]) : p));
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setMsg(null);
+    try {
+      const payload = {};
+      for (const [k] of DIAS) payload[k] = pairsToFlat(hours[k] || []);
+      const res = await window.api.patch('/negocio/horarios', { horarios: payload });
+      // Sincroniza el global por si la UI lo recarga sin refresh.
+      window.NEGOCIO = { ...window.NEGOCIO, horarios: res.horarios || payload };
+      setMsg({ type:'ok', text:'Horario guardado' });
+    } catch (e) {
+      setMsg({ type:'err', text:'No se pudo guardar: ' + (e.message || e) });
+    } finally {
+      setSaving(false);
+      setTimeout(()=>setMsg(null), 2500);
+    }
+  };
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-sm font-semibold">Horario de apertura</div>
+          <div className="text-xs text-slate-500">Cuándo está abierto el negocio</div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {DIAS.map(([key, label]) => {
+          const franjas = hours[key] || [];
+          const open = franjas.length > 0;
+          return (
+            <div key={key} className="flex items-start gap-3">
+              <button
+                onClick={()=>toggleDay(key)}
+                className={`mt-1 tg ${open ? 'on' : ''}`}
+                aria-label={`Día ${label} ${open ? 'abierto' : 'cerrado'}`}
+              />
+              <div className="w-10 mt-1.5 text-sm font-medium text-slate-700 dark:text-slate-200">{label}</div>
+              <div className="flex-1 min-w-0 space-y-2">
+                {!open && (
+                  <div className="text-xs text-slate-400 py-1.5">Cerrado</div>
+                )}
+                {franjas.map(([o, c], idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input type="time" value={o}
+                      onChange={(e)=>updateFranja(key, idx, 'open', e.target.value)}
+                      className="px-2 py-1.5 text-sm rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 tabular-nums"/>
+                    <span className="text-slate-400">–</span>
+                    <input type="time" value={c}
+                      onChange={(e)=>updateFranja(key, idx, 'close', e.target.value)}
+                      className="px-2 py-1.5 text-sm rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 tabular-nums"/>
+                    {franjas.length > 1 && (
+                      <button onClick={()=>removeFranja(key, idx)}
+                        className="text-xs text-slate-400 hover:text-rose-600 px-1"
+                        title="Quitar franja">
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {open && (
+                  <button onClick={()=>addFranja(key)}
+                    className="text-xs text-brand-700 hover:underline">
+                    + Añadir franja
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-5 flex items-center gap-3">
+        <button onClick={save} disabled={saving}
+          className="text-sm px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-50">
+          {saving ? 'Guardando…' : 'Guardar horario'}
+        </button>
+        {msg && (
+          <span className={`text-xs ${msg.type==='ok'?'text-emerald-700':'text-rose-700'}`}>{msg.text}</span>
+        )}
+      </div>
+
+      <div className="mt-4 text-xs text-slate-500">
+        Cada miembro define sus turnos dentro de este horario en la pestaña <b>Equipo</b>.
+        El bot nunca ofrecerá citas fuera de la apertura del negocio.
+      </div>
+    </Card>
   );
 }
 

@@ -6,6 +6,26 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-28 (portal — editor de horario de apertura del negocio)
+
+El "Horario de apertura" que aparecía en `/app → Ajustes → Negocio` estaba **hardcodeado** en el JSX y no era editable: mostraba `Lun-Vie 09:30-20:30, Sáb 10-14, Dom cerrado` aunque el negocio del cliente tuviera otro horario distinto. La capa modelo (`Tenant.business_hours`) y la lógica de intersección con los turnos del miembro ya existían — el agente las usa al sugerir huecos —, simplemente faltaba exponer el editor en el portal.
+
+### Añadido
+
+- **`PATCH /api/portal/negocio/horarios`**: acepta `{"horarios": {"mon": [...], ...}}`, lo normaliza (admite tanto lista plana `["09:00","13:00","17:00","20:00"]` como lista de pares `[["09:00","13:00"],["17:00","20:00"]]`), valida HH:MM y rangos crecientes, y guarda en `Tenant.business_hours`. Las franjas inválidas o con `open >= close` se descartan; un día sin franjas válidas queda como `["closed"]`.
+- **`GET /api/portal/negocio/horarios`**: devuelve `{"horarios": <dict>}` con el estado actual.
+- **`GET /api/portal/negocio`** y el payload inicial de `/app` incluyen ahora `horarios`. La UI lo hidrata sin necesidad de un fetch adicional al cargar la pestaña.
+- **UI editor in-line en `screen_ajustes.jsx`** (componente `HorariosNegocio`): toggle por día, franjas (apertura / cierre) con `<input type="time">`, botón `+ Añadir franja` (soporta turnos partidos), botón ✕ por franja, "Guardar horario". Si el tenant arranca sin `business_hours` configurado, se siembra L-V 09:00-18:00 para no presentar un lienzo en blanco.
+
+### Cambiado
+
+- Texto bajo el editor: "Cada miembro define sus turnos dentro de este horario en la pestaña **Equipo**. El bot nunca ofrecerá citas fuera de la apertura del negocio." — refleja la regla real (intersección negocio ∩ miembro) que ya implementaba `agent.py` + `calendar_service._ranges_for_day`.
+
+### Notas
+
+- No cambia la lógica del agente. La intersección de capas ya estaba: `business_hours` del tenant define el máximo, los `turnos` del miembro acotan dentro de ese máximo, `dias_trabajo` filtra los días.
+- Tests sanity con `TestClient`: GET inicial OK, PATCH con lista plana / con pares / con franja invertida → todos normalizan correctamente. Payload inicial y GET /negocio incluyen `horarios`.
+
 ## 2026-04-28 (onboarding — sync CMS → Google Sheets y form de alta del cliente)
 
 Se montó el flujo de onboarding del cliente extremo a extremo: form de Google con datos mínimos, Sheet vinculado, generación automática de un Doc por respuesta, y sincronización en tiempo real CMS → Sheet (pestaña "Tenants") para que cada cambio en `/admin/clientes/*` se vea reflejado sin pasos manuales.
