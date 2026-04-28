@@ -26,7 +26,7 @@ LLM (Gemini Flash con thinking OFF para bajar latencia):
 - `llm`: `gemini-3-flash-preview`  ⬅ **nuevo en ronda 6 (2026-04-24)**. Sustituye a `gemini-2.5-flash`. El bench con WS text-only midió TTFR ~1200ms vs ~4500ms del anterior (3.5x más rápido), TT_final post-tool ~3000ms vs ~7500-10400ms (2.5-3x). Tool-calling fiable en 4/4 escenarios (reserva simple, reserva con peluquero, mover, cancelar). Datos detallados en `CHANGELOG.md` → 2026-04-24 (latencia — ronda 6).
 - `thinking_budget`: `0`
 - `temperature`: `0.3`
-- `max_tokens`: `300`  (cap para evitar respuestas largas accidentales)
+- `max_tokens`: `220`  (cap más agresivo para cortar divagaciones y rascar latencia sin perder calidad)
 - Prompt: comprimido a ~3.8 KB (antes 5.7 KB) para bajar prefill time cada turno.
 
 Modelos descartados en el bench de ronda 6 (guía anti-regresión):
@@ -49,6 +49,10 @@ Audio formato:
 
 Tools:
 - `tool_call_sound`: `typing` en las 5 tools. Suena tecleo mientras Ana consulta Google Calendar, enmascara latencia del tool audiblemente.
+
+Primer saludo seguro:
+- `first_message`: `Hola, soy Ana de la peluquería. ¿En qué te puedo ayudar?`
+- Política: evitar signos de exclamación, tacos o variaciones creativas en el arranque. Si hace falta personalizarlo, hacerlo desde código / prompt, no manualmente en UI.
 
 Tools asociadas (`tool_ids` en el agente):
 - `consultar_disponibilidad`

@@ -6,6 +6,34 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-28 (voz — guardrails de saludo, tenant propio y deploy de fixes)
+
+Se cerró la tanda de hardening del canal de voz tras una llamada real con saludo ofensivo y varios roces de UX. Además, `pelu_demo` dejó de depender del agente global de entorno y pasó a tener `voice_agent_id` propio en producción.
+
+### Corregido
+
+- **Saludo ofensivo eliminado**: el `first_message` del agente remoto quedó fijado a `Hola, soy Ana de la peluquería. ¿En qué te puedo ayudar?` para evitar saludos creativos o tóxicos editados desde la UI de ElevenLabs.
+- **"sin preferencia" vuelve a funcionar** en `consultar_disponibilidad` y `crear_reserva`: el backend ya normaliza variantes (`sin preferencia`, vacío, `me da igual`, `cualquiera`) y no las trata como nombre de peluquero inexistente.
+- **Healthcheck de voz más fiel al estado real**: `/_diag/elevenlabs/healthcheck` y `/_diag/tenant/voice` ahora reportan prompt efectivo, drift y origen del `agent_id`; además se arregló un `DetachedInstanceError` al inspeccionar tenants fuera de sesión SQLAlchemy.
+- **Prompt de voz regenerable y sincronizable** desde CMS/diag: se añadió flujo para regenerar el prompt desde datos del tenant y empujarlo a ElevenLabs sin editarlo a mano.
+
+### Cambiado
+
+- **Prompt de `pelu_demo` endurecido**: añade regla explícita de no insultar / no repetir tacos del cliente, evita diminutivos raros, reduce repeticiones del nombre y mejora el lenguaje al confirmar, mover o cancelar.
+- **Prompt comprimido** de ~4.4 KB a ~3.2 KB para rascar algo de latencia de prefill.
+- **`max_tokens` por defecto baja de 300 a 220** en creación/sincronización de agentes para recortar divagaciones y tiempo de respuesta.
+- **Creación de agentes nuevos** (`create_agent_for_tenant` y `scripts/setup_elevenlabs_agent.py`) nace ya con saludo seguro y el cap de 220 tokens.
+- **`pelu_demo` usa agente propio** en producción (`voice_agent_id` guardado en BD) en vez de heredar `ELEVENLABS_AGENT_ID` global. Así los cambios del tenant quedan aislados y no contaminan otros bots.
+
+### Deploy / verificación
+
+- Push remoto de los fixes backend/diag/voz.
+- Redeploy manual en Railway y verificación post-deploy:
+  - `/_diag/tenant/voice` OK
+  - `/_diag/elevenlabs/healthcheck` OK
+  - smoke test de `consultar_disponibilidad` con `peluquero_preferido="sin preferencia"` OK
+- Regeneración y sincronización del prompt en `pelu_demo` y `test_mario`.
+
 ## 2026-04-24 (ronda 9 hotfix — paginación + filtro por nombre)
 
 Tras subir la búsqueda por nombre en la ronda 9, Marcos probó con una cita real (`"Mario — Corte hombre (Mario)"` del lunes 27 a las 12:30) y el endpoint respondió `encontrada:false` aunque el evento existe. Dos fixes consecutivos:

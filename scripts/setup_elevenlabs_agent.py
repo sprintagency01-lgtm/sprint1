@@ -275,7 +275,7 @@ def main() -> None:
                     "tools": tools,
                     "llm": "gemini-3-flash-preview",   # ronda 6 — 3x más rápido que 2.5-flash, 4/4 tools OK
                     "temperature": 0.3,
-                    "max_tokens": 300,
+                    "max_tokens": 220,
                     "thinking_budget": 0,
                     # ronda 7 — desactiva cascade de 4s, camino hot más predecible
                     "backup_llm_config": {"preference": "disabled"},
@@ -292,7 +292,7 @@ def main() -> None:
                         },
                     },
                 },
-                "first_message": "¡Hola! Soy Ana de la peluquería. ¿En qué te puedo ayudar?",
+                "first_message": "Hola, soy Ana de la peluquería. ¿En qué te puedo ayudar?",
                 "language": "es",
                 "dynamic_variables": {
                     "dynamic_variable_placeholders": dynamic_placeholders,

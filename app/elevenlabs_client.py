@@ -267,7 +267,7 @@ def create_agent_for_tenant(
                     "tools": tools,
                     "llm": "gemini-3-flash-preview",
                     "temperature": 0.3,
-                    "max_tokens": 300,
+                    "max_tokens": 220,
                     "thinking_budget": 0,
                     "backup_llm_config": {"preference": "disabled"},
                     # Ronda 9: habilitado end_call built-in para que Ana pueda
@@ -285,7 +285,7 @@ def create_agent_for_tenant(
                         },
                     },
                 },
-                "first_message": f"¡Hola! Soy Ana de {tenant.get('name') or 'la peluquería'}. ¿En qué te puedo ayudar?",
+                "first_message": f"Hola, soy Ana de {tenant.get('name') or 'la peluquería'}. ¿En qué te puedo ayudar?",
                 "language": "es",
                 "dynamic_variables": {
                     "dynamic_variable_placeholders": dynamic_placeholders,
