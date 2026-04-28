@@ -1,17 +1,32 @@
 {% extends "_layout.html" %}
 {% import "_layout.html" as ui %}
-{% block title %}Historial de voz · ReservaBot{% endblock %}
-{% block breadcrumb %}<span class="text-slate-900 font-medium">Historial de voz</span>{% endblock %}
+{% block title %}Historial de conversaciones · ReservaBot{% endblock %}
+{% block breadcrumb %}<span class="text-slate-900 font-medium">Historial de conversaciones</span>{% endblock %}
 
 {% block content %}
 <div class="mb-6">
-  <h1 class="text-2xl font-bold tracking-tight">Historial de voz</h1>
-  <p class="text-slate-500 text-sm mt-1">{{ convos|length }} conversaciones</p>
+  <h1 class="text-2xl font-bold tracking-tight">Historial de conversaciones</h1>
+  <p class="text-slate-500 text-sm mt-1">{{ convos|length }} conversaciones en {{ 'voz' if active_channel == 'voz' else 'Telegram' }}</p>
+</div>
+
+<div class="mb-6 border-b border-slate-200">
+  <div class="flex gap-1">
+    <a href="/admin/conversaciones?channel=voz" class="px-4 py-3 text-sm font-medium border-b-2 {% if active_channel == 'voz' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-500 hover:text-slate-900{% endif %}">
+      Llamadas <span class="ml-1 text-xs text-slate-400">{{ channel_counts.voz }}</span>
+    </a>
+    <a href="/admin/conversaciones?channel=telegram" class="px-4 py-3 text-sm font-medium border-b-2 {% if active_channel == 'telegram' %}border-brand-600 text-brand-700{% else %}border-transparent text-slate-500 hover:text-slate-900{% endif %}">
+      Telegram <span class="ml-1 text-xs text-slate-400">{{ channel_counts.telegram }}</span>
+    </a>
+  </div>
 </div>
 
 {% if not convos %}
 <div class="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
-  Todavía no hay conversaciones guardadas. En cuanto entren transcripts de llamadas de voz aparecerán aquí.
+  {% if active_channel == 'voz' %}
+    Todavía no hay conversaciones de llamadas guardadas.
+  {% else %}
+    Todavía no hay conversaciones de Telegram guardadas.
+  {% endif %}
 </div>
 {% else %}
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -19,16 +34,25 @@
     <ul class="divide-y divide-slate-100 max-h-[650px] overflow-auto">
       {% for c in convos %}
       <li class="p-4 hover:bg-slate-50 cursor-pointer {% if selected and selected.phone == c.phone and selected.tenant and selected.tenant.id == c.tenant_id %}bg-slate-50{% endif %}"
-          onclick="location.href='/admin/conversaciones?tenant={{ c.tenant_id }}&phone={{ c.phone }}'">
+          onclick="location.href='/admin/conversaciones?channel={{ active_channel }}&tenant={{ c.tenant_id }}&phone={{ c.phone }}'">
         <div class="flex items-start gap-3">
-          <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-semibold text-xs shrink-0">{{ c.phone[-4:] }}</div>
+          <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+            {% if c.channel == 'telegram' %}
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2.5 2.8 9.7c-1.3.5-1.3 1.3-.2 1.7l4.8 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.8-.8L23 4.1c.4-1.5-.6-2.2-1.5-1.6Z"/></svg>
+            {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
+            {% endif %}
+          </div>
           <div class="min-w-0 flex-1">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-medium truncate">{{ c.phone }}</div>
-              <div class="text-xs text-slate-400">{{ c.last_at.strftime('%d/%m %H:%M') if c.last_at else '' }}</div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-sm font-medium truncate">{{ c.display_phone }}</div>
+              <div class="text-xs text-slate-400 whitespace-nowrap">{{ c.last_at.strftime('%d/%m %H:%M') if c.last_at else '' }}</div>
             </div>
             <div class="text-xs text-slate-500 truncate">{{ c.last_text[:80] }}</div>
-            {% if c.tenant %}<div class="mt-1"><span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ c.tenant.name }}</span></div>{% endif %}
+            <div class="mt-1 flex items-center gap-2 flex-wrap">
+              {% if c.tenant %}<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ c.tenant.name }}</span>{% endif %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded {% if c.channel == 'telegram' %}bg-sky-50 text-sky-700{% else %}bg-emerald-50 text-emerald-700{% endif %}">{{ 'Telegram' if c.channel == 'telegram' else 'Llamada' }}</span>
+            </div>
           </div>
         </div>
       </li>
@@ -39,10 +63,19 @@
   <div class="lg:col-span-8 bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col min-h-[650px]">
     {% if selected %}
     <div class="p-4 border-b border-slate-100 flex items-center gap-3">
-      <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-semibold text-xs">{{ selected.phone[-4:] }}</div>
+      <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+        {% if selected.channel == 'telegram' %}
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2.5 2.8 9.7c-1.3.5-1.3 1.3-.2 1.7l4.8 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.8-.8L23 4.1c.4-1.5-.6-2.2-1.5-1.6Z"/></svg>
+        {% else %}
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
+        {% endif %}
+      </div>
       <div class="flex-1">
-        <div class="text-sm font-semibold">{{ selected.phone }}</div>
-        {% if selected.tenant %}<div class="text-xs text-slate-500"><a href="/admin/clientes/{{ selected.tenant.id }}/conversaciones" class="hover:underline">{{ selected.tenant.name }}</a></div>{% endif %}
+        <div class="text-sm font-semibold">{{ selected.display_phone }}</div>
+        <div class="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+          {% if selected.tenant %}<a href="/admin/clientes/{{ selected.tenant.id }}/conversaciones" class="hover:underline">{{ selected.tenant.name }}</a>{% endif %}
+          <span class="text-[10px] px-1.5 py-0.5 rounded {% if selected.channel == 'telegram' %}bg-sky-50 text-sky-700{% else %}bg-emerald-50 text-emerald-700{% endif %}">{{ 'Telegram' if selected.channel == 'telegram' else 'Llamada' }}</span>
+        </div>
       </div>
     </div>
     <div class="flex-1 p-6 space-y-3 bg-slate-50 overflow-auto">

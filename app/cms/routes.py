@@ -181,10 +181,25 @@ def _metrics_for_tenant(s: Session, tenant_id: str) -> dict:
     }
 
 
+def _conversation_channel(customer_phone: str) -> str:
+    raw = (customer_phone or "").strip().lower()
+    if raw.startswith("tg:"):
+        return "telegram"
+    return "voz"
+
+
+def _conversation_display_phone(customer_phone: str) -> str:
+    raw = (customer_phone or "").strip()
+    if raw.lower().startswith("tg:"):
+        return raw[3:]
+    return raw
+
+
 def _load_conversation_summaries(
     s: Session,
     *,
     tenant_id: str | None = None,
+    channel: str | None = None,
     limit: int = 300,
 ) -> list[dict]:
     """Agrupa `messages` por (tenant, customer_phone) para pintar el inbox."""
@@ -195,12 +210,17 @@ def _load_conversation_summaries(
 
     grouped: dict[tuple[str, str], dict] = {}
     for m in rows:
+        conv_channel = _conversation_channel(m.customer_phone)
+        if channel in ("voz", "telegram") and conv_channel != channel:
+            continue
         key = (m.tenant_id, m.customer_phone)
         item = grouped.get(key)
         if item is None:
             item = {
                 "tenant_id": m.tenant_id,
                 "phone": m.customer_phone,
+                "display_phone": _conversation_display_phone(m.customer_phone),
+                "channel": conv_channel,
                 "last_at": m.created_at,
                 "last_text": (m.content or "").strip(),
                 "n_messages": 0,
@@ -734,12 +754,18 @@ async def conversations_inbox(
     request: Request,
     tenant: str | None = None,
     phone: str | None = None,
+    channel: str | None = None,
     uid: int = Depends(auth.current_user_id),
 ):
+    active_channel = channel if channel in ("voz", "telegram") else "voz"
     selected = None
     messages: list[db_module.Message] = []
     with Session(db_module.engine) as s:
-        convos = _load_conversation_summaries(s, tenant_id=tenant)
+        convos = _load_conversation_summaries(s, tenant_id=tenant, channel=active_channel)
+        counts = {
+            "voz": len(_load_conversation_summaries(s, tenant_id=tenant, channel="voz", limit=1000)),
+            "telegram": len(_load_conversation_summaries(s, tenant_id=tenant, channel="telegram", limit=1000)),
+        }
         if phone:
             selected = next(
                 (
@@ -753,6 +779,8 @@ async def conversations_inbox(
                 selected = {
                     "tenant_id": tenant,
                     "phone": phone,
+                    "display_phone": _conversation_display_phone(phone),
+                    "channel": _conversation_channel(phone),
                     "tenant": t,
                     "last_at": None,
                     "last_text": "",
@@ -772,6 +800,8 @@ async def conversations_inbox(
         "convos": convos,
         "selected": selected,
         "messages": messages,
+        "active_channel": active_channel,
+        "channel_counts": counts,
     })
 
 
@@ -1025,7 +1055,7 @@ async def client_detail(
             _seed_voice_defaults_if_empty(s, t)
 
         metrics = _metrics_for_tenant(s, tenant_id) if tab in ("metricas", "general") else None
-        conversations = _load_conversation_summaries(s, tenant_id=tenant_id) if tab == "conversaciones" else []
+        conversations = _load_conversation_summaries(s, tenant_id=tenant_id, channel="voz") if tab == "conversaciones" else []
 
         # prompt preview
         prompt_preview = db_module.render_system_prompt(t)
