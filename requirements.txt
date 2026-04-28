@@ -8,6 +8,8 @@ anthropic==0.42.0
 google-auth==2.35.0
 google-auth-oauthlib==1.2.1
 google-api-python-client==2.147.0
+# Sync CMS → Google Sheets (app/sheets_sync.py).
+gspread==6.1.4
 sqlalchemy==2.0.35
 pyyaml==6.0.2
 # CMS

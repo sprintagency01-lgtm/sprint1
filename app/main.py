@@ -24,10 +24,10 @@ from . import db
 from . import eleven_tools
 from . import oauth_web
 from . import diag
+from . import sheets_sync
 from . import telegram as tg_module
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
-from .cms.routes import router_mounts as cms_mounts
 from .portal import router as portal_router
 from .portal.routes import router_mounts as portal_mounts
 from .portal.auth import ensure_portal_users
@@ -92,8 +92,6 @@ except Exception:
 
 # Monta el CMS bajo /admin (las rutas ya incluyen el prefijo).
 app.include_router(cms_router)
-for mount_path, mount_app in cms_mounts:
-    app.mount(mount_path, mount_app, name=f"cms_{mount_path.strip('/').replace('/', '_')}")
 # Portal del cliente (/app + /api/portal/*).
 app.include_router(portal_router)
 for mount_path, mount_app in portal_mounts:
@@ -122,6 +120,21 @@ app.include_router(diag.router)
 # Lo hacemos en el startup event (no en import) para no bloquear el import
 # del módulo y para que Railway considere el servicio ready solo cuando el
 # warm-up ha terminado.
+@app.on_event("startup")
+async def _register_sheets_sync() -> None:
+    """Hookea SQLAlchemy events para que cada commit del CMS empuje al Sheet.
+
+    Si las env vars (GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON) no están,
+    el sync se queda en no-op silencioso pero los listeners siguen registrados
+    sin coste apreciable. Así una redepliegue posterior con las vars activas
+    funciona sin tocar código.
+    """
+    try:
+        sheets_sync.register_listeners()
+    except Exception:
+        log.exception("No se pudieron registrar listeners de Sheets sync")
+
+
 @app.on_event("startup")
 async def _warmup_google_client() -> None:
     try:

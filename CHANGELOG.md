@@ -6,96 +6,53 @@ Entrada más reciente arriba.
 
 ---
 
-## 2026-04-28 (portal — conectar Google Calendar por miembro)
+## 2026-04-28 (onboarding — sync CMS → Google Sheets y form de alta del cliente)
 
-Hasta ahora el flujo de conectar Google Calendar a cada miembro del equipo solo existía en el CMS (`/admin/clientes/.../equipo`). El portal del cliente (`/app`) tenía un botón "Conectar" en la pestaña Equipo que era un placeholder y solo togglea un flag local. Ahora replica el mismo flujo del CMS, con el alcance acotado al tenant del usuario logueado.
-
-### Añadido
-
-- **Endpoints en el portal** (`app/portal/routes.py`):
-  - `GET /api/portal/equipo/{mid}/calendars` → devuelve `{connected, calendars}`. Si el miembro no tiene token, responde `connected:false` con lista vacía (no 400) para que la UI lo refleje sin manejar errores.
-  - `POST /api/portal/equipo/{mid}/calendars/create` → crea un calendario nuevo en la cuenta Google del miembro y lo asigna en BD (`MiembroEquipo.calendar_id`).
-  - `POST /api/portal/equipo/{mid}/disconnect` → borra el token local del miembro (no revoca en Google).
-  - El payload inicial (`/app`) y `GET /api/portal/equipo` ahora incluyen `googleOk: bool` por miembro (basado en si `TOKENS_DIR/{tid}_member_{mid}.json` existe).
-- **Helpers públicos** en `app/calendar_service.py`: `member_token_path`, `member_is_connected`, `member_google_service`. Antes vivían como `_member_*` privados dentro de `app/cms/routes.py`. Ahora ambos lados (CMS y portal) los reusan; el CMS conserva sus wrappers como compat fina.
-- **UI**: nuevo componente `GoogleCalendarPanel` en `screen_equipo.jsx`. Si el miembro no está conectado, muestra el aviso amarillo con un anchor `Conectar Google` que lanza `/oauth/start?...&back=portal`. Si está conectado, muestra una card con el `<select>` de calendarios (carga vía API), botón `+ Nuevo` (crear calendario nuevo en la cuenta del miembro) y botón `Desconectar`.
-
-### Cambiado
-
-- **`/oauth/start` admite ahora dos sesiones**: `back=admin` (CMS, comportamiento previo) o `back=portal` (portal del cliente). El nuevo helper `_resolve_caller` valida que la cookie corresponda al `back` solicitado y, en `back=portal`, exige además que el `tenant_id` del query coincida con el de la sesión del portal (un usuario del portal solo puede gestionar Google de SU tenant — devuelve 403 en otros casos).
-- **`/oauth/callback`** firma `back` en el `state` y lo usa para elegir la URL de retorno: `/admin/clientes/{tid}/equipo` (admin) o `/app#equipo` (portal). El `back` también aplica para conexiones a nivel de tenant (sin `member_id`): `/admin/.../general` vs `/app#ajustes`.
-
-### Notas
-
-- Tests sanity con `TestClient`: GET equipo OK con `googleOk`; calendars OK con `connected:false` cuando no hay token; disconnect idempotente; `/oauth/start?back=portal` redirige a Google con sesión válida y devuelve 403 si la sesión apunta a otro tenant.
-- El SPA del portal aterriza en `/app#equipo` tras el callback. La pestaña Equipo refresca al montarse y ve el nuevo estado conectado.
-
-## 2026-04-28 (CMS — fix Guardar equipo cuando hay miembros con Google conectado)
-
-Fix de un bug que llevaba en el CMS desde que existe la conexión Google por miembro: el botón **Guardar equipo** del tab Equipo no enviaba nada cuando algún miembro tenía Google conectado. Causa: la fila del miembro conectado renderizaba un `<form>` para el botón "Desconectar" **dentro** del form principal (`#equipo-form`). HTML5 prohíbe forms anidados; los navegadores parsean el `<form>` interno como si cerrara al padre, y todo lo que viene después (resto de miembros + el botón "Guardar equipo") queda **fuera** del form, así que el submit ignora esos campos.
-
-### Corregido
-
-- `app/cms/templates/partials/tab_equipo.html`: el botón "Desconectar" ya no es un `<form>` embebido. Es un `<button type="button">` con `data-url` y un handler JS (`btn-disconnect-google`) que dispara el POST a `/admin/clientes/{tid}/equipo/{mid}/disconnect` y sigue el redirect 303 manualmente. Resultado: un único `<form>` válido en la página, el botón "Guardar equipo" pertenece al form padre y el submit envía todos los miembros que haya en la UI. Comprobado renderizando la plantilla con varios miembros (uno conectado, dos no): `opens=1 closes=1`, "Guardar equipo" dentro del form.
-
-### Notas
-
-- Sin migraciones ni cambios en endpoints. El POST a `/equipo` y a `/equipo/{mid}/disconnect` siguen iguales por el lado del backend.
-
-## 2026-04-28 (PWA — portal y CMS instalables como app móvil)
-
-Se convirtieron en PWAs instalables las dos apps internas: el **portal de cliente** (scope `/app/`) y el **CMS admin** (scope `/admin/`). Cada una se puede añadir a la pantalla de inicio en iOS y Android desde su `/login`, y arranca en modo standalone con su propio icono y color de tema. Sin push notifications en este pase (lo dejamos para otro).
+Se montó el flujo de onboarding del cliente extremo a extremo: form de Google con datos mínimos, Sheet vinculado, generación automática de un Doc por respuesta, y sincronización en tiempo real CMS → Sheet (pestaña "Tenants") para que cada cambio en `/admin/clientes/*` se vea reflejado sin pasos manuales.
 
 ### Añadido
 
-- **Iconos PWA** generados desde una marca común (círculo ink + dot accent + 'S'): mint para portal, terracota para CMS, así son distinguibles en la pantalla de inicio. Tamaños `192`, `512`, `512 maskable`, `apple-touch-icon (180)` y `favicon-32` en `app/portal/static/icons/` y `app/cms/static/icons/`. Script reproducible en `outputs/gen_icons.py`.
-- **Manifests** `app/portal/static/manifest.json` (`Sprint`, scope `/app/`, `start_url /app`, theme `#059669`) y `app/cms/static/manifest.json` (`Sprint Admin`, scope `/admin/`, `start_url /admin/dashboard`, theme `#1A100C`). Cada uno con `shortcuts` (Hoy / Nueva reserva en portal; Dashboard / Clientes / Reservas en CMS).
-- **Service workers** dedicados (`app/portal/static/sw.js`, `app/cms/static/sw.js`) con estrategia: precache del shell mínimo (login + iconos + offline), `network-first` con fallback al cache para HTML, `stale-while-revalidate` para `/static/*`, y `network-only` para `/api/portal/*` (devolviendo un 503 sintético JSON cuando no hay red, para que el SPA pueda mostrar su propio mensaje). Cada SW versiona su cache (`sprint-portal-v1`, `sprint-admin-v1`) y limpia versiones viejas en `activate`.
-- **Páginas offline** `offline.html` por app, sirvidas desde el cache cuando la red falla y la página no está en cache.
-- **Endpoints en el scope** para que el SW se registre con scope amplio: `GET /app/sw.js` y `GET /admin/sw.js` devuelven el archivo con `Content-Type: application/javascript`, `Cache-Control: no-cache, no-store, must-revalidate` y `Service-Worker-Allowed: /app/` (resp. `/admin/`). Alias `GET /app/manifest.webmanifest` y `GET /admin/manifest.webmanifest` con MIME `application/manifest+json`.
-- **Meta tags PWA** en las plantillas raíz: `<link rel="manifest">`, `theme-color`, `apple-mobile-web-app-*`, `apple-touch-icon`, favicons. Inyectados en `app/portal/templates/portal.html`, `app/portal/templates/login.html` y `app/cms/templates/base.html` (de la que hereda `cms/templates/login.html`).
-- **Registro del SW** desde el `<body>` de cada plantilla raíz, con `scope` explícito coincidente.
-
-### Corregido
-
-- **Mount estático del CMS no se propagaba** al hacer `app.include_router(cms_router)` (depende de la versión de Starlette/FastAPI). Antes pasaba desapercibido porque `app/cms/static/` solo contenía un `.gitkeep`. Movido a `cms.routes.router_mounts` para que `main.py` lo monte explícitamente, igual que ya hacía con `portal.routes.router_mounts`. Sin esto, los assets del CMS y del SW del CMS daban 404 en producción.
-
-### Verificación
-
-- Test con `TestClient` simulando la app real: las 10 rutas PWA (sw.js, manifests, iconos y offline para ambas apps) devuelven 200 con los Content-Type y `Service-Worker-Allowed` correctos. El HTML de `/app/login` y `/admin/login` incluye `<link rel="manifest">`, `theme-color`, `apple-touch-icon` y el `<script>` de registro del service worker.
-
-### Notas operativas
-
-- Los iconos actuales son placeholders de marca. Si en algún momento queréis arte definitivo, basta con sustituir los PNG en `app/{portal,cms}/static/icons/` manteniendo los nombres y tamaños — el manifest no necesita cambios.
-- En iOS Safari, la PWA solo se instala desde "Compartir → Añadir a pantalla de inicio". Conviene mencionarlo en onboarding del cliente.
-
-## 2026-04-28 (landing — pivote a voz 24/7 + Telegram)
-
-Se reescribió la landing pública (`app/templates/landing.html`) para alinearla con la propuesta de valor actual tras el retiro de WhatsApp en abril. La oferta queda planteada como dos cosas que Sprint hace: **atender las llamadas que tú no puedes coger** y **montar un chat automático en Telegram** con la misma agenda. Copy reorientada a beneficios (qué te resuelve), no a jerarquía interna de canales. Eliminadas todas las menciones a WhatsApp en copy, integraciones, planes, FAQ JSON-LD y modal de leads.
+- **`app/sheets_sync.py`**: módulo de sync unidireccional CMS → Google Sheets. Hookea `before_flush` y `after_commit` de SQLAlchemy; cada commit que toque `tenants`, `services` o `equipo` dispara un push del tenant afectado a la pestaña "Tenants". Pushes en `ThreadPoolExecutor` para no bloquear la respuesta del CMS. API pública: `push_tenant`, `delete_tenant`, `push_all_tenants`, `register_listeners`.
+- **`scripts/crear_form_onboarding.gs`**: Apps Script que crea (1) un Form de onboarding express (~5 min de relleno, mayoría botones / matriz de horarios), (2) un Sheet vinculado con dos pestañas — "Respuestas" del Form y "Tenants" lista para que el backend escriba —, (3) carpeta de Drive, (4) trigger `onFormSubmit` que genera un Google Doc por cliente con secciones (Negocio, Horario, Servicios, Equipo, Personalización, Telefonía) y un bloque "Próximos pasos (interno)".
+- **`SHEETS_SYNC_SETUP.md`**: guía paso a paso para crear el Service Account en GCP, compartir el Sheet, subir env vars a Railway, y verificar que el sync funciona.
+- **`CHECKLIST_ONBOARDING_CLIENTE.md`**: lista de información a pedir al cliente antes de arrancar (versión interna con notas y plantilla limpia para el cliente).
 
 ### Cambiado
 
-- **Hero rebrandeado a voz + Telegram**: nuevo H1 ("Tu teléfono, atendido siempre."), subline en clave de beneficio ("atiende las llamadas que tú no puedes coger… y monta también un chat automático en Telegram"), eyebrow y meta items revisados.
-- **Demo del teléfono pasa de chat tipo WhatsApp a llamada en vivo**: header oscuro estilo "En llamada · 00:42" con dot rojo pulsando, avatar de Ana, transcripción en bubbles con etiquetas TÚ / ANA, waveform animado al pie y contador de llamada que avanza en JS. La calendar card se convierte en toast "✓ Cita confirmada · enviada a Google Calendar".
-- **Sección "Lo que hace Sprint"** (antes "Canales"): dos tarjetas con titulares de venta — "Atiende tus llamadas, también las de las 23:00" y "Tu chat automático en Telegram, listo en un día" — en lugar de etiquetas tipo "producto principal / add-on". Se quitan las tarjetas de WhatsApp Business y Chat web.
-- **Pricing reescrito**: Solo incluye ya la voz 24/7 (antes era solo WhatsApp + Chat web), Estudio añade el bot de Telegram, Equipo es multi-sede/números. Métrica de uso pasa de "conversaciones/mes" a "llamadas/mes".
-- **Integraciones** sustituye WhatsApp Business API e Instagram DM por Telegram (bot opcional), ElevenLabs (voz IA) y SIP (telefonía). Se elimina la celda Twilio.
-- **Cómo funciona — Paso 03**: ahora "Enlazamos tu teléfono, tu Google Calendar y, si lo activas, tu bot de Telegram" en lugar de "tu WhatsApp".
-- **Sectores** (peluquerías y restaurantes en `SECTORS` JS): copy ajustada para que la entrada de la reserva sea por llamada de voz, con Telegram como complemento.
-- **Marquee** sustituye "Funciona por WhatsApp" por "Bot de Telegram opcional" y "Habla con tu tono" → "Habla con tu voz".
-- **Footer foot-tag** reescrito: "Asistente de llamadas con IA 24/7 (y bot de Telegram opcional). Menos teléfono, más citas."
-- **Modal de leads**: label del campo teléfono pasa de "Tu WhatsApp o teléfono" a "Tu teléfono"; disclaimer ya no menciona WhatsApp.
+- **`app/main.py`**: nuevo `on_event("startup")` `_register_sheets_sync()` que llama a `sheets_sync.register_listeners()`. Si las env vars no están, los listeners siguen registrados pero el sync queda en no-op silencioso.
+- **`requirements.txt`**: añadida dependencia `gspread==6.1.4` (autenticación con Service Account vía `google-auth` ya existente).
 
-### SEO
+### Env / despliegue
 
-- Title, meta description y keywords reorientados a llamadas IA 24/7 / recepcionista virtual / bot de Telegram para reservas.
-- OG y Twitter cards alineados al nuevo posicionamiento.
-- JSON-LD `SoftwareApplication`, `Organization` y `FAQPage` actualizados: la pregunta sobre cambiar de número de WhatsApp se sustituye por una sobre desvío de teléfono, y se añade una FAQ explícita sobre el bot de Telegram opcional.
+- **Nuevas env vars**: `GOOGLE_SHEETS_ID` (parte larga del URL del Sheet) y `GOOGLE_SERVICE_ACCOUNT_JSON` (JSON entero del Service Account). Documentadas en `.env.example` con instrucciones. Ambas opcionales: si faltan, la app arranca igual y el sync queda inactivo.
+- Setup completo (Service Account, permisos, Sheet) en `SHEETS_SYNC_SETUP.md`.
 
-### Notas
+### Why
 
-- No se ha tocado código del backend ni rutas. La landing sigue sirviéndose desde `app/templates/landing.html`.
-- Cualquier referencia restante a WhatsApp en docs internos (`HANDOFF_*.md`, `README.md`, etc.) queda como histórico explícito según `CLAUDE.md`.
+Tener tenants vivos solo en SQLite + CMS bloquea visibilidad para perfiles no técnicos. El Sheet sincronizado da una vista compartible, filtrable y exportable del estado real sin abrir Railway. El Form + Doc por cliente cierra el embudo de onboarding: lo que rellena el cliente queda como expediente buscable en Drive.
+
+---
+
+## 2026-04-28 (voz — Ana como plantilla maestra para tenants nuevos)
+
+Hallazgo durante refresh de contexto: `app/db.py::render_voice_prompt` (la función que genera el prompt al dar de alta un tenant nuevo desde el CMS) tenía la **jerarquía vieja** del flujo RESERVA: `servicio → cuándo → NOMBRE → consultar → ofrecer → elegir → crear`. Es la regresión que se cazó en la ronda 8 sobre `ana_prompt_new.txt` y que `PROMPT_KNOWLEDGE.md` prohíbe explícitamente. Resultado: cualquier tenant nuevo nacía con la jerarquía equivocada (Ana pelu_demo no estaba afectada porque su `voice_prompt` ya estaba editado en BD).
+
+### Cambiado
+
+- **`render_voice_prompt(tenant)` ahora parte de `ana_prompt_new.txt`** como plantilla maestra. Carga el archivo del repo y sustituye sólo los datos del negocio (nombre, asistente, horario, servicios, peluqueros, timezone, fallback hablado, pregunta-corte). El resto del prompt — REFRESH_BLOCK de fechas, "UNA pregunta por turno", flujo RESERVA con nombre al FINAL, MOVER/CANCELAR con búsqueda por nombre, "Cierre y colgar" con `end_call` — queda **idéntico al de Ana, palabra por palabra**. Una sola fuente de verdad.
+- La sustitución se hace por **anchors de línea exactos** definidos como constantes `_ANCHOR_*` en `app/db.py`. Si la plantilla se edita y un anchor deja de matchear, se levanta `RuntimeError` explícito en vez de devolver un prompt malformado silenciosamente.
+- `ana_prompt_new.txt` no se modifica — sigue siendo el prompt vivo de Ana y `scripts/refresh_agent_prompt.py` / `scripts/setup_elevenlabs_agent.py` lo consumen como antes.
+
+### Añadido
+
+- `tests/test_render_voice_prompt.py` (13 tests): regresión sobre la jerarquía y secciones canónicas. Falla si reaparecen "nombre antes de consultar" o desaparece alguna marca crítica (REFRESH_BLOCK, "UNA pregunta por turno", "Cierre y colgar", `end_call`, búsqueda por `nombre_cliente`, etc.). Cubre dos fixtures: peluquería con equipo y abogado sin equipo.
+- Test de degradación segura: si la plantilla cambia y los anchors dejan de matchear, `render_voice_prompt` levanta `RuntimeError` con la lista de anchors faltantes.
+
+### Why
+
+Cualquier mejora futura sobre `ana_prompt_new.txt` se hereda automáticamente a todos los tenants nuevos. Y la jerarquía optimizada (nombre al FINAL) deja de poder regresar accidentalmente para clientes nuevos.
+
+---
 
 ## 2026-04-28 (voz — guardrails de saludo, tenant propio y deploy de fixes)
 
