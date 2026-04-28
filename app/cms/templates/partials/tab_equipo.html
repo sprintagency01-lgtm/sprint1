@@ -49,9 +49,16 @@
                       <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
                       Google conectado
                     </span>
-                    <form method="post" action="/admin/clientes/{{ t.id }}/equipo/{{ m.id }}/disconnect" class="inline" onclick="event.stopPropagation()">
-                      <button class="text-slate-400 hover:text-rose-600">Desconectar</button>
-                    </form>
+                    {# OJO: este botón NO puede estar dentro de un <form> anidado dentro del form
+                       principal de equipo (HTML5 prohíbe forms anidados; los navegadores parsean
+                       el form interno como si cerrara el padre y entonces "Guardar equipo" deja
+                       de enviar nada). Disparamos el POST por JS. #}
+                    <button type="button"
+                            class="btn-disconnect-google text-slate-400 hover:text-rose-600"
+                            data-url="/admin/clientes/{{ t.id }}/equipo/{{ m.id }}/disconnect"
+                            data-name="{{ m.nombre }}">
+                      Desconectar
+                    </button>
                   </div>
                 </div>
               {% else %}
@@ -183,6 +190,39 @@ document.querySelectorAll('.calendar-picker').forEach(async (picker) => {
   } catch (e) {
     console.error('No pude cargar calendarios para miembro ' + member, e);
   }
+});
+
+// Botón "Desconectar Google" por miembro. Antes era un <form> anidado
+// dentro del form de equipo, lo que rompía el HTML (forms anidados están
+// prohibidos: el navegador desanida el interno y deja el botón "Guardar
+// equipo" — y los miembros que vienen después — fuera del form padre, así
+// que el submit no enviaba nada). Lo disparamos por JS sin form.
+document.querySelectorAll('.btn-disconnect-google').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const url = btn.dataset.url;
+    const name = btn.dataset.name || 'este miembro';
+    if (!confirm(`¿Desconectar Google de ${name}?`)) return;
+    btn.disabled = true;
+    const prev = btn.innerText;
+    btn.innerText = 'Desconectando...';
+    try {
+      // El endpoint hace 303 -> /admin/clientes/{tid}/equipo. Seguimos
+      // el redirect manualmente para refrescar la página con el nuevo
+      // estado.
+      const resp = await fetch(url, { method: 'POST', redirect: 'follow' });
+      if (resp.redirected) {
+        window.location.href = resp.url;
+      } else if (resp.ok) {
+        window.location.reload();
+      } else {
+        throw new Error('HTTP ' + resp.status);
+      }
+    } catch (e) {
+      alert('No se pudo desconectar: ' + e.message);
+      btn.disabled = false;
+      btn.innerText = prev;
+    }
+  });
 });
 
 // Botón "Crear calendario nuevo" por miembro

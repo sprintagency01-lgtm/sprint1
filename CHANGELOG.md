@@ -6,6 +6,18 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-28 (CMS — fix Guardar equipo cuando hay miembros con Google conectado)
+
+Fix de un bug que llevaba en el CMS desde que existe la conexión Google por miembro: el botón **Guardar equipo** del tab Equipo no enviaba nada cuando algún miembro tenía Google conectado. Causa: la fila del miembro conectado renderizaba un `<form>` para el botón "Desconectar" **dentro** del form principal (`#equipo-form`). HTML5 prohíbe forms anidados; los navegadores parsean el `<form>` interno como si cerrara al padre, y todo lo que viene después (resto de miembros + el botón "Guardar equipo") queda **fuera** del form, así que el submit ignora esos campos.
+
+### Corregido
+
+- `app/cms/templates/partials/tab_equipo.html`: el botón "Desconectar" ya no es un `<form>` embebido. Es un `<button type="button">` con `data-url` y un handler JS (`btn-disconnect-google`) que dispara el POST a `/admin/clientes/{tid}/equipo/{mid}/disconnect` y sigue el redirect 303 manualmente. Resultado: un único `<form>` válido en la página, el botón "Guardar equipo" pertenece al form padre y el submit envía todos los miembros que haya en la UI. Comprobado renderizando la plantilla con varios miembros (uno conectado, dos no): `opens=1 closes=1`, "Guardar equipo" dentro del form.
+
+### Notas
+
+- Sin migraciones ni cambios en endpoints. El POST a `/equipo` y a `/equipo/{mid}/disconnect` siguen iguales por el lado del backend.
+
 ## 2026-04-28 (PWA — portal y CMS instalables como app móvil)
 
 Se convirtieron en PWAs instalables las dos apps internas: el **portal de cliente** (scope `/app/`) y el **CMS admin** (scope `/admin/`). Cada una se puede añadir a la pantalla de inicio en iOS y Android desde su `/login`, y arranca en modo standalone con su propio icono y color de tema. Sin push notifications en este pase (lo dejamos para otro).
