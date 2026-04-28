@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sprint — Tu recepcionista con IA para WhatsApp, chat y llamadas</title>
-<meta name="description" content="Sprint es el asistente con IA que contesta por ti en WhatsApp, chat web y llamadas. Reserva, mueve y confirma citas 24/7 para peluquerías, clínicas, consultores y más. Listo en 48 horas.">
-<meta name="keywords" content="bot reservas WhatsApp, asistente IA citas, agenda automatizada, chatbot peluquería, reservas clínica, automatización WhatsApp">
+<title>Sprint — Asistente de llamadas con IA 24/7 para tu negocio</title>
+<meta name="description" content="Sprint contesta tus llamadas 24/7 con voz natural y reserva citas en tu calendario. Opcional: bot de Telegram para gestionar reservas y atención. Listo en 48 horas para peluquerías, clínicas, consultores y más.">
+<meta name="keywords" content="asistente llamadas IA, recepcionista virtual 24/7, bot reservas voz, agenda automatizada, chatbot Telegram reservas, atención telefónica IA, contestador inteligente">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
 <meta name="author" content="Sprint">
 <meta name="theme-color" content="#EEF3EC">
@@ -16,16 +16,16 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="es_ES">
 <meta property="og:site_name" content="Sprint">
-<meta property="og:title" content="Sprint — Tu recepcionista con IA que nunca duerme">
-<meta property="og:description" content="Asistente con IA para WhatsApp, chat y llamadas. Reserva, mueve y confirma citas 24/7 con tu propio tono.">
+<meta property="og:title" content="Sprint — Asistente de llamadas con IA que nunca duerme">
+<meta property="og:description" content="Contesta tus llamadas 24/7 con voz natural y reserva citas en tu calendario. Bot de Telegram opcional para gestionar reservas y asistencia.">
 <meta property="og:url" content="https://sprint.agency/">
 <meta property="og:image" content="https://sprint.agency/og.png">
-<meta property="og:image:alt" content="Sprint — Asistente de reservas con IA">
+<meta property="og:image:alt" content="Sprint — Asistente de llamadas con IA">
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Sprint — Tu recepcionista con IA que nunca duerme">
-<meta name="twitter:description" content="Asistente con IA para WhatsApp, chat y llamadas. Reserva, mueve y confirma citas 24/7.">
+<meta name="twitter:title" content="Sprint — Asistente de llamadas con IA que nunca duerme">
+<meta name="twitter:description" content="Contesta tus llamadas 24/7 con voz natural y reserva citas. Bot de Telegram opcional.">
 <meta name="twitter:image" content="https://sprint.agency/og.png">
 
 <!-- Favicon (inline SVG) -->
@@ -37,15 +37,15 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "Sprint",
-  "description": "Asistente con IA para gestionar citas y reservas por WhatsApp, chat web y llamadas telefónicas.",
+  "description": "Asistente de llamadas con IA 24/7 que reserva citas con voz natural. Bot de Telegram opcional para gestión de reservas y atención.",
   "applicationCategory": "BusinessApplication",
   "operatingSystem": "Web",
   "inLanguage": "es-ES",
   "url": "https://sprint.agency/",
   "offers": [
-    {"@type": "Offer", "name": "Solo", "price": "39", "priceCurrency": "EUR", "description": "Hasta 150 conversaciones/mes"},
-    {"@type": "Offer", "name": "Estudio", "price": "99", "priceCurrency": "EUR", "description": "Hasta 800 conversaciones/mes"},
-    {"@type": "Offer", "name": "Equipo", "price": "299", "priceCurrency": "EUR", "description": "Conversaciones ilimitadas"}
+    {"@type": "Offer", "name": "Solo", "price": "39", "priceCurrency": "EUR", "description": "Hasta 150 llamadas/mes"},
+    {"@type": "Offer", "name": "Estudio", "price": "99", "priceCurrency": "EUR", "description": "Hasta 800 llamadas/mes + bot de Telegram"},
+    {"@type": "Offer", "name": "Equipo", "price": "299", "priceCurrency": "EUR", "description": "Llamadas ilimitadas, multi-sede"}
   ]
 }
 </script>
@@ -56,7 +56,7 @@
   "name": "Sprint",
   "url": "https://sprint.agency/",
   "email": "hola@sprint.agency",
-  "description": "Asistente con IA para reservas por WhatsApp, chat y llamadas.",
+  "description": "Asistente de llamadas con IA 24/7 que reserva citas con voz natural. Bot de Telegram opcional.",
   "areaServed": "ES",
   "sameAs": []
 }
@@ -67,7 +67,8 @@
   "@type": "FAQPage",
   "mainEntity": [
     {"@type": "Question", "name": "¿Cuánto tarda en estar listo?", "acceptedAnswer": {"@type": "Answer", "text": "48 horas desde la llamada inicial."}},
-    {"@type": "Question", "name": "¿Tengo que cambiar de número de WhatsApp?", "acceptedAnswer": {"@type": "Answer", "text": "No. Sprint se conecta a tu número actual vía WhatsApp Business API."}},
+    {"@type": "Question", "name": "¿Tengo que cambiar de número de teléfono?", "acceptedAnswer": {"@type": "Answer", "text": "No. Sprint se conecta a tu número actual mediante desvío de llamadas o un número adicional dedicado."}},
+    {"@type": "Question", "name": "¿También puedo gestionar reservas por Telegram?", "acceptedAnswer": {"@type": "Answer", "text": "Sí. Como complemento al asistente de voz, puedes activar un bot de Telegram para que tus clientes reserven o pregunten sin llamar."}},
     {"@type": "Question", "name": "¿Funciona con mi calendario?", "acceptedAnswer": {"@type": "Answer", "text": "Sí, se integra con Google Calendar y Outlook."}}
   ]
 }
@@ -78,8 +79,8 @@
 <script>
   const TWEAKS = /*EDITMODE-BEGIN*/{
     "palette": "mint",
-    "heroHeadline": "Tus citas, en piloto automático.",
-    "heroSubline": "Sprint es el asistente con personalidad propia que contesta por ti en WhatsApp, chat y llamadas. Reserva, mueve y confirma citas mientras tú haces lo tuyo.",
+    "heroHeadline": "Tu teléfono, atendido siempre.",
+    "heroSubline": "Sprint atiende las llamadas que tú no puedes coger y deja la cita reservada en tu calendario. Y si quieres, monta también un chat automático en Telegram para que tus clientes reserven o pregunten cuando les venga.",
     "ctaLabel": "Habla con nosotros",
     "showBadge": true,
     "heroVariant": "demo"
@@ -316,9 +317,10 @@
     display:flex; flex-direction:column;
   }
   .wa-bar{
-    background:#075E54; color:#fff;
+    background:#0E0C0A; color:#fff;
     padding:14px 14px 12px;
     display:flex; align-items:center; gap:12px;
+    border-bottom:1px solid rgba(255,255,255,.06);
   }
   .wa-avatar{
     width:36px; height:36px; border-radius:50%;
@@ -328,46 +330,94 @@
     color:#fff;
     font-style:italic;
     flex-shrink:0;
+    position:relative;
   }
-  .wa-id{ display:flex; flex-direction:column; line-height:1.15; }
+  .wa-avatar::after{
+    content:""; position:absolute; right:-1px; bottom:-1px;
+    width:11px; height:11px; border-radius:50%;
+    background:#E84A4A; border:2px solid #0E0C0A;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .wa-id{ display:flex; flex-direction:column; line-height:1.2; }
   .wa-name{ font-size:14.5px; font-weight:600; }
-  .wa-status{ font-size:11.5px; opacity:.8; }
+  .wa-status{
+    font-size:11.5px; opacity:.85;
+    display:inline-flex; align-items:center; gap:6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .wa-status .rec{
+    width:7px; height:7px; border-radius:50%; background:#E84A4A;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
   .wa-actions{ margin-left:auto; display:flex; gap:14px; opacity:.85; }
   .wa-actions svg{ width:18px; height:18px; }
 
   .wa-body{
-    flex:1; padding:16px 10px 10px;
+    flex:1; padding:16px 10px 60px;
     display:flex; flex-direction:column; gap:8px;
     overflow:hidden;
     background:
-      repeating-linear-gradient(45deg, rgba(0,0,0,.02) 0 2px, transparent 2px 12px),
-      #ECE5DD;
+      radial-gradient(ellipse at 50% 0%, rgba(62,122,78,.10) 0%, transparent 60%),
+      #F4F0E6;
     position:relative;
   }
+  .wa-wave{
+    position:absolute; left:0; right:0; bottom:0;
+    height:54px;
+    display:flex; align-items:flex-end; justify-content:center;
+    gap:3px; padding:10px 14px;
+    background: linear-gradient(180deg, rgba(244,240,230,0) 0%, rgba(244,240,230,.95) 60%);
+    pointer-events:none;
+  }
+  .wa-wave span{
+    display:inline-block; width:3px; border-radius:2px;
+    background:var(--accent); opacity:.85;
+    animation: wave 1.1s ease-in-out infinite;
+  }
+  @keyframes wave{
+    0%,100%{ height:6px; }
+    50%{ height:26px; }
+  }
   .bubble{
-    max-width:78%;
-    padding:8px 12px 18px;
-    border-radius:12px;
-    font-size:14px; line-height:1.35;
-    color:#111;
+    max-width:80%;
+    padding:7px 12px 7px 38px;
+    border-radius:14px;
+    font-size:13.5px; line-height:1.4;
+    color:#1a1410;
     position:relative;
-    box-shadow: 0 1px 1px rgba(0,0,0,.06);
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
     opacity:0; transform: translateY(8px);
     animation: bubble-in .35s cubic-bezier(.2,.7,.3,1) forwards;
   }
   .bubble.me{
-    background:#DCF8C6; align-self:flex-end;
-    border-top-right-radius:3px;
+    background:#FBF7EE; align-self:flex-end;
+    border:1px solid #E8DEC8;
+    border-top-right-radius:4px;
   }
   .bubble.bot{
     background:#fff; align-self:flex-start;
-    border-top-left-radius:3px;
+    border-top-left-radius:4px;
+  }
+  .bubble::before{
+    content:""; position:absolute; left:10px; top:9px;
+    width:20px; height:20px; border-radius:50%;
+    background-position:center; background-repeat:no-repeat; background-size:11px 11px;
+  }
+  .bubble.bot::before{
+    background-color:var(--accent);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z'/%3E%3Cpath d='M19 10v2a7 7 0 0 1-14 0v-2'/%3E%3C/svg%3E");
+  }
+  .bubble.me::before{
+    background-color:#E8DEC8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1410' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
   }
   .bubble .time{
-    position:absolute; right:8px; bottom:3px;
-    font-size:10px; color:#6a6a6a;
+    display:block;
+    font-size:10px; color:#9a8b73;
+    margin-top:3px;
+    font-weight:600; letter-spacing:.04em; text-transform:uppercase;
   }
-  .bubble .time.read{ color:#34B7F1; font-weight:700; letter-spacing:-1px; }
+  .bubble .time.read{ color:var(--accent); }
   @keyframes bubble-in{ to{ opacity:1; transform: translateY(0); } }
 
   .typing{
@@ -1146,16 +1196,17 @@
     <div class="hero-copy">
       <div class="hero-eyebrow" id="badge">
         <span class="dot"></span>
-        Tu agenda deja de depender de ti
+        Tu teléfono nunca queda sin contestar
       </div>
       <h1 id="h1">
-        Tus citas,<br>
-        <em>en piloto automático.</em>
+        Tu teléfono,<br>
+        <em>atendido siempre.</em>
       </h1>
       <p class="lede" id="sub">
-        Sprint es el asistente con personalidad propia que contesta por ti en
-        WhatsApp, chat y llamadas. Reserva, mueve y confirma citas mientras
-        tú haces lo tuyo.
+        Sprint atiende las llamadas que tú no puedes coger y deja la cita
+        reservada en tu calendario. Y si quieres, monta también un chat
+        automático en Telegram para que tus clientes reserven o pregunten
+        cuando les venga.
       </p>
       <div class="hero-actions">
         <a href="#final" class="btn btn-primary" id="cta" data-lead="Hero">
@@ -1181,7 +1232,7 @@
 
     <!-- Phone demo -->
     <div class="phone-wrap">
-      <div class="sprint-badge"><span class="dot"></span>Sprint está respondiendo</div>
+      <div class="sprint-badge"><span class="dot"></span>Sprint está atendiendo</div>
 
       <div class="sticker s1">
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
@@ -1195,18 +1246,34 @@
       <div class="phone">
         <div class="phone-screen">
           <div class="wa-bar">
-            <div class="wa-avatar">L</div>
+            <div class="wa-avatar">A</div>
             <div class="wa-id">
-              <span class="wa-name">Luna · Peluquería</span>
-              <span class="wa-status">en línea · asistente Sprint</span>
+              <span class="wa-name">Ana · Sprint</span>
+              <span class="wa-status"><span class="rec"></span>En llamada · <span id="call-time">00:42</span></span>
             </div>
             <div class="wa-actions">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="#E84A4A" stroke="none"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z" transform="rotate(135 12 12)"/></svg>
             </div>
           </div>
           <div class="wa-body" id="chat-body">
             <!-- injected -->
+          </div>
+          <div class="wa-wave" aria-hidden="true">
+            <span style="animation-delay:-.10s"></span>
+            <span style="animation-delay:-.40s"></span>
+            <span style="animation-delay:-.20s"></span>
+            <span style="animation-delay:-.55s"></span>
+            <span style="animation-delay:-.05s"></span>
+            <span style="animation-delay:-.30s"></span>
+            <span style="animation-delay:-.50s"></span>
+            <span style="animation-delay:-.15s"></span>
+            <span style="animation-delay:-.35s"></span>
+            <span style="animation-delay:-.25s"></span>
+            <span style="animation-delay:-.45s"></span>
+            <span style="animation-delay:-.10s"></span>
+            <span style="animation-delay:-.60s"></span>
+            <span style="animation-delay:-.20s"></span>
           </div>
         </div>
       </div>
@@ -1219,17 +1286,17 @@
   <div class="marquee-track">
     <span class="marq-item">No más llamadas perdidas <span class="sep"></span></span>
     <span class="marq-item">Reserva mientras duermes <span class="sep"></span></span>
-    <span class="marq-item">Contesta en 4 segundos <span class="sep"></span></span>
-    <span class="marq-item">Habla con tu tono <span class="sep"></span></span>
+    <span class="marq-item">Contesta al primer tono <span class="sep"></span></span>
+    <span class="marq-item">Habla con tu voz <span class="sep"></span></span>
     <span class="marq-item">Conecta con Google Calendar <span class="sep"></span></span>
-    <span class="marq-item">Funciona por WhatsApp <span class="sep"></span></span>
+    <span class="marq-item">Bot de Telegram opcional <span class="sep"></span></span>
     <!-- duplicate for loop -->
     <span class="marq-item">No más llamadas perdidas <span class="sep"></span></span>
     <span class="marq-item">Reserva mientras duermes <span class="sep"></span></span>
-    <span class="marq-item">Contesta en 4 segundos <span class="sep"></span></span>
-    <span class="marq-item">Habla con tu tono <span class="sep"></span></span>
+    <span class="marq-item">Contesta al primer tono <span class="sep"></span></span>
+    <span class="marq-item">Habla con tu voz <span class="sep"></span></span>
     <span class="marq-item">Conecta con Google Calendar <span class="sep"></span></span>
-    <span class="marq-item">Funciona por WhatsApp <span class="sep"></span></span>
+    <span class="marq-item">Bot de Telegram opcional <span class="sep"></span></span>
   </div>
 </div>
 
@@ -1237,49 +1304,17 @@
 <section class="channels" id="canales">
   <div class="container">
     <div class="sec-head">
-      <div class="sec-kicker">01 · Canales</div>
-      <h2>Donde tus clientes ya están, <em>respondiendo por ti.</em></h2>
-      <p>WhatsApp, chat web y llamada de voz. Un único asistente entrenado con tu negocio, tu horario, tus servicios y tu forma de hablar.</p>
+      <div class="sec-kicker">01 · Lo que hace Sprint</div>
+      <h2>Atiende tus llamadas. <em>Y monta tu chat automático en Telegram.</em></h2>
+      <p>Dos formas de no perder una sola reserva: lo que entra por teléfono lo coge Sprint con voz humana, y lo que llega por chat lo resuelve un bot de Telegram con la misma agenda. Tú dejas de estar pegado al móvil.</p>
     </div>
-    <div class="channel-grid">
-      <div class="channel">
-        <div class="channel-icon wa">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.6.1-.8-.4-1.7-.9-2.5-1.9-.6-.8-1-1.7-1.1-2-.1-.3 0-.5.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4 0 1.4 1.1 2.8 1.2 3 .2.2 2.1 3.3 5.2 4.6.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.5 15.2L2 22l5-1.3A10 10 0 1 0 12 2z"/></svg>
-        </div>
-        <h3>WhatsApp Business</h3>
-        <p>Sprint se conecta a tu número oficial y responde al instante: ofrece huecos, confirma, mueve y cancela.</p>
-        <div class="channel-demo">
-          <div class="mini-chat">
-            <div class="mini-line"><span class="mini-tag">14:02</span>Hola, ¿tenéis hueco mañana?</div>
-            <div class="mini-line"><span class="mini-tag">14:02</span>🤖 ¡Hola! Sí, tengo las 11:00 o las 17:30. ¿Cuál prefieres?</div>
-            <div class="mini-line"><span class="mini-tag">14:03</span>La de las 17:30 perfecta</div>
-            <div class="mini-line"><span class="mini-tag">14:03</span>🤖 ¡Hecho! Te veo mañana a las 17:30 ✨</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="channel">
-        <div class="channel-icon chat">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        </div>
-        <h3>Chat web</h3>
-        <p>Un widget elegante en tu página. Sin formularios, sin 'déjanos tu email'. Se reserva y punto.</p>
-        <div class="channel-demo">
-          <div class="mini-chat">
-            <div class="mini-line"><span class="mini-tag">WEB</span>¿Hacéis limpieza + blanqueamiento?</div>
-            <div class="mini-line"><span class="mini-tag">SPR</span>🤖 Sí, 45 min. Te propongo jueves 10:00. ¿Te reservo?</div>
-            <div class="mini-line"><span class="mini-tag">WEB</span>Sí, a nombre de Marta Pérez</div>
-            <div class="mini-line"><span class="mini-tag">SPR</span>🤖 Confirmado ✓ Te enviamos recordatorio.</div>
-          </div>
-        </div>
-      </div>
-
+    <div class="channel-grid" style="grid-template-columns: 1fr 1fr;">
       <div class="channel">
         <div class="channel-icon call">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
         </div>
-        <h3>Llamada por voz</h3>
-        <p>Cuando alguien llama y tú estás ocupado, Sprint responde con voz natural y reserva la cita.</p>
+        <h3>Atiende tus llamadas, también las de las 23:00</h3>
+        <p>Sprint coge el teléfono al primer tono, escucha al cliente, le propone los huecos reales de tu agenda y deja la cita confirmada en tu Google Calendar. Mientras tú trabajas, comes o duermes — la reserva ya está hecha.</p>
         <div class="channel-demo">
           <div class="mini-chat">
             <div class="mini-line" style="align-items:center">
@@ -1297,8 +1332,28 @@
                 <span></span>
               </div>
             </div>
-            <div class="mini-line"><span class="mini-tag">🤖</span>"Claro, Juan. Te agendo el corte para el sábado a las 12:30. ¿Te parece?"</div>
-            <div class="mini-line"><span class="mini-tag">👤</span>"Perfecto, gracias."</div>
+            <div class="mini-line"><span class="mini-tag">👤</span>"Hola, ¿tendríais hueco mañana para corte y barba?"</div>
+            <div class="mini-line"><span class="mini-tag">🤖</span>"¡Hola! Mañana tengo libre a las 11, 13:30 o las 17:30. ¿Cuál te viene mejor?"</div>
+            <div class="mini-line"><span class="mini-tag">👤</span>"Las 17:30 perfecta."</div>
+            <div class="mini-line"><span class="mini-tag">🤖</span>"Te lo dejo apuntado, Juan. Te llegará un SMS con el recordatorio."</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="channel">
+        <div class="channel-icon chat" style="background:#2AABEE; color:#fff;">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0C5.348 0 .002 5.346.002 11.94c0 6.594 5.346 11.94 11.942 11.94s11.94-5.346 11.94-11.94S18.54 0 11.944 0zm5.616 8.137l-1.876 8.85c-.142.63-.516.787-1.044.49l-2.886-2.128-1.392 1.34c-.154.154-.284.284-.583.284l.207-2.95 5.39-4.873c.234-.21-.05-.326-.363-.116l-6.66 4.193-2.87-.897c-.624-.196-.636-.624.13-.924l11.21-4.32c.518-.196.97.117.736 1.05z"/></svg>
+        </div>
+        <h3>Tu chat automático en Telegram, listo en un día</h3>
+        <p>Tus clientes escriben a tu bot y reservan, mueven, cancelan o preguntan precios sin esperar a que contestes. Misma agenda y mismo tono que la asistente de voz — para que la conversación se sienta tuya, no de un menú robotizado.</p>
+        <div class="channel-demo">
+          <div class="mini-chat">
+            <div class="mini-line"><span class="mini-tag">TG</span>Hola, ¿precio del corte de hombre?</div>
+            <div class="mini-line"><span class="mini-tag">SPR</span>🤖 Corte hombre 18€. ¿Te miro hueco para esta semana?</div>
+            <div class="mini-line"><span class="mini-tag">TG</span>Sí, mañana tarde si puede ser</div>
+            <div class="mini-line"><span class="mini-tag">SPR</span>🤖 Tengo 17:30 y 19:00. ¿Cuál te reservo?</div>
+            <div class="mini-line"><span class="mini-tag">TG</span>17:30 perfecto</div>
+            <div class="mini-line"><span class="mini-tag">SPR</span>🤖 ¡Reservado! Mañana 17:30. Te recuerdo por la mañana.</div>
           </div>
         </div>
       </div>
@@ -1338,7 +1393,7 @@
           </div>
           <div class="step-num">PASO 03</div>
           <div class="step-title">Conectamos</div>
-          <div class="step-desc">Enlazamos tu WhatsApp, tu web y tu Google Calendar. Sin cambiar tu número ni tus herramientas.</div>
+          <div class="step-desc">Enlazamos tu teléfono, tu Google Calendar y, si lo activas, tu bot de Telegram. Sin cambiar tu número ni tus herramientas.</div>
         </div>
         <div class="step">
           <div class="step-ico">
@@ -1482,17 +1537,17 @@
     </div>
     <div class="int-grid">
       <div class="int-cell"><div class="int-logo">G Calendar</div><div class="int-name">calendario</div></div>
-      <div class="int-cell"><div class="int-logo">WhatsApp</div><div class="int-name">business api</div></div>
+      <div class="int-cell"><div class="int-logo">Telegram</div><div class="int-name">bot opcional</div></div>
+      <div class="int-cell"><div class="int-logo">ElevenLabs</div><div class="int-name">voz IA</div></div>
       <div class="int-cell"><div class="int-logo">Outlook</div><div class="int-name">calendario</div></div>
       <div class="int-cell"><div class="int-logo">Stripe</div><div class="int-name">cobros</div></div>
       <div class="int-cell"><div class="int-logo">Zapier</div><div class="int-name">automatiza</div></div>
       <div class="int-cell"><div class="int-logo">Slack</div><div class="int-name">avisos</div></div>
-      <div class="int-cell"><div class="int-logo">Instagram</div><div class="int-name">DM</div></div>
       <div class="int-cell"><div class="int-logo">Sheets</div><div class="int-name">reportes</div></div>
       <div class="int-cell"><div class="int-logo">Mailchimp</div><div class="int-name">email</div></div>
       <div class="int-cell"><div class="int-logo">HubSpot</div><div class="int-name">CRM</div></div>
       <div class="int-cell"><div class="int-logo">Zoom</div><div class="int-name">video</div></div>
-      <div class="int-cell"><div class="int-logo">Twilio</div><div class="int-name">voz</div></div>
+      <div class="int-cell"><div class="int-logo">SIP</div><div class="int-name">telefonía</div></div>
     </div>
   </div>
 </section>
@@ -1510,12 +1565,12 @@
         <div class="price-name">Solo</div>
         <div class="price-for">Profesional independiente</div>
         <div class="price-amount"><span class="num">39€</span><span class="per">/mes</span></div>
-        <div class="price-muted">Hasta 150 conversaciones/mes</div>
+        <div class="price-muted">Hasta 150 llamadas/mes</div>
         <ul class="price-feats">
-          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>WhatsApp + Chat web</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Asistente de voz 24/7</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Google Calendar</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Recordatorios automáticos</li>
-          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Panel de conversaciones</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Panel de llamadas y citas</li>
         </ul>
         <a href="#final" class="btn btn-ghost" data-lead="Plan Solo">Empezar</a>
       </div>
@@ -1525,13 +1580,13 @@
         <div class="price-name">Estudio</div>
         <div class="price-for">Pequeño equipo o local</div>
         <div class="price-amount"><span class="num">99€</span><span class="per">/mes</span></div>
-        <div class="price-muted">Hasta 800 conversaciones/mes</div>
+        <div class="price-muted">Hasta 800 llamadas/mes</div>
         <ul class="price-feats">
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Todo lo de Solo</li>
-          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Llamadas por voz con IA</li>
-          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Varios profesionales</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Chat automático en Telegram</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Varios profesionales / agendas</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Cobros por Stripe</li>
-          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Personalidad a medida</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Voz y personalidad a medida</li>
         </ul>
         <a href="#final" class="btn btn-accent" data-lead="Plan Estudio">Empezar ahora <span class="arrow">→</span></a>
       </div>
@@ -1540,10 +1595,10 @@
         <div class="price-name">Equipo</div>
         <div class="price-for">Varios locales o clínica</div>
         <div class="price-amount"><span class="num">299€</span><span class="per">/mes</span></div>
-        <div class="price-muted">Conversaciones ilimitadas</div>
+        <div class="price-muted">Llamadas ilimitadas</div>
         <ul class="price-feats">
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Todo lo de Estudio</li>
-          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Múltiples sedes</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Múltiples sedes y números</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>CRM + integraciones avanzadas</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Soporte prioritario</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Account manager</li>
@@ -1575,7 +1630,7 @@
           <span class="logo-mark"></span>
           sprint
         </a>
-        <p class="foot-tag">Tu recepcionista con IA para WhatsApp, chat y llamadas. Menos teléfono, más citas.</p>
+        <p class="foot-tag">Asistente de llamadas con IA y chat automático en Telegram. Menos teléfono, más citas.</p>
       </div>
       <div>
         <h4>Producto</h4>
@@ -1624,7 +1679,7 @@
       <p class="mp">En menos de 24 h te contactamos para ver si Sprint encaja con tu negocio. Sin rollos.</p>
       <form id="lead-form" novalidate action="/api/leads" method="post">
         <div class="field">
-          <label for="lead-phone">Tu WhatsApp o teléfono</label>
+          <label for="lead-phone">Tu teléfono</label>
           <input type="tel" id="lead-phone" name="phone" required placeholder="+34 600 000 000" autocomplete="tel" inputmode="tel">
           <div class="err" id="lead-err" role="alert" aria-live="polite"></div>
         </div>
@@ -1655,7 +1710,7 @@
         <input type="hidden" name="consent" value="1">
         <button type="submit" class="btn btn-accent">Enviar <span class="arrow" aria-hidden="true">→</span></button>
       </form>
-      <div class="modal-foot">Al enviar aceptas que te contactemos por teléfono o WhatsApp. No compartimos tus datos.</div>
+      <div class="modal-foot">Al enviar aceptas que te contactemos por teléfono. No compartimos tus datos.</div>
     </div>
     <div class="modal-success" id="lead-success">
       <div class="success-icon">
@@ -1797,34 +1852,36 @@
   });
   try{ window.parent.postMessage({type:'__edit_mode_available'}, '*'); }catch(e){}
 
-  /* ========== CHAT LOOP ========== */
+  /* ========== CALL TRANSCRIPT LOOP ========== */
   const CHAT_SCRIPTS = [
     [
-      {who:'me', text:'Hola, ¿tenéis hueco mañana para corte y barba?', t:'14:02', read:true},
+      {who:'me', text:'Hola, llamo para ver si tenéis hueco mañana para corte y barba.', t:'TÚ', read:true},
       {who:'typing'},
-      {who:'bot', text:'¡Hola Juan! Sí 💈 Tengo las 11:00, 13:30 o las 17:30. ¿Cuál te va mejor?', t:'14:02'},
+      {who:'bot', text:'¡Hola! Claro, déjame mirar… Mañana tengo libre a las 11:00, 13:30 o las 17:30. ¿Cuál te viene mejor?', t:'ANA'},
+      {who:'me', text:'La de las 17:30 perfecta.', t:'TÚ', read:true},
+      {who:'typing'},
+      {who:'bot', text:'Genial. ¿Me confirmas tu nombre y un teléfono para el recordatorio?', t:'ANA'},
+      {who:'me', text:'Juan García, este mismo número.', t:'TÚ', read:true},
       {who:'card'},
-      {who:'me', text:'La de las 17:30 perfecta', t:'14:03', read:true},
-      {who:'typing'},
-      {who:'bot', text:'¡Hecho! Mañana a las 17:30 con Paco. Te mando recordatorio por la mañana ✨', t:'14:03'},
+      {who:'bot', text:'¡Listo, Juan! Mañana a las 17:30 con Paco. Te mando un SMS de recordatorio. ¡Hasta mañana!', t:'ANA'},
     ],
     [
-      {who:'me', text:'Hola, necesito mover mi cita del jueves', t:'10:14', read:true},
+      {who:'me', text:'Buenas, necesitaría mover mi cita del jueves.', t:'TÚ', read:true},
       {who:'typing'},
-      {who:'bot', text:'Claro. Tu cita es el jueves 23 a las 16:00 (corte). ¿La muevo al viernes 24 a la misma hora?', t:'10:14'},
-      {who:'me', text:'Mejor sábado por la mañana', t:'10:15', read:true},
+      {who:'bot', text:'Por supuesto. Veo tu cita el jueves 23 a las 16:00, corte. ¿A qué día prefieres moverla?', t:'ANA'},
+      {who:'me', text:'Sábado por la mañana si puede ser.', t:'TÚ', read:true},
       {who:'typing'},
-      {who:'bot', text:'El sábado 25 tengo 10:00, 11:30 y 12:45. ¿Alguna te va?', t:'10:15'},
-      {who:'me', text:'11:30', t:'10:16', read:true},
-      {who:'bot', text:'¡Cambiado ✓ Sábado 25 · 11:30. Te veo entonces!', t:'10:16'},
+      {who:'bot', text:'El sábado 25 tengo libre a las 10:00, 11:30 y 12:45. ¿Cuál te reservo?', t:'ANA'},
+      {who:'me', text:'Las once y media.', t:'TÚ', read:true},
+      {who:'bot', text:'Hecho. Sábado 25 a las 11:30. Te llegará la confirmación al móvil.', t:'ANA'},
     ],
     [
-      {who:'me', text:'¿Está Paco el viernes?', t:'19:42', read:true},
+      {who:'me', text:'Hola, ¿está Paco el viernes?', t:'TÚ', read:true},
       {who:'typing'},
-      {who:'bot', text:'Viernes Paco tiene hueco a las 09:30 y a las 18:00. ¿Te reservo alguno?', t:'19:42'},
-      {who:'me', text:'18h me va genial, nombre de María', t:'19:43', read:true},
+      {who:'bot', text:'Sí, el viernes Paco tiene hueco a las 09:30 y a las 18:00. ¿Te reservo alguna?', t:'ANA'},
+      {who:'me', text:'A las seis me va genial, a nombre de María.', t:'TÚ', read:true},
       {who:'typing'},
-      {who:'bot', text:'Reservado para María · viernes 18:00 con Paco. Si cambias de idea, escríbeme y lo movemos 💛', t:'19:43'},
+      {who:'bot', text:'Reservado · María · viernes a las 18:00 con Paco. Si necesitas cambiarla, llámame cuando quieras.', t:'ANA'},
     ],
   ];
 
@@ -1851,10 +1908,9 @@
     c.style.transform = 'translateY(8px)';
     c.style.transition = 'all .35s cubic-bezier(.2,.7,.3,1)';
     c.innerHTML = `
-      <div class="cal-h"><span class="cal-dot"></span>Disponibles · mañana</div>
-      <div class="cal-slot"><span>11:00 – 11:45</span><span style="color:#888">Paco</span></div>
-      <div class="cal-slot"><span>13:30 – 14:15</span><span style="color:#888">Lucía</span></div>
-      <div class="cal-slot chosen"><span>17:30 – 18:15</span><span style="color:#4a8050">★ Paco</span></div>
+      <div class="cal-h"><span class="cal-dot"></span>Cita confirmada · enviada a Google Calendar</div>
+      <div class="cal-slot chosen"><span>Mañana · 17:30 – 18:15</span><span style="color:#4a8050">★ Paco</span></div>
+      <div class="cal-slot"><span>SMS de recordatorio</span><span style="color:#888">enviado</span></div>
     `;
     requestAnimationFrame(()=>{
       setTimeout(()=>{ c.style.opacity='1'; c.style.transform='translateY(0)'; }, 20);
@@ -1897,12 +1953,25 @@
   }
   loop();
 
+  /* ========== CALL TIMER ========== */
+  (function callTimer(){
+    const el = document.getElementById('call-time');
+    if (!el) return;
+    let s = 0;
+    setInterval(()=>{
+      s = (s + 1) % (60*99);
+      const m = Math.floor(s/60).toString().padStart(2,'0');
+      const r = (s%60).toString().padStart(2,'0');
+      el.textContent = m + ':' + r;
+    }, 1000);
+  })();
+
   /* ========== SECTOR TABS ========== */
   const SECTORS = {
     pelu: {
       title: 'Peluquerías y barberías',
       emphasis: 'Siempre rapado a tiempo.',
-      body: 'Tus clientes piden cita cuando les viene, no cuando tú puedes contestar. Sprint agenda por WhatsApp al instante, propone huecos reales de tu equipo y envía recordatorios para que no te dejen plantado.',
+      body: 'Tus clientes piden cita cuando les viene, no cuando tú puedes contestar. Sprint atiende la llamada al instante con voz natural, propone huecos reales de tu equipo y envía recordatorios para que no te dejen plantado.',
       points: [
         'Elige profesional, servicio y duración',
         'Recordatorio 24h antes + confirmación 2h antes',
@@ -1980,7 +2049,7 @@
     resto: {
       title: 'Pequeños restaurantes',
       emphasis: 'Mesas llenas, móvil descansado.',
-      body: 'Reservas por WhatsApp o llamada, con control de aforo, turnos de cocina y notas especiales ("alérgico al gluten", "cumpleaños"). Sprint confirma la noche anterior para que no te quedes con mesas vacías.',
+      body: 'Reservas por llamada de voz (y por Telegram si lo activas), con control de aforo, turnos de cocina y notas especiales ("alérgico al gluten", "cumpleaños"). Sprint confirma la noche anterior para que no te quedes con mesas vacías.',
       points: [
         'Turnos de 1ª y 2ª sentada',
         'Control de aforo y mesas grandes',
