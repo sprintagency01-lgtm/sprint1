@@ -33,13 +33,15 @@ def _load_tenant_row(tenant_id: str) -> db_module.Tenant:
         row = s.get(db_module.Tenant, tenant_id)
         if row is None:
             raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} no existe en BD")
-        # Expulsamos el objeto del Session para poder usar su to_dict() fuera.
+        # `to_dict()` toca relaciones lazy (services/equipo), así que capturamos
+        # el snapshot antes de expulsar el objeto de la sesión.
+        setattr(row, "_voice_tenant_dict", row.to_dict(include_system_prompt=False))
         s.expunge(row)
         return row
 
 
 def _voice_config_snapshot(row: db_module.Tenant) -> dict[str, Any]:
-    tenant_dict = row.to_dict(include_system_prompt=False)
+    tenant_dict = getattr(row, "_voice_tenant_dict", None) or row.to_dict(include_system_prompt=False)
     rendered_prompt = db_module.render_voice_prompt(tenant_dict)
     stored_prompt = (row.voice_prompt or "").strip()
     effective_prompt = stored_prompt or rendered_prompt
