@@ -28,6 +28,38 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/_diag", tags=["diag"])
 
 
+def _load_tenant_row(tenant_id: str) -> db_module.Tenant:
+    with Session(db_module.engine) as s:
+        row = s.get(db_module.Tenant, tenant_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} no existe en BD")
+        # Expulsamos el objeto del Session para poder usar su to_dict() fuera.
+        s.expunge(row)
+        return row
+
+
+def _voice_config_snapshot(row: db_module.Tenant) -> dict[str, Any]:
+    tenant_dict = row.to_dict(include_system_prompt=False)
+    rendered_prompt = db_module.render_voice_prompt(tenant_dict)
+    stored_prompt = (row.voice_prompt or "").strip()
+    effective_prompt = stored_prompt or rendered_prompt
+    stored_voice_id = (row.voice_voice_id or "").strip()
+    effective_voice_id = stored_voice_id or ""
+    tenant_agent_id = (row.voice_agent_id or "").strip()
+    effective_agent_id = tenant_agent_id or (settings.elevenlabs_agent_id or "").strip()
+    return {
+        "tenant_dict": tenant_dict,
+        "stored_prompt": stored_prompt,
+        "rendered_prompt": rendered_prompt,
+        "effective_prompt": effective_prompt,
+        "stored_voice_id": stored_voice_id,
+        "effective_voice_id": effective_voice_id,
+        "tenant_agent_id": tenant_agent_id,
+        "effective_agent_id": effective_agent_id,
+        "prompt_drift": bool(stored_prompt and stored_prompt != rendered_prompt),
+    }
+
+
 def _check_secret(x_tool_secret: str | None) -> None:
     expected = settings.tool_secret
     if not expected:
@@ -108,6 +140,10 @@ class VoicePromptReq(BaseModel):
     sync_to_elevenlabs: bool = True
 
 
+class VoicePromptRefreshReq(BaseModel):
+    sync_to_elevenlabs: bool = True
+
+
 @router.post("/tenant/voice/update")
 def tenant_voice_update(
     req: VoicePromptReq,
@@ -183,15 +219,80 @@ def tenant_voice_config(
         t = s.get(db_module.Tenant, tid)
         if t is None:
             raise HTTPException(status_code=404, detail=f"Tenant {tid} no existe en BD")
+        snap = _voice_config_snapshot(t)
         return {
             "tenant_id": t.id,
             "tenant_name": t.name,
             "voice_agent_id": t.voice_agent_id or "",
             "voice_voice_id": t.voice_voice_id or "",
             "voice_prompt": t.voice_prompt or "",
+            "rendered_voice_prompt": snap["rendered_prompt"],
+            "prompt_drift": snap["prompt_drift"],
             "voice_last_sync_at": t.voice_last_sync_at.isoformat() if t.voice_last_sync_at else None,
             "voice_last_sync_status": t.voice_last_sync_status or "",
         }
+
+
+@router.post("/tenant/voice/refresh")
+def tenant_voice_refresh(
+    req: VoicePromptRefreshReq,
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    """Regenera el prompt de voz desde los datos del tenant y opcionalmente sincroniza.
+
+    Útil cuando catálogo/horarios/equipo cambiaron y el prompt guardado se ha
+    quedado viejo. Si `sync_to_elevenlabs=true`, empuja el prompt regenerado al
+    agente remoto en el mismo paso.
+    """
+    from datetime import datetime as _dt
+
+    _check_secret(x_tool_secret)
+    tid = _resolve_tenant_id(tenant_id)
+
+    with Session(db_module.engine) as s:
+        t = s.get(db_module.Tenant, tid)
+        if t is None:
+            raise HTTPException(status_code=404, detail=f"Tenant {tid} no existe")
+        rendered_prompt = db_module.render_voice_prompt(t.to_dict(include_system_prompt=False))
+        t.voice_prompt = rendered_prompt
+        if not (t.voice_voice_id or "").strip():
+            t.voice_voice_id = getattr(elevenlabs_client, "DEFAULT_VOICE_ID", "") or t.voice_voice_id
+
+        synced = False
+        sync_error: str | None = None
+        if req.sync_to_elevenlabs:
+            agent_id = (t.voice_agent_id or settings.elevenlabs_agent_id or "").strip()
+            if not agent_id:
+                sync_error = "Sin voice_agent_id del tenant ni ELEVENLABS_AGENT_ID global"
+            else:
+                try:
+                    elevenlabs_client.sync_agent(
+                        agent_id,
+                        prompt=t.voice_prompt,
+                        voice=elevenlabs_client.VoiceParams(
+                            voice_id=t.voice_voice_id,
+                            stability=t.voice_stability,
+                            similarity_boost=t.voice_similarity_boost,
+                            speed=t.voice_speed,
+                        ),
+                    )
+                    t.voice_last_sync_at = _dt.utcnow()
+                    t.voice_last_sync_status = "ok"
+                    synced = True
+                except elevenlabs_client.ElevenLabsError as e:
+                    sync_error = str(e)[:380]
+                    t.voice_last_sync_at = _dt.utcnow()
+                    t.voice_last_sync_status = sync_error
+        s.commit()
+
+    return {
+        "ok": synced or not req.sync_to_elevenlabs,
+        "tenant_id": tid,
+        "prompt_len": len(rendered_prompt),
+        "synced_to_elevenlabs": synced,
+        "sync_error": sync_error,
+    }
 
 
 @router.get("/tenants/list")
@@ -478,7 +579,8 @@ def elevenlabs_healthcheck(
     """
     _check_secret(x_tool_secret)
     resolved_id = _resolve_tenant_id(tenant_id)
-    tenant = tn.get_tenant(resolved_id) or {}
+    tenant_row = _load_tenant_row(resolved_id)
+    voice_snap = _voice_config_snapshot(tenant_row)
 
     report: dict[str, Any] = {
         "tenant_id": resolved_id,
@@ -488,13 +590,18 @@ def elevenlabs_healthcheck(
                          "hint": "Configura TOOL_SECRET en Railway (lo usan las tools /tools/*)." if not settings.tool_secret.strip() else ""},
     }
 
-    tenant_agent_id = (tenant.get("voice_agent_id") or "").strip()
-    effective_agent_id = tenant_agent_id or (settings.elevenlabs_agent_id or "").strip()
+    effective_agent_id = voice_snap["effective_agent_id"]
+    tenant_agent_id = voice_snap["tenant_agent_id"]
 
     report["tenant_voice_config"] = {
-        "ok": bool((tenant.get("voice_prompt") or "").strip() and (tenant.get("voice_voice_id") or "").strip()),
-        "prompt_len": len((tenant.get("voice_prompt") or "")),
-        "voice_id_set": bool((tenant.get("voice_voice_id") or "").strip()),
+        "ok": bool(voice_snap["effective_prompt"].strip() and voice_snap["effective_voice_id"].strip()),
+        "prompt_len": len(voice_snap["effective_prompt"]),
+        "prompt_source": "stored" if voice_snap["stored_prompt"] else "rendered_fallback",
+        "stored_prompt_len": len(voice_snap["stored_prompt"]),
+        "rendered_prompt_len": len(voice_snap["rendered_prompt"]),
+        "voice_id_set": bool(voice_snap["effective_voice_id"].strip()),
+        "voice_id_source": "stored" if voice_snap["stored_voice_id"] else "missing",
+        "prompt_drift": voice_snap["prompt_drift"],
         "agent_id": effective_agent_id or "(none)",
         "agent_id_source": "tenant" if tenant_agent_id else ("global_env" if effective_agent_id else "missing"),
     }

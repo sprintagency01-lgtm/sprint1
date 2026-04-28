@@ -34,6 +34,20 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/tools", tags=["voice-agent-tools"])
 
 
+_SIN_PREFERENCIA_VALUES = {
+    "",
+    "sin preferencia",
+    "sinpreferencia",
+    "me da igual",
+    "medaigual",
+    "me daigual",
+    "cualquiera",
+    "cualquier",
+    "no importa",
+    "da igual",
+}
+
+
 # ---------- Retry helper ----------
 
 # Tokens típicos de errores transitorios en respuestas de googleapiclient:
@@ -128,6 +142,17 @@ def _calendar_id_for_booking(tenant: dict, peluquero: str | None = None) -> str:
     comportamiento.
     """
     return tenant.get("calendar_id") or settings.default_calendar_id
+
+
+def _is_sin_preferencia(value: str | None) -> bool:
+    """Normaliza las variantes típicas de "sin preferencia".
+
+    El contrato histórico del proyecto usa a veces cadena vacía y a veces la
+    literal "sin preferencia". Si no toleramos ambas, el agente remoto y el
+    backend quedan desalineados y Ana responde que ese peluquero no existe.
+    """
+    norm = (value or "").strip().lower()
+    return norm in _SIN_PREFERENCIA_VALUES
 
 
 # ---------- Pydantic models ----------
@@ -269,7 +294,7 @@ def consultar_disponibilidad(
         # encontraba match, así que Ana ofrecía huecos de Mario al pedir "Pepa".
         # Ahora devolvemos aviso explícito con la lista real.
         preferido_norm = (req.peluquero_preferido or "").strip().lower()
-        if preferido_norm:
+        if preferido_norm and not _is_sin_preferencia(preferido_norm):
             match = [p for p in peluqueros if p["nombre"].strip().lower() == preferido_norm]
             if not match:
                 return {
@@ -434,7 +459,7 @@ def crear_reserva(
 
     destino_cal = _calendar_id_for_booking(tenant, req.peluquero)
     peluquero = (req.peluquero or "").strip()
-    if peluqueros and peluquero and peluquero.lower() != "sin preferencia":
+    if peluqueros and peluquero and not _is_sin_preferencia(peluquero):
         match = [p for p in peluqueros if p["nombre"].strip().lower() == peluquero.lower()]
         if not match:
             raise HTTPException(
@@ -484,7 +509,7 @@ def crear_reserva(
                 return {
                     "ok": True,
                     "event_id": ev_existente.get("id"),
-                    "peluquero": peluquero or "sin preferencia",
+                    "peluquero": peluquero if not _is_sin_preferencia(peluquero) else "sin preferencia",
                     "duplicate": True,
                 }
         except Exception:
@@ -521,11 +546,12 @@ def crear_reserva(
             "retryable": True,
             "detail": str(e)[:200],
         }
-    log.info("Reserva creada por voz: %s (%s)", ev.get("id"), peluquero or "sin preferencia")
+    peluquero_resp = peluquero if not _is_sin_preferencia(peluquero) else "sin preferencia"
+    log.info("Reserva creada por voz: %s (%s)", ev.get("id"), peluquero_resp)
     return {
         "ok": True,
         "event_id": ev.get("id"),
-        "peluquero": peluquero or "sin preferencia",
+        "peluquero": peluquero_resp,
     }
 
 

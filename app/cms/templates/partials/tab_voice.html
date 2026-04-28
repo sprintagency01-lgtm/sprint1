@@ -106,15 +106,24 @@
             Aún no se ha sincronizado con ElevenLabs.
           {% endif %}
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap justify-end">
           <button type="submit"
                   class="text-sm px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 font-medium">
             Guardar
+          </button>
+          <button type="submit" formaction="/admin/clientes/{{ t.id }}/voz/regenerate"
+                  class="text-sm px-4 py-2 rounded-lg border border-amber-200 text-amber-800 hover:bg-amber-50 font-medium">
+            Regenerar prompt
           </button>
           <button type="submit" formaction="/admin/clientes/{{ t.id }}/voz/sync"
                   class="text-sm px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium flex items-center gap-2">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 1-9 9M3 12a9 9 0 0 1 9-9"/><path d="m17 8 4-4M7 16l-4 4"/></svg>
             Guardar y sincronizar
+          </button>
+          <button type="submit" formaction="/admin/clientes/{{ t.id }}/voz/regenerate"
+                  name="sync_now" value="1"
+                  class="text-sm px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium">
+            Regenerar y sincronizar
           </button>
         </div>
       </div>
