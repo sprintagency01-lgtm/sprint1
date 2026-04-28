@@ -18,6 +18,7 @@ const ICONS = {
   menu:           '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
   close:          '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   voz:            '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>',
+  telegram:       '<path d="M21.5 2.5 2.8 9.7c-1.3.5-1.3 1.3-.2 1.7l4.8 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.8-.8L23 4.1c.4-1.5-.6-2.2-1.5-1.6Z"/>',
   check:          '<path d="M20 6 9 17l-5-5"/>',
   clock:          '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   euro:           '<path d="M18 7a6 6 0 1 0 0 10M4 10h10M4 14h10"/>',
@@ -38,7 +39,7 @@ const ICONS = {
 
 const NAV = [
   { key:'hoy',            label:'Hoy',              icon:ICONS.hoy },
-  { key:'llamadas',       label:'Llamadas',         icon:ICONS.llamadas },
+  { key:'llamadas',       label:'Conversaciones',   icon:ICONS.llamadas },
   { key:'reservas',       label:'Reservas',         icon:ICONS.reservas },
   { key:'ingresos',       label:'Ingresos',         icon:ICONS.ingresos },
   { key:'servicios',      label:'Servicios',        icon:ICONS.servicios },

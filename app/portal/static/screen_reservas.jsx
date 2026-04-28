@@ -16,6 +16,7 @@ function ScreenReservas({ initialReserva, onCloseDetalle }) {
     if (filtroEquipo !== 'todos' && r.equipo !== filtroEquipo) return false;
     return true;
   });
+  const reservasOrdenadas = [...reservasFiltradas].sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora));
 
   const timeToY = h => { const [hh,mm] = h.split(':').map(Number); return (hh-9)*60+mm; };
 
@@ -81,6 +82,57 @@ function ScreenReservas({ initialReserva, onCloseDetalle }) {
         </select>
       </div>
 
+      <Card className="overflow-hidden mb-4">
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold">Lista de reservas</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">Misma vista rápida que en el CMS, filtrada para este negocio</div>
+          </div>
+          <div className="text-xs text-slate-400">{reservasOrdenadas.length} reservas</div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
+              <tr>
+                <th className="text-left font-medium px-4 py-3">Fecha</th>
+                <th className="text-left font-medium px-4 py-3">Cliente</th>
+                <th className="text-left font-medium px-4 py-3">Servicio</th>
+                <th className="text-left font-medium px-4 py-3">Canal</th>
+                <th className="text-left font-medium px-4 py-3">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {reservasOrdenadas.map(r => {
+                const s = servicioDe(r.servicio);
+                const estadoChip = r.estado==='cancelada'?'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300':r.estado==='movida'?'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300':'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+                return (
+                  <tr key={`table_${r.id}`} onClick={()=>setDetalle(r)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{r.fecha} · {r.hora}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{r.duracion} min</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{r.cliente}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{r.telefono || 'Sin teléfono'}</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-900 dark:text-slate-100">{s?.nombre || '—'}</td>
+                    <td className="px-4 py-3"><CanalBadge canal={r.canal}/></td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estadoChip}`}>{r.estado}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!reservasOrdenadas.length && (
+                <tr>
+                  <td colSpan="5" className="px-4 py-10 text-center text-sm text-slate-400">No hay reservas con los filtros actuales.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
       {view === 'semana' ? (
         <Card className="overflow-hidden">
           <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
@@ -128,7 +180,7 @@ function ScreenReservas({ initialReserva, onCloseDetalle }) {
       ) : (
         <Card className="overflow-hidden">
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {reservasFiltradas.sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).map(r => {
+            {reservasOrdenadas.map(r => {
               const s = servicioDe(r.servicio);
               const m = miembroDe(r.equipo);
               const estadoChip = r.estado==='cancelada'?'bg-rose-50 text-rose-700':r.estado==='movida'?'bg-amber-50 text-amber-700':'bg-slate-100 text-slate-600';

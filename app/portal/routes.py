@@ -204,7 +204,7 @@ def _build_initial_data(user_id: int, tenant_id: str) -> dict[str, Any]:
     hoy = date.today().isoformat()
     reservas = _load_reservas_for_window(tenant, dias=7)
     ingresos_30d = _compute_ingresos_30d(tenant, servicios)
-    llamadas = _load_llamadas(tenant_id)
+    llamadas = _load_llamadas(tenant_id, reservas=reservas)
 
     return {
         "user": {
@@ -392,20 +392,38 @@ def _compute_ingresos_30d(tenant: db_module.Tenant, servicios: list[dict]) -> li
         return []
 
 
-def _load_llamadas(tenant_id: str) -> list[dict]:
-    """Agrupa los mensajes de `messages` por teléfono → una llamada por cliente.
+def _conversation_channel(customer_phone: str) -> str:
+    raw = (customer_phone or "").strip().lower()
+    if raw.startswith("tg:"):
+        return "telegram"
+    return "voz"
 
-    Nota: hoy la tabla `messages` contiene turnos transcritos por
-    ElevenLabs (voz). Cuando tengamos un modelo dedicado de "llamada"
-    sustituiremos esta función.
+
+
+def _display_phone(customer_phone: str) -> str:
+    raw = (customer_phone or "").strip()
+    if raw.lower().startswith("tg:"):
+        return raw[3:]
+    return raw
+
+
+
+def _load_llamadas(tenant_id: str, reservas: list[dict] | None = None) -> list[dict]:
+    """Agrupa los mensajes del tenant por conversación para el portal cliente.
+
+    Aunque la pantalla histórica se llama `llamadas` en el portal, aquí ya
+    devolvemos tanto voz como Telegram para reutilizar una sola vista de
+    historial de conversaciones.
     """
     try:
+        reservas = reservas or []
+        phones_with_booking = {str((r.get("telefono") or "")).strip() for r in reservas if r.get("telefono")}
         with Session(db_module.engine) as s:
             rows = (
                 s.query(db_module.Message)
                 .filter(db_module.Message.tenant_id == tenant_id)
                 .order_by(db_module.Message.created_at.desc())
-                .limit(500)
+                .limit(800)
                 .all()
             )
         conv_by_phone: dict[str, list[db_module.Message]] = {}
@@ -415,14 +433,21 @@ def _load_llamadas(tenant_id: str) -> list[dict]:
         for phone, msgs in conv_by_phone.items():
             msgs_sorted = sorted(msgs, key=lambda x: x.created_at)
             last = msgs_sorted[-1]
-            preview = (last.content or "")[:120]
+            preview = (last.content or "")[:160]
+            channel = _conversation_channel(phone)
+            display_phone = _display_phone(phone)
+            has_booking = phone in phones_with_booking or display_phone in phones_with_booking
             llamadas.append({
-                "id": f"v_{phone}",
+                "id": f"c_{phone}",
                 "telefono": phone,
+                "display_phone": display_phone,
                 "nombre": "—",
+                "channel": channel,
                 "ultimoAt": last.created_at.isoformat(timespec="minutes"),
-                "reserva": False,
+                "reserva": has_booking,
                 "preview": preview,
+                "duracion": None,
+                "tools": [],
                 "turnos": [
                     {
                         "role": m.role,
@@ -431,7 +456,6 @@ def _load_llamadas(tenant_id: str) -> list[dict]:
                     } for m in msgs_sorted
                 ],
             })
-        # Orden por última llamada descendente
         llamadas.sort(key=lambda x: x["ultimoAt"], reverse=True)
         return llamadas
     except Exception as exc:
