@@ -1,0 +1,36 @@
+{% if not conversations %}
+<div class="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-500">
+  Aún no hay conversaciones de voz registradas para este cliente.
+</div>
+{% else %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <div class="lg:col-span-4 bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div class="p-3 border-b border-slate-100">
+      <div class="text-xs text-slate-500">{{ conversations|length }} conversaciones</div>
+    </div>
+    <ul class="divide-y divide-slate-100 max-h-[600px] overflow-auto">
+      {% for c in conversations %}
+      <li class="p-4 hover:bg-slate-50 cursor-pointer" onclick="location.href='/admin/conversaciones?tenant={{ t.id }}&phone={{ c.phone }}'">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-semibold text-xs shrink-0">{{ c.phone[-4:] }}</div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between">
+              <div class="text-sm font-medium truncate">{{ c.phone }}</div>
+              <div class="text-xs text-slate-400">{{ c.last_at.strftime('%d/%m %H:%M') if c.last_at else '' }}</div>
+            </div>
+            <div class="text-xs text-slate-500 truncate">{{ c.last_text }}</div>
+            <div class="text-xs text-slate-400 mt-0.5">{{ c.n_messages }} mensajes</div>
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="lg:col-span-8 bg-white rounded-xl border border-slate-200 overflow-hidden flex items-center justify-center min-h-[500px]">
+    <div class="text-center text-sm text-slate-500 p-8">
+      Selecciona una conversación de la lista o ábrela en la <a href="/admin/conversaciones" class="text-brand-700 hover:underline">bandeja global</a>.
+    </div>
+  </div>
+</div>
+{% endif %}

@@ -5,15 +5,93 @@
 {% block content %}
 <div class="mb-6">
   <h1 class="text-2xl font-bold tracking-tight">Reservas</h1>
-  <p class="text-slate-500 text-sm mt-1">Vista agregada de citas creadas por el bot</p>
+  <p class="text-slate-500 text-sm mt-1">Vista agregada de citas de todos los clientes</p>
 </div>
 
-<div class="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
-  <div class="mb-3">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-12 h-12 mx-auto text-slate-300"><path d="M8 2v4M16 2v4M3 10h18M5 6h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="text-xs uppercase tracking-wider text-slate-400">Total</div>
+    <div class="mt-2 text-2xl font-semibold text-slate-900">{{ stats.total }}</div>
   </div>
-  <div class="text-sm font-medium mb-1">Próximamente</div>
-  <div class="text-sm max-w-md mx-auto">Las reservas se gestionan directamente contra Google Calendar de cada cliente. Para mostrarlas aquí hay que registrar las llamadas a <code class="text-xs bg-slate-100 rounded px-1">crear_reserva</code> / <code class="text-xs bg-slate-100 rounded px-1">mover_reserva</code> / <code class="text-xs bg-slate-100 rounded px-1">cancelar_reserva</code> en una tabla dedicada.</div>
-  <p class="text-xs text-slate-400 mt-4">Añade una tabla <code>bookings</code> y registra cada tool_call desde agent.py.</p>
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="text-xs uppercase tracking-wider text-slate-400">Voz</div>
+    <div class="mt-2 text-2xl font-semibold text-emerald-700">{{ stats.voz }}</div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="text-xs uppercase tracking-wider text-slate-400">Manual</div>
+    <div class="mt-2 text-2xl font-semibold text-sky-700">{{ stats.manual }}</div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="text-xs uppercase tracking-wider text-slate-400">Canceladas</div>
+    <div class="mt-2 text-2xl font-semibold text-rose-700">{{ stats.canceladas }}</div>
+  </div>
 </div>
+
+{% if warnings %}
+<div class="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+  <div class="text-sm font-medium text-amber-900">Algunos calendarios no se pudieron leer</div>
+  <ul class="mt-2 space-y-1 text-sm text-amber-800">
+    {% for w in warnings %}
+      <li><strong>{{ w.tenant_name }}</strong> <span class="text-amber-700">({{ w.tenant_id }})</span>: {{ w.error }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if not bookings %}
+<div class="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
+  No he encontrado reservas visibles en los calendarios conectados.
+</div>
+{% else %}
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500">
+        <tr>
+          <th class="text-left font-medium px-4 py-3">Fecha</th>
+          <th class="text-left font-medium px-4 py-3">Cliente</th>
+          <th class="text-left font-medium px-4 py-3">Servicio</th>
+          <th class="text-left font-medium px-4 py-3">Negocio</th>
+          <th class="text-left font-medium px-4 py-3">Canal</th>
+          <th class="text-left font-medium px-4 py-3">Estado</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for b in bookings %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="font-medium text-slate-900">{{ b.fecha }} · {{ b.hora }}</div>
+            <div class="text-xs text-slate-500">{{ b.duracion }} min</div>
+          </td>
+          <td class="px-4 py-3">
+            <div class="font-medium text-slate-900">{{ b.cliente }}</div>
+            <div class="text-xs text-slate-500">{{ b.telefono or 'Sin teléfono' }}</div>
+          </td>
+          <td class="px-4 py-3">
+            <div class="text-slate-900">{{ b.servicio or b.summary or '—' }}</div>
+          </td>
+          <td class="px-4 py-3">
+            <a href="/admin/clientes/{{ b.tenant_id }}/general" class="text-brand-700 hover:underline">{{ b.tenant_name }}</a>
+          </td>
+          <td class="px-4 py-3">
+            {% if b.canal == 'voz' %}
+              <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs font-medium">Voz</span>
+            {% else %}
+              <span class="inline-flex items-center rounded-full bg-sky-50 text-sky-700 px-2 py-0.5 text-xs font-medium">Manual</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            {% if b.estado == 'cancelada' %}
+              <span class="inline-flex items-center rounded-full bg-rose-50 text-rose-700 px-2 py-0.5 text-xs font-medium">Cancelada</span>
+            {% else %}
+              <span class="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-xs font-medium">Confirmada</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

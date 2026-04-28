@@ -181,6 +181,208 @@ def _metrics_for_tenant(s: Session, tenant_id: str) -> dict:
     }
 
 
+def _load_conversation_summaries(
+    s: Session,
+    *,
+    tenant_id: str | None = None,
+    limit: int = 300,
+) -> list[dict]:
+    """Agrupa `messages` por (tenant, customer_phone) para pintar el inbox."""
+    q = s.query(db_module.Message)
+    if tenant_id:
+        q = q.filter(db_module.Message.tenant_id == tenant_id)
+    rows = q.order_by(db_module.Message.created_at.desc()).limit(2000).all()
+
+    grouped: dict[tuple[str, str], dict] = {}
+    for m in rows:
+        key = (m.tenant_id, m.customer_phone)
+        item = grouped.get(key)
+        if item is None:
+            item = {
+                "tenant_id": m.tenant_id,
+                "phone": m.customer_phone,
+                "last_at": m.created_at,
+                "last_text": (m.content or "").strip(),
+                "n_messages": 0,
+                "tenant": s.get(db_module.Tenant, m.tenant_id),
+            }
+            grouped[key] = item
+        item["n_messages"] += 1
+
+    summaries = sorted(
+        grouped.values(),
+        key=lambda x: x["last_at"] or datetime.min,
+        reverse=True,
+    )
+    return summaries[:limit]
+
+
+def _load_conversation_messages(
+    s: Session,
+    *,
+    tenant_id: str,
+    customer_phone: str,
+    limit: int = 300,
+) -> list[db_module.Message]:
+    return (
+        s.query(db_module.Message)
+        .filter(
+            db_module.Message.tenant_id == tenant_id,
+            db_module.Message.customer_phone == customer_phone,
+        )
+        .order_by(db_module.Message.created_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+
+def _services_map(tenant_id: str) -> dict[str, dict]:
+    with Session(db_module.engine) as s:
+        rows = (
+            s.query(db_module.Service)
+            .filter(db_module.Service.tenant_id == tenant_id)
+            .all()
+        )
+        return {
+            str(sv.id): {
+                "nombre": sv.nombre,
+                "precio": sv.precio,
+                "duracion": sv.duracion_min,
+            }
+            for sv in rows
+        }
+
+
+def _members_by_calendar(tenant_id: str) -> dict[str, str]:
+    with Session(db_module.engine) as s:
+        rows = (
+            s.query(db_module.MiembroEquipo)
+            .filter(db_module.MiembroEquipo.tenant_id == tenant_id)
+            .all()
+        )
+        return {m.calendar_id: str(m.id) for m in rows if m.calendar_id}
+
+
+def _parse_event_dt(ev: dict, key: str) -> datetime | None:
+    raw = ((ev.get(key) or {}).get("dateTime") or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _event_to_booking(
+    ev: dict,
+    *,
+    tenant: db_module.Tenant,
+    services_by_id: dict[str, dict],
+    members_by_calendar: dict[str, str],
+) -> dict | None:
+    start = _parse_event_dt(ev, "start")
+    end = _parse_event_dt(ev, "end")
+    if not start or not end:
+        return None
+
+    priv = (ev.get("extendedProperties") or {}).get("private") or {}
+    phone = priv.get("phone") or ""
+    client = priv.get("client_name") or ""
+    service_id = str(priv.get("service_id") or "")
+    member_id = str(priv.get("member_id") or "")
+    channel = (priv.get("channel") or priv.get("created_by") or "").lower()
+    canal = "voz" if channel in ("voice", "voz") else "manual"
+
+    if not client:
+        summary = (ev.get("summary") or "").strip()
+        client = summary or "(sin nombre)"
+
+    service_name = ""
+    if service_id and service_id in services_by_id:
+        service_name = services_by_id[service_id]["nombre"]
+    else:
+        summary_lower = (ev.get("summary") or "").lower()
+        for sid, svc in services_by_id.items():
+            if svc["nombre"].lower() in summary_lower:
+                service_id = sid
+                service_name = svc["nombre"]
+                break
+
+    organizer_email = (ev.get("organizer") or {}).get("email") or ""
+    if not member_id and organizer_email in members_by_calendar:
+        member_id = members_by_calendar[organizer_email]
+
+    duracion = max(1, int((end - start).total_seconds() // 60))
+
+    return {
+        "id": ev.get("id") or "",
+        "tenant_id": tenant.id,
+        "tenant_name": tenant.name,
+        "fecha": start.strftime("%Y-%m-%d"),
+        "hora": start.strftime("%H:%M"),
+        "inicio": start,
+        "duracion": duracion,
+        "cliente": client,
+        "telefono": phone,
+        "servicio": service_name,
+        "servicio_id": service_id,
+        "equipo": member_id,
+        "canal": canal,
+        "estado": "cancelada" if ev.get("status") == "cancelled" else "confirmada",
+        "calendar_id": ev.get("_calendar_id") or tenant.calendar_id or "",
+        "summary": ev.get("summary") or "",
+    }
+
+
+def _load_all_bookings(*, days_back: int = 30, days_forward: int = 365) -> tuple[list[dict], list[dict]]:
+    """Agrega reservas de todos los tenants activos desde Google Calendar."""
+    from .. import calendar_service
+    from datetime import time as _time
+
+    warnings: list[dict] = []
+    bookings: list[dict] = []
+    today = datetime.now(calendar_service.TZ).date()
+    desde = datetime.combine(today - timedelta(days=days_back), _time(0, 0))
+    hasta = datetime.combine(today + timedelta(days=days_forward), _time(23, 59))
+
+    with Session(db_module.engine) as s:
+        tenants = (
+            s.query(db_module.Tenant)
+            .filter(db_module.Tenant.kind == "contracted")
+            .order_by(db_module.Tenant.name.asc())
+            .all()
+        )
+
+    for tenant in tenants:
+        try:
+            events = calendar_service.listar_eventos(
+                desde=desde,
+                hasta=hasta,
+                calendar_id=tenant.calendar_id,
+                tenant_id=tenant.id,
+            )
+            services_by_id = _services_map(tenant.id)
+            members_by_calendar = _members_by_calendar(tenant.id)
+            for ev in events:
+                booking = _event_to_booking(
+                    ev,
+                    tenant=tenant,
+                    services_by_id=services_by_id,
+                    members_by_calendar=members_by_calendar,
+                )
+                if booking is not None:
+                    bookings.append(booking)
+        except Exception as exc:
+            warnings.append({
+                "tenant_id": tenant.id,
+                "tenant_name": tenant.name,
+                "error": str(exc)[:220],
+            })
+
+    bookings.sort(key=lambda x: x["inicio"], reverse=True)
+    return bookings, warnings
+
+
 def _delta_pct(curr, prev) -> int:
     if not prev:
         return 0
@@ -524,6 +726,56 @@ async def dashboard(request: Request, uid: int = Depends(auth.current_user_id)):
 
 
 # ==========================================================================
+#  CONVERSACIONES / LLAMADAS — BANDEJA GLOBAL
+# ==========================================================================
+
+@router.get("/admin/conversaciones", response_class=HTMLResponse)
+async def conversations_inbox(
+    request: Request,
+    tenant: str | None = None,
+    phone: str | None = None,
+    uid: int = Depends(auth.current_user_id),
+):
+    selected = None
+    messages: list[db_module.Message] = []
+    with Session(db_module.engine) as s:
+        convos = _load_conversation_summaries(s, tenant_id=tenant)
+        if phone:
+            selected = next(
+                (
+                    c for c in convos
+                    if c["phone"] == phone and (tenant is None or c["tenant_id"] == tenant)
+                ),
+                None,
+            )
+            if selected is None and tenant:
+                t = s.get(db_module.Tenant, tenant)
+                selected = {
+                    "tenant_id": tenant,
+                    "phone": phone,
+                    "tenant": t,
+                    "last_at": None,
+                    "last_text": "",
+                    "n_messages": 0,
+                }
+            if selected is not None:
+                messages = _load_conversation_messages(
+                    s,
+                    tenant_id=selected["tenant_id"],
+                    customer_phone=selected["phone"],
+                )
+
+    return templates.TemplateResponse("conversations.html", {
+        "request": request,
+        "user_email": auth.current_user_email(uid),
+        "active": "conversaciones",
+        "convos": convos,
+        "selected": selected,
+        "messages": messages,
+    })
+
+
+# ==========================================================================
 #  CLIENTES — LISTA
 # ==========================================================================
 
@@ -757,7 +1009,7 @@ async def client_detail(
     tenant_id: str, tab: str, request: Request,
     uid: int = Depends(auth.current_user_id),
 ):
-    if tab not in ("general", "servicios", "horarios", "equipo", "personalizacion", "voz", "metricas"):
+    if tab not in ("general", "servicios", "horarios", "equipo", "personalizacion", "voz", "conversaciones", "metricas"):
         raise HTTPException(404, "Pestaña desconocida")
 
     with Session(db_module.engine) as s:
@@ -773,6 +1025,7 @@ async def client_detail(
             _seed_voice_defaults_if_empty(s, t)
 
         metrics = _metrics_for_tenant(s, tenant_id) if tab in ("metricas", "general") else None
+        conversations = _load_conversation_summaries(s, tenant_id=tenant_id) if tab == "conversaciones" else []
 
         # prompt preview
         prompt_preview = db_module.render_system_prompt(t)
@@ -817,6 +1070,7 @@ async def client_detail(
             "google_connected": _google_calendar_connected(tenant_id),
             "equipo_conectados": equipo_conectados,
             "portal_users": portal_users,
+            "conversations": conversations,
         })
 
 
@@ -1573,15 +1827,25 @@ async def settings_view(request: Request, uid: int = Depends(auth.current_user_i
 
 
 # ==========================================================================
-#  RESERVAS (placeholder hasta que tengamos tabla dedicada)
+#  RESERVAS (vista agregada desde Google Calendar)
 # ==========================================================================
 
 @router.get("/admin/reservas", response_class=HTMLResponse)
 async def bookings_view(request: Request, uid: int = Depends(auth.current_user_id)):
+    bookings, warnings = _load_all_bookings()
+    stats = {
+        "total": len(bookings),
+        "voz": sum(1 for b in bookings if b["canal"] == "voz"),
+        "manual": sum(1 for b in bookings if b["canal"] != "voz"),
+        "canceladas": sum(1 for b in bookings if b["estado"] == "cancelada"),
+    }
     return templates.TemplateResponse("bookings.html", {
         "request": request,
         "user_email": auth.current_user_email(uid),
         "active": "reservas",
+        "bookings": bookings,
+        "warnings": warnings,
+        "stats": stats,
     })
 
 
