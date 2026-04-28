@@ -1083,17 +1083,84 @@ def _peluqueros_legible(peluqueros: list[dict]) -> str:
     return ", ".join(frases) + "."
 
 
-def render_voice_prompt(tenant: dict) -> str:
-    """Construye el prompt de Ana parametrizado desde los datos del tenant.
+# ---------------------------------------------------------------------
+#  Render del prompt de voz: Ana como plantilla maestra
+# ---------------------------------------------------------------------
+#
+#  Decisión arquitectural (2026-04-28): la fuente de verdad del prompt de
+#  voz es `ana_prompt_new.txt` en la raíz del repo. Cualquier mejora a la
+#  jerarquía o a las reglas que se haga sobre ese archivo se propaga
+#  automáticamente a todos los tenants nuevos. NO mantenemos un prompt
+#  paralelo hardcodeado en este módulo.
+#
+#  `render_voice_prompt(tenant)` carga la plantilla y sustituye SOLO los
+#  datos específicos del negocio (nombre, asistente, horario, servicios,
+#  peluqueros, timezone, fallback hablado, pregunta-corte) preservando
+#  intactos: REFRESH_BLOCK de fechas, "UNA pregunta por turno", flujo
+#  RESERVA con nombre al FINAL, flujos MOVER/CANCELAR (incluida la
+#  búsqueda por nombre tras fallo de teléfono) y "Cierre y colgar" con
+#  end_call.
+#
+#  La sustitución se hace por anchors de línea EXACTOS. Si Marcos edita
+#  `ana_prompt_new.txt` y rompe el matching, levantamos un RuntimeError
+#  explícito en vez de fallar silenciosamente — así nos enteramos en los
+#  tests y en el primer render del CMS.
+#
+#  Ver PROMPT_KNOWLEDGE.md para la sabiduría completa.
 
-    Acepta un dict (el formato que devuelve Tenant.to_dict()) para no acoplar
-    este módulo al ORM. Mantiene las reglas duras y el flujo RESERVA que están
-    optimizados para latencia; solo cambian nombre del negocio, servicios,
-    horario, peluqueros y teléfono de fallback.
+# Ruta absoluta a la plantilla. `app/db.py` está en `<repo>/app/`, así
+# que la plantilla queda un nivel arriba.
+import pathlib as _pathlib
+_VOICE_PROMPT_TEMPLATE_PATH = _pathlib.Path(__file__).resolve().parent.parent / "ana_prompt_new.txt"
+
+# Anchors (líneas exactas de la plantilla actual). Si la plantilla cambia
+# y alguno de estos textos desaparece, render_voice_prompt lanza un
+# RuntimeError con la lista de anchors faltantes.
+_ANCHOR_INTRO = (
+    'Eres Ana, recepcionista de Peluquería Ejemplo. Hablas por teléfono '
+    'en español de España. Eres una persona, no un bot. Si preguntan: '
+    '"Soy Ana, trabajo aquí".'
+)
+_ANCHOR_HORARIO = "Horario lun-sáb 09:30-20:30. Domingo cerrado."
+_ANCHOR_SERVICIOS = (
+    "Servicios: Corte mujer 45min 22€ · Corte hombre 30min 15€ · "
+    "Color 90min 55€ · Mechas 120min 75€."
+)
+_ANCHOR_PELUQUEROS = "Peluqueros: Mario (lun-sáb), Marcos (solo miércoles)."
+_ANCHOR_CONTEXTO_TZ = (
+    'Ahora mismo es {{system__time}} (zona Europe/Madrid). '
+    'Úsalo como "hoy" y calcula desde ahí.'
+)
+_ANCHOR_REGLA4 = (
+    '4. Tool error retryable:true → UN reintento con filler. Si falla: '
+    '"me da problemas el sistema, ¿puedes llamar al nueve uno cero, '
+    'cero cero cero, cero cero cero?" (hablado). Lista vacía SIN error '
+    '→ ofrece otro día/peluquero, no es fallo.'
+)
+_ANCHOR_PASO1 = (
+    '  1. Servicio (si "corte" → "¿mujer o hombre?"). Ese turno SOLO '
+    'pregunta el servicio.'
+)
+
+
+def render_voice_prompt(tenant: dict) -> str:
+    """Renderiza el prompt de voz de un tenant a partir de la plantilla
+    maestra `ana_prompt_new.txt`. Sustituye solo los datos del negocio.
+
+    Acepta un dict (formato `Tenant.to_dict()`) para no acoplar este módulo
+    al ORM.
+
+    Cualquier mejora a la jerarquía o reglas sobre `ana_prompt_new.txt`
+    se hereda automáticamente: una sola fuente de verdad.
+
+    Lanza RuntimeError si la plantilla se editó y alguno de los anchors
+    de sustitución dejó de matchear — preferimos fallar ruidosamente a
+    entregar un prompt malformado.
     """
     nombre_negocio = tenant.get("name") or "el negocio"
     assistant_name = (tenant.get("assistant") or {}).get("name") or "Ana"
     fallback = ((tenant.get("assistant") or {}).get("fallback_phone") or "").strip()
+    timezone = tenant.get("timezone") or "Europe/Madrid"
 
     # Servicios en línea: "Corte mujer 45min 22€ · Corte hombre 30min 15€"
     servicios = tenant.get("services") or []
@@ -1102,90 +1169,87 @@ def render_voice_prompt(tenant: dict) -> str:
         for s in servicios if s.get("nombre")
     ) or "(sin servicios configurados)"
 
-    horario_txt = _horario_legible(tenant.get("business_hours") or {})
+    horario_txt = _horario_legible(tenant.get("business_hours") or {}) or "a confirmar."
     peluqueros_txt = _peluqueros_legible(tenant.get("peluqueros") or [])
 
-    # Línea de fallback hablable ("nueve uno cero cero cero cero cero cero cero")
+    # Frase de fallback hablable ("nueve uno cero cero cero cero cero cero cero")
     if fallback:
         fallback_hablable = " ".join(list(fallback.replace(" ", "")))
-        fallback_frase = f'"me da problemas el sistema, ¿puedes llamar al {fallback_hablable}?"'
+        fallback_frase = (
+            f'"me da problemas el sistema, ¿puedes llamar al '
+            f'{fallback_hablable}?"'
+        )
     else:
-        fallback_frase = '"me da problemas el sistema, ¿puedes volver a intentarlo en un rato?"'
+        fallback_frase = (
+            '"me da problemas el sistema, ¿puedes volver a intentarlo en un rato?"'
+        )
 
-    # Pregunta inicial ante "corte" (solo relevante si hay varios cortes)
-    pregunta_corte = ""
+    # Pregunta inicial ante "corte" (solo relevante si hay corte mujer/hombre)
     nombres_serv = [s.get("nombre", "").lower() for s in servicios]
-    if any("corte" in n and ("mujer" in n or "hombre" in n) for n in nombres_serv):
-        pregunta_corte = ' (si "corte" → "¿mujer o hombre?")'
+    tiene_corte_diferenciado = any(
+        "corte" in n and ("mujer" in n or "hombre" in n) for n in nombres_serv
+    )
 
-    # Construimos el prompt. Ojo con las llaves: `{{system__...}}` son variables
-    # ElevenLabs, NO Python. En f-strings hay que duplicarlas: `{{{{...}}}}`.
-    prompt = f"""Eres {assistant_name}, recepcionista de {nombre_negocio}. Hablas por teléfono en español de España. Eres una persona, no un bot. Si preguntan: "Soy {assistant_name}, trabajo aquí".
+    # Mapeo anchor → línea nueva. Valor `None` significa "eliminar la línea".
+    nuevas_lineas: dict[str, str | None] = {
+        _ANCHOR_INTRO: (
+            f'Eres {assistant_name}, recepcionista de {nombre_negocio}. '
+            f'Hablas por teléfono en español de España. Eres una persona, '
+            f'no un bot. Si preguntan: "Soy {assistant_name}, trabajo aquí".'
+        ),
+        _ANCHOR_HORARIO: f"Horario {horario_txt}".rstrip(),
+        _ANCHOR_SERVICIOS: f"Servicios: {servicios_txt}.",
+        _ANCHOR_PELUQUEROS: (
+            f"Peluqueros: {peluqueros_txt}".rstrip() if peluqueros_txt else None
+        ),
+        _ANCHOR_CONTEXTO_TZ: (
+            'Ahora mismo es {{system__time}} (zona ' + timezone + '). '
+            'Úsalo como "hoy" y calcula desde ahí.'
+        ),
+        _ANCHOR_REGLA4: (
+            f'4. Tool error retryable:true → UN reintento con filler. '
+            f'Si falla: {fallback_frase} (hablado). Lista vacía SIN error '
+            f'→ ofrece otro día/peluquero, no es fallo.'
+        ),
+        _ANCHOR_PASO1: (
+            _ANCHOR_PASO1
+            if tiene_corte_diferenciado
+            else "  1. Servicio. Ese turno SOLO pregunta el servicio."
+        ),
+    }
 
-## Negocio
-Horario {horario_txt or 'a confirmar'}
-Servicios: {servicios_txt}.
-{f'Peluqueros: {peluqueros_txt}' if peluqueros_txt else ''}
-Solo recitas precios/horarios si preguntan.
+    template = _VOICE_PROMPT_TEMPLATE_PATH.read_text(encoding="utf-8")
+    lineas = template.split("\n")
+    out: list[str] = []
+    encontrados: dict[str, bool] = {a: False for a in nuevas_lineas}
 
-## Contexto
-FECHA: {{{{system__time_utc}}}} (UTC). Zona: {tenant.get('timezone') or 'Europe/Madrid'}.
-Fechas a tools en ISO local SIN "Z": 2026-04-22T10:00:00.
-Teléfono: pasa SIEMPRE {{{{system__caller_id}}}} como `telefono_cliente` en cada tool call, sin decirlo. NUNCA preguntes el teléfono salvo si caller_id es exactamente "unknown"/"anonymous"/"null"/"-"/vacío.
+    for linea in lineas:
+        if linea in nuevas_lineas:
+            encontrados[linea] = True
+            nueva = nuevas_lineas[linea]
+            if nueva is None:
+                # Caso peluqueros vacíos: borramos la línea entera para
+                # que el bloque ## Negocio quede limpio en abogado, etc.
+                continue
+            out.append(nueva)
+        else:
+            out.append(linea)
 
-## Estilo
-Frases cortas, tono cercano ("vale", "a ver", "perfecto", "venga"). Varía muletillas. Nunca ISO al hablar — "a las cinco y media". UNA pregunta por turno. Sin listas ni emojis. Gracias → "a ti".
+    faltantes = [k for k, v in encontrados.items() if not v]
+    if faltantes:
+        # La plantilla se editó y dejó de matchear. Preferimos romper a
+        # devolver un prompt con datos hardcoded de pelu_demo silenciosamente.
+        muestras = "\n".join(f"  - {a[:100]!r}" for a in faltantes)
+        raise RuntimeError(
+            "render_voice_prompt: anchors de sustitución no encontrados en "
+            "ana_prompt_new.txt. La plantilla se editó y los textos de "
+            "anchor quedaron desincronizados. Líneas no localizadas:\n"
+            f"{muestras}\n"
+            "Acción: actualiza las constantes _ANCHOR_* en app/db.py para "
+            "que coincidan con las líneas equivalentes de la plantilla."
+        )
 
-## Fechas al hablar
-- Hoy → "hoy", "esta tarde". Mañana → "mañana". Pasado mañana → "pasado mañana".
-- 3-6 días → solo día ("el jueves").
-- 7+ días → "el [día] [número]" ("el lunes cuatro").
-- **PROHIBIDO combinar término relativo + día de semana**. NUNCA digas "mañana el jueves" ni "pasado mañana el viernes". "Hoy/mañana/pasado mañana" van SOLOS, sin día de semana. Solo nombra día de semana cuando NO uses término relativo (3+ días).
-Ej: "te espero esta tarde a las seis", "te espero mañana a las diez", "venga, el viernes a las cinco y media".
-
-## Fillers antes de tool calls (obligatorio, nunca silencio)
-En el MISMO turno que la tool, varía: "vale, te miro un momento...", "a ver, compruebo la agenda...", "un segundo que lo miro...". Luego sigue: "...pues tengo a las diez, a las once o a la una, ¿cuál te va?"
-
-## Qué puedes hacer
-Solo reservar/mover/cancelar. Nada de WhatsApp/SMS/email.
-
-## Reglas duras
-1. Antes de proponer hora → consultar_disponibilidad SIEMPRE. Nunca inventes.
-2. Antes de confirmar reserva → crear_reserva SIEMPRE.
-3. Mover/cancelar → primero buscar_reserva_cliente.
-4. Tool error retryable:true → UN reintento con filler. Si falla: {fallback_frase} (hablado). Lista vacía SIN error → ofrece otro día/peluquero, no es fallo.
-5. Nombre al final, antes de crear_reserva. Si ya lo dijo, úsalo — nunca repreguntes.
-6. Extrae TODOS los datos del turno. No repreguntes nada ya dicho.
-7. Máximo tres huecos por turno.
-8. Peluquero: si el cliente NO lo menciona, NO preguntes — deja `peluquero_preferido` vacío y ofrece huecos sin nombrar peluquero. Solo nombras si el cliente pregunta o si diferenciar aporta.
-9. Si consultar_disponibilidad devuelve `aviso`, léelo.
-
-## Flujo RESERVA — orden OBLIGATORIO
-Orden: **servicio → cuándo → NOMBRE → consultar → ofrecer → elegir → crear**. El nombre SIEMPRE va ANTES de consultar_disponibilidad. Cuando el cliente elige hueco, vas directo a crear_reserva sin preguntar nada.
-
-1. Servicio{pregunta_corte}.
-2. Cuándo.
-3. **Nombre — OBLIGATORIO antes de consultar**. Si no se presentó, di: "vale, ¿a qué nombre te lo pongo?". Si ya dijo "soy Luis", salta al 4.
-4. Filler + consultar_disponibilidad. Rango: mañana=09:30-14:00, tarde=15:00-20:30. `peluquero_preferido` vacío salvo que lo pidiera. UNA sola llamada, no repitas.
-5. Ofrece máx 3 huecos naturales, sin nombrar peluquero (regla 8).
-6. Cliente elige hueco → MISMO TURNO: "genial, te la dejo apuntada..." + crear_reserva. PROHIBIDO preguntar nombre aquí (ya lo tienes). `telefono_cliente = {{{{system__caller_id}}}}` automático. Título EXACTO: `Nombre — Servicio (Peluquero)` o `Nombre — Servicio (sin preferencia)`. Al ok:true: cierre natural usando Fechas al hablar — "hecho Juan, te espero esta tarde a las seis". Luego "¿algo más?"
-
-## Flujo MOVER
-1. NO pidas teléfono. Filler + buscar_reserva_cliente con `telefono_cliente = {{{{system__caller_id}}}}`.
-2. Lee cita con fecha natural: "tienes cita mañana a las diez con Mario". ¿Para cuándo la mueves?
-3. Nueva franja → filler + consultar_disponibilidad → ofreces.
-4. Elegido → filler + mover_reserva con event_id. Confirma natural.
-
-## Flujo CANCELAR
-1. NO pidas teléfono. Filler + buscar_reserva_cliente con `telefono_cliente = {{{{system__caller_id}}}}`.
-2. Lee cita natural + "¿te la cancelo?".
-3. Sí → filler + cancelar_reserva. "Listo, queda cancelada."
-
-## Cierre
-"Gracias por llamar, hasta luego." o "Venga, hasta luego."
-"""
-    # Quitar líneas vacías que hayan quedado por tener peluqueros_txt vacío
-    return "\n".join(l for l in prompt.split("\n") if l.strip() != "")
+    return "\n".join(out)
 
 
 def _precio_fmt(p) -> str:

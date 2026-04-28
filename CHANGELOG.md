@@ -6,6 +6,27 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-28 (voz — Ana como plantilla maestra para tenants nuevos)
+
+Hallazgo durante refresh de contexto: `app/db.py::render_voice_prompt` (la función que genera el prompt al dar de alta un tenant nuevo desde el CMS) tenía la **jerarquía vieja** del flujo RESERVA: `servicio → cuándo → NOMBRE → consultar → ofrecer → elegir → crear`. Es la regresión que se cazó en la ronda 8 sobre `ana_prompt_new.txt` y que `PROMPT_KNOWLEDGE.md` prohíbe explícitamente. Resultado: cualquier tenant nuevo nacía con la jerarquía equivocada (Ana pelu_demo no estaba afectada porque su `voice_prompt` ya estaba editado en BD).
+
+### Cambiado
+
+- **`render_voice_prompt(tenant)` ahora parte de `ana_prompt_new.txt`** como plantilla maestra. Carga el archivo del repo y sustituye sólo los datos del negocio (nombre, asistente, horario, servicios, peluqueros, timezone, fallback hablado, pregunta-corte). El resto del prompt — REFRESH_BLOCK de fechas, "UNA pregunta por turno", flujo RESERVA con nombre al FINAL, MOVER/CANCELAR con búsqueda por nombre, "Cierre y colgar" con `end_call` — queda **idéntico al de Ana, palabra por palabra**. Una sola fuente de verdad.
+- La sustitución se hace por **anchors de línea exactos** definidos como constantes `_ANCHOR_*` en `app/db.py`. Si la plantilla se edita y un anchor deja de matchear, se levanta `RuntimeError` explícito en vez de devolver un prompt malformado silenciosamente.
+- `ana_prompt_new.txt` no se modifica — sigue siendo el prompt vivo de Ana y `scripts/refresh_agent_prompt.py` / `scripts/setup_elevenlabs_agent.py` lo consumen como antes.
+
+### Añadido
+
+- `tests/test_render_voice_prompt.py` (13 tests): regresión sobre la jerarquía y secciones canónicas. Falla si reaparecen "nombre antes de consultar" o desaparece alguna marca crítica (REFRESH_BLOCK, "UNA pregunta por turno", "Cierre y colgar", `end_call`, búsqueda por `nombre_cliente`, etc.). Cubre dos fixtures: peluquería con equipo y abogado sin equipo.
+- Test de degradación segura: si la plantilla cambia y los anchors dejan de matchear, `render_voice_prompt` levanta `RuntimeError` con la lista de anchors faltantes.
+
+### Why
+
+Cualquier mejora futura sobre `ana_prompt_new.txt` se hereda automáticamente a todos los tenants nuevos. Y la jerarquía optimizada (nombre al FINAL) deja de poder regresar accidentalmente para clientes nuevos.
+
+---
+
 ## 2026-04-28 (voz — guardrails de saludo, tenant propio y deploy de fixes)
 
 Se cerró la tanda de hardening del canal de voz tras una llamada real con saludo ofensivo y varios roces de UX. Además, `pelu_demo` dejó de depender del agente global de entorno y pasó a tener `voice_agent_id` propio en producción.
