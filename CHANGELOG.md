@@ -6,6 +6,30 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-29 (auditoría fase 2 — caps de duración, lifespan, docs)
+
+Segunda pasada de auditoría tras los fixes de la mañana. Hallazgos nuevos: duración sin cap en tools de voz, `@app.on_event` deprecated, política de migraciones poco visible.
+
+### Añadido
+
+- **Caps de duración en tools de voz** (`app/eleven_tools.py`): constantes `_MIN_DURACION_MIN = 5` y `_MAX_DURACION_MIN = 240`. `ConsultaReq.duracion_minutos` ahora se valida con `Field(ge=5, le=240)` (Pydantic devuelve 422 al instante). `crear_reserva` y `mover_reserva` calculan `(fin - inicio).minutes` y rechazan con `{ok: false, retryable: false, error: "..."}` cuando se sale de rango (incluye duración invertida fin<=inicio). Sin esto, una alucinación del LLM podía ocupar 6h de agenda con una sola palabra mal interpretada.
+- **`tests/test_eleven_tools_duration_caps.py`**: 4 tests del cap (consulta 422 por exceso, 422 por defecto, crear con 6h aborta sin tocar Calendar, crear con fin invertido aborta).
+
+### Cambiado
+
+- **Migración a `lifespan` en `app/main.py`**: los dos `@app.on_event("startup")` (`_register_sheets_sync` y `_warmup_google_client`) se han fusionado en un único `@asynccontextmanager` `_lifespan`. FastAPI 0.93+ deprecó `on_event`; ahora arrancamos sin `DeprecationWarning` y el orden de tareas de startup es explícito.
+
+### Documentado
+
+- **`app/db.py:_auto_migrate_sqlite`**: docstring ampliado con qué cubre (ADD COLUMN con default, renombrados puntuales) y qué NO (NOT NULL sin default, DROP COLUMN, cambios de tipo). Mención a Alembic como techo natural si crece la complejidad.
+
+### Notas
+
+- Falsos positivos del audit que NO se han tocado: forms anidados en `tab_general.html` (el form principal cierra antes del bloque), `except Exception` masivo (ya logean correctamente), prompt injection en tools (no hay re-feeding al LLM), CSRF (sería un endurecimiento aparte, fuera de scope hoy).
+- 129 tests pasan tras este push (4 nuevos sumados al test del POST /equipo).
+
+---
+
 ## 2026-04-29 (auditoría, hardening y limpieza)
 
 Tras un primer fix por la mañana (días laborables del equipo, commit 51b7073), auditoría general del proyecto buscando bugs del mismo tipo y deuda. Encontrados varios bugs reales, otros descartados como falsos positivos. Cambios incluidos en este push:

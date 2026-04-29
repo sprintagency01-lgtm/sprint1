@@ -157,12 +157,21 @@ def _is_sin_preferencia(value: str | None) -> bool:
 
 # ---------- Pydantic models ----------
 
+# Cota dura para duraciones que llegan del LLM. Sin esto, Ana puede pedir
+# huecos de 8 horas o crear una reserva que ocupe el día entero al cliente
+# si malinterpreta una pausa o un "un día". 5 minutos es el mínimo razonable
+# (sirve para tests y citas tipo "flequillo"); 240 minutos cubre tratamientos
+# largos (mechas, color + corte) sin abrir la puerta a errores groseros.
+_MIN_DURACION_MIN = 5
+_MAX_DURACION_MIN = 240
+
+
 class ConsultaReq(BaseModel):
     fecha_desde_iso: str = Field(..., description="ISO 8601 (Europe/Madrid naive o con offset)")
     fecha_hasta_iso: str
-    duracion_minutos: int
+    duracion_minutos: int = Field(..., ge=_MIN_DURACION_MIN, le=_MAX_DURACION_MIN)
     peluquero_preferido: str | None = None
-    max_resultados: int = 5
+    max_resultados: int = Field(default=5, ge=1, le=15)
 
 
 class CrearReq(BaseModel):
@@ -457,6 +466,25 @@ def crear_reserva(
             "detail": str(e)[:200],
         }
 
+    # Cap de duración. Si el LLM se confunde y manda una cita de 6h, mejor
+    # que falle aquí con mensaje claro a que se cree el evento y bloquee la
+    # agenda. fin <= inicio también lo descartamos.
+    duracion_min = (fin_dt - inicio_dt).total_seconds() / 60.0
+    if duracion_min < _MIN_DURACION_MIN or duracion_min > _MAX_DURACION_MIN:
+        log.warning(
+            "crear_reserva: duración fuera de rango %.1f min (inicio=%s fin=%s)",
+            duracion_min, req.inicio_iso, req.fin_iso,
+        )
+        return {
+            "ok": False,
+            "error": (
+                f"La duración de la cita ({duracion_min:.0f} min) está fuera de "
+                f"rango ({_MIN_DURACION_MIN}-{_MAX_DURACION_MIN} min). "
+                "Vuelve a confirmar el servicio con el cliente."
+            ),
+            "retryable": False,
+        }
+
     destino_cal = _calendar_id_for_booking(tenant, req.peluquero)
     peluquero = (req.peluquero or "").strip()
     if peluqueros and peluquero and not _is_sin_preferencia(peluquero):
@@ -688,6 +716,22 @@ def mover_reserva(
     tenant = _resolve_tenant(tenant_id)
     nuevo_inicio = datetime.fromisoformat(req.nuevo_inicio_iso)
     nuevo_fin = datetime.fromisoformat(req.nuevo_fin_iso)
+    # Cap de duración: aplica también al mover (un Ana confundida puede
+    # mover "a las 10" a 10:00 dejando fin = 18:00 por error).
+    duracion_min = (nuevo_fin - nuevo_inicio).total_seconds() / 60.0
+    if duracion_min < _MIN_DURACION_MIN or duracion_min > _MAX_DURACION_MIN:
+        log.warning(
+            "mover_reserva: duración fuera de rango %.1f min",
+            duracion_min,
+        )
+        return {
+            "ok": False,
+            "error": (
+                f"La duración resultante ({duracion_min:.0f} min) está fuera "
+                f"de rango ({_MIN_DURACION_MIN}-{_MAX_DURACION_MIN} min)."
+            ),
+            "retryable": False,
+        }
     tid = tenant.get("id", "default")
 
     # Fast path: si `buscar_reserva_cliente` ya devolvió `calendar_id` y el

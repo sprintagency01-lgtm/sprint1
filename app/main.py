@@ -15,6 +15,7 @@ import logging
 import pathlib
 import re
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Header, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -38,7 +39,54 @@ logging.basicConfig(
 )
 log = logging.getLogger("bot")
 
-app = FastAPI(title="Bot reservas voz (ElevenLabs) + CMS")
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Reemplaza @app.on_event("startup") (deprecated en FastAPI 0.93+).
+
+    Tareas de arranque:
+      1. Registrar listeners de SQLAlchemy → Google Sheets (si configurado).
+      2. Warm-up del cliente Google Calendar para los tenants contratados
+         activos, para que la primera llamada de la mañana no pague el
+         coste del discovery (~200-400 ms) encima del RTT Google.
+
+    Si cualquiera de las dos falla, la app arranca igual: preferimos
+    servicio degradado a 502 al usuario.
+    """
+    try:
+        sheets_sync.register_listeners()
+    except Exception:
+        log.exception("No se pudieron registrar listeners de Sheets sync")
+
+    try:
+        from . import tenants as tn
+        from . import calendar_service as cal
+        tenants = tn.load_tenants()
+        warmed: list[str] = []
+        for t in tenants:
+            if (t.get("kind") or "").lower() != "contracted":
+                continue
+            if (t.get("status") or "").lower() != "active":
+                continue
+            tid = t.get("id")
+            if not tid:
+                continue
+            try:
+                cal._service(tid)
+                warmed.append(tid)
+            except Exception as e:
+                log.warning("warm-up Google falló para tenant=%s: %s", tid, str(e)[:200])
+        if warmed:
+            log.info("warm-up Google OK tenants=%s", ",".join(warmed))
+        else:
+            log.info("warm-up Google: ningún tenant elegible, skip")
+    except Exception:
+        log.exception("warm-up Google falló en arranque — seguimos")
+
+    yield
+    # No hay tareas de shutdown por ahora.
+
+
+app = FastAPI(title="Bot reservas voz (ElevenLabs) + CMS", lifespan=_lifespan)
 
 
 # ---------- Middleware de timing para /tools/* y /_diag/* ----------
@@ -112,57 +160,9 @@ app.include_router(diag.router)
 # ---------- Warm-up de Google Calendar en startup ----------
 #
 # La primera llamada a googleapiclient.discovery.build() lee el descriptor
-# del servicio y construye el cliente (~200-400ms). Después la reutilizamos
-# vía `_SERVICE_CACHE` por tenant. Si no calentamos, la primera tool call
-# de ElevenLabs tras un redeploy paga ese coste entero encima del RTT Google
-# — típico "la primera llamada de la mañana suena lenta".
-#
-# Lo hacemos en el startup event (no en import) para no bloquear el import
-# del módulo y para que Railway considere el servicio ready solo cuando el
-# warm-up ha terminado.
-@app.on_event("startup")
-async def _register_sheets_sync() -> None:
-    """Hookea SQLAlchemy events para que cada commit del CMS empuje al Sheet.
-
-    Si las env vars (GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON) no están,
-    el sync se queda en no-op silencioso pero los listeners siguen registrados
-    sin coste apreciable. Así una redepliegue posterior con las vars activas
-    funciona sin tocar código.
-    """
-    try:
-        sheets_sync.register_listeners()
-    except Exception:
-        log.exception("No se pudieron registrar listeners de Sheets sync")
-
-
-@app.on_event("startup")
-async def _warmup_google_client() -> None:
-    try:
-        from . import tenants as tn
-        from . import calendar_service as cal
-        # Precalentamos solo tenants contracted+active; los leads no reciben
-        # llamadas de voz.
-        tenants = tn.load_tenants()
-        warmed: list[str] = []
-        for t in tenants:
-            if (t.get("kind") or "").lower() != "contracted":
-                continue
-            if (t.get("status") or "").lower() != "active":
-                continue
-            tid = t.get("id")
-            if not tid:
-                continue
-            try:
-                cal._service(tid)
-                warmed.append(tid)
-            except Exception as e:
-                log.warning("warm-up Google falló para tenant=%s: %s", tid, str(e)[:200])
-        if warmed:
-            log.info("warm-up Google OK tenants=%s", ",".join(warmed))
-        else:
-            log.info("warm-up Google: ningún tenant elegible, skip")
-    except Exception:
-        log.exception("warm-up Google falló en arranque — seguimos")
+# La inicialización (warm-up Google + listeners Sheets) vive en _lifespan
+# arriba. Así el código y los logs ocurren en el orden correcto sin
+# depender de la API deprecated @app.on_event.
 
 
 

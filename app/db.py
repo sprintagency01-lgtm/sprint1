@@ -1285,6 +1285,26 @@ def _auto_migrate_sqlite() -> None:
 
     Solo aplica a SQLite (el único motor que usamos hoy). Se ejecuta
     una vez al importar el módulo.
+
+    QUÉ CUBRE:
+      - ADD COLUMN con DEFAULT (o nullable) en tablas existentes.
+      - Renombrados puntuales tipo `peluqueros → equipo` (preservan datos).
+
+    QUÉ NO CUBRE — leer antes de tocar el schema:
+      - Columnas NOT NULL sin default: SQLite rechaza el ALTER en una tabla
+        con filas. Si tienes que añadir una así, primero `ADD COLUMN` con
+        default temporal, popular las filas, y luego (en un segundo deploy)
+        eliminar el default si quieres. NO añadir directamente.
+      - DROP COLUMN: SQLite < 3.35 no soporta. Si la columna sobra, déjala
+        muerta o haz una rebuild de tabla manualmente.
+      - Cambios de tipo: tampoco soportados por ALTER en SQLite. Solo
+        rebuild manual.
+      - Datos cross-tabla (FK, joins, agregados): no se migran. Si hay que
+        hacer backfill, escribir un script ad hoc y correrlo una vez.
+
+    Si necesitas migraciones más serias, llegó el momento de meter Alembic;
+    el patrón actual es deliberadamente simple porque la BD vive en un
+    Volume de Railway y es un MVP single-tenant en la práctica.
     """
     if not settings.database_url.startswith("sqlite"):
         return
