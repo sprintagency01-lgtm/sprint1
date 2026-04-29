@@ -25,6 +25,11 @@
       {% for m in t.equipo %}
         {% set dt = m.dias_trabajo %}
         {% set connected = equipo_conectados.get(m.id, False) %}
+        {# midx: índice del miembro (loop externo). Lo capturamos aquí porque
+           dentro del loop interno de días `loop.index0` apuntaría al día,
+           no al miembro — ese era el bug histórico que mezclaba días entre
+           miembros al guardar. #}
+        {% set midx = loop.index0 %}
         <div class="p-6 miembro-row" data-member-id="{{ m.id }}">
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             <div class="lg:col-span-3">
@@ -79,7 +84,7 @@
               <div class="flex gap-1">
                 {% for d_id, d_label in dias %}
                   <label class="cursor-pointer">
-                    <input type="checkbox" name="dias_trabajo_{{ loop.index0 }}" value="{{ d_id }}" {% if d_id|int in dt %}checked{% endif %} class="peer sr-only"/>
+                    <input type="checkbox" name="dias_trabajo_{{ midx }}" value="{{ d_id }}" {% if d_id|int in dt %}checked{% endif %} class="peer sr-only dia-checkbox"/>
                     <span class="inline-flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 text-xs font-medium text-slate-500 peer-checked:bg-brand-600 peer-checked:border-brand-600 peer-checked:text-white hover:bg-slate-50 peer-checked:hover:bg-brand-700">{{ d_label }}</span>
                   </label>
                 {% endfor %}
@@ -153,7 +158,7 @@ function addMiembro() {
     input.type = 'checkbox';
     input.name = `dias_trabajo_${idx}`;
     input.value = d_id;
-    input.className = 'peer sr-only';
+    input.className = 'peer sr-only dia-checkbox';
     if (DEFAULT_DIAS.includes(d_id)) input.checked = true;
     const span = document.createElement('span');
     span.className = 'inline-flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 text-xs font-medium text-slate-500 peer-checked:bg-brand-600 peer-checked:border-brand-600 peer-checked:text-white hover:bg-slate-50 peer-checked:hover:bg-brand-700';
@@ -222,6 +227,20 @@ document.querySelectorAll('.btn-disconnect-google').forEach((btn) => {
       btn.disabled = false;
       btn.innerText = prev;
     }
+  });
+});
+
+// Renumerar `name="dias_trabajo_{i}"` justo antes del submit para que el
+// índice coincida con el orden DOM actual de los miembros. Imprescindible
+// si el usuario ha añadido miembros vía addMiembro() o ha quitado alguno
+// con "Quitar miembro" — en esos casos los índices originales del Jinja
+// quedan obsoletos o con huecos y el handler del backend (que enumera por
+// posición) mapea los días al miembro equivocado.
+document.getElementById('equipo-form').addEventListener('submit', () => {
+  document.querySelectorAll('#equipo-list .miembro-row').forEach((row, idx) => {
+    row.querySelectorAll('input.dia-checkbox').forEach((cb) => {
+      cb.name = `dias_trabajo_${idx}`;
+    });
   });
 });
 

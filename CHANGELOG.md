@@ -6,6 +6,16 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-29 (CMS — fix: días laborables del equipo no se guardaban)
+
+### Corregido
+
+- **`app/cms/templates/partials/tab_equipo.html`**: los checkboxes de "Días laborables" se nombraban `dias_trabajo_{índice_día}` (0..6) en lugar de `dias_trabajo_{índice_miembro}`. Como el handler `POST /admin/clientes/{id}/equipo` espera el índice del miembro al hacer `form.getlist(f"dias_trabajo_{i}")` con `i = enumerate(nombres)`, los días marcados se mezclaban entre miembros y a partir del 7º miembro se perdían enteros. Síntoma visible: tras "Guardar equipo" cada peluquero aparecía con un único día (o ninguno) sin relación con lo que el usuario había marcado.
+- Capturado el índice del miembro como `{% set midx = loop.index0 %}` en el loop externo y usado en el `name` del checkbox dentro del loop interno de días.
+- Añadida una clase `dia-checkbox` y un handler `submit` en JS que renumera los `name="dias_trabajo_{i}"` según el orden DOM actual de los miembros, para cubrir el caso de "Añadir miembro" + "Quitar miembro" (que dejaba huecos en la numeración y desincronizaba el `enumerate` del backend).
+
+---
+
 ## 2026-04-28 (portal — editor de horario de apertura del negocio)
 
 El "Horario de apertura" que aparecía en `/app → Ajustes → Negocio` estaba **hardcodeado** en el JSX y no era editable: mostraba `Lun-Vie 09:30-20:30, Sáb 10-14, Dom cerrado` aunque el negocio del cliente tuviera otro horario distinto. La capa modelo (`Tenant.business_hours`) y la lógica de intersección con los turnos del miembro ya existían — el agente las usa al sugerir huecos —, simplemente faltaba exponer el editor en el portal.
