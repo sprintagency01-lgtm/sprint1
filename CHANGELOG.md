@@ -6,6 +6,49 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-29 (flujo de hora concreta + asignación auto de peluquero + palancas latencia v3)
+
+Tres cambios pedidos por Marcos en sesión: (1) flujo nuevo donde Ana acepta hora concreta del cliente y confirma o propone los 2 más próximos en lugar de soltar siempre 3 huecos, (2) asignación automática de peluquero por round-robin (menos cargado del día) cuando el cliente no expresa preferencia, y (3) más palancas de latencia compatibles con `eleven_v3_conversational` que Marcos prefiere a `eleven_flash_v2_5`.
+
+### Añadido
+
+- **`app/calendar_service.py::peluqueros_disponibles_en_slot`**: helper nuevo que hace UNA freebusy multi-calendar al día entero y devuelve los peluqueros libres en `[inicio, fin]` con su `busy_count_dia` (cantidad de bloques `busy` ese día). Coste constante con N peluqueros (typical 2-3) y ≈50 ms si el cache freebusy del prefetch está caliente.
+- **`app/eleven_tools.py::_asignar_peluquero_walkin`**: round-robin sobre los libres → menor `busy_count_dia` con tie-break aleatorio entre empates. Cubre el caso de un equipo donde dos peluqueros están igual de tranquilos: a la larga reparte walk-ins entre ambos en lugar de cargar siempre al primero de la lista.
+- **`tests/test_eleven_tools_latency.py`**: 2 tests nuevos sobre walk-in (`test_crear_reserva_walkin_elige_menos_cargado` valida el round-robin; `test_crear_reserva_walkin_falla_si_nadie_libre` valida la rama "no queda nadie libre"). Suite total: 131 tests passing.
+
+### Cambiado
+
+- **`app/eleven_tools.py::crear_reserva`**: lógica de calendario destino reescrita. Ahora cuando `peluquero` viene vacío o "sin preferencia" Y el tenant tiene equipo, el backend (a) elige peluquero por walk-in, (b) crea el evento en el calendario propio del peluquero (no en `primary` como antes), (c) devuelve el nombre real en `peluquero` para que Ana pueda decir "te he apuntado con Mario" en lugar de "sin preferencia". Si no hay nadie libre a esa hora → `ok:false` con mensaje legible para que Ana ofrezca otra hora.
+- **`ana_prompt_new.txt`** — flujo de hora reescrito. Antes: `servicio → cuándo (franja) → consultar → ofrecer 3 huecos → elegir → nombre → crear`. Ahora: `servicio → cuándo (día Y hora) → consultar → CONFIRMAR/ofrecer 2 más próximos → elegir → nombre → crear`. Modo dual:
+  - **3a) HORA CONCRETA** ("a las cinco"): rango ±60min, si hay coincidencia confirma directa "tengo a las cinco, ¿te va?"; si no, ofrece los DOS huecos más próximos. Sin lista innecesaria.
+  - **3b) FRANJA** ("por la mañana"): rango amplio, ofrece máx 3 huecos como antes. Solo se entra aquí si el cliente no dio hora ni siquiera tras una repregunta.
+
+  El paso 6 ahora explica que `peluquero` debe ir vacío salvo preferencia explícita y que el backend devuelve el peluquero asignado en la response (Ana puede usarlo en el cierre).
+
+### Latencia
+
+PATCH al agente `pelu_demo` aplicando palancas que faltaban (compatibles con `eleven_v3_conversational` + `gemini-3-flash-preview`):
+
+- `backup_llm_config.preference: default` → `disabled` (libera el cascade timeout de 4 s; doc ronda 7).
+- `cascade_timeout_seconds: 4.0` → `2.0` (defensivo; con backup disabled es ignorado, pero por si se reactiva).
+- `agent.prompt.ignore_default_personality: false` → `true` (ahorra los tokens de la "personalidad por defecto" que ElevenLabs inyecta).
+- `agent.prompt.max_tokens: 220` → `200` (3 huecos siguen cabiendo; recortamos margen tonto).
+- `tts.speed: 1.04` → `1.08` (Ana habla un 4% más rápido; tiempo total de TTS baja ~4%, tiempo del TURN entero baja menos pero suma).
+
+Resultado esperado: TTFR sigue en ~1200 ms, TT_final con v3 conversational debería bajar ~150-300 ms respecto al estado pre-palancas. Sin medir aún en bench WS — pendiente de iteración real.
+
+### Tests
+
+- `pytest tests/`: 131 passing (sumamos 2 sobre los 129 de la fase 2 de auditoría).
+- `scripts/test_dialog.py reserva_sin_peluquero` contra el agente remoto: 7/7 checks OK, nombre preguntado en turno #8 tras `consultar_disponibilidad`, fechas con año 2026.
+
+### Notas
+
+- `expressive_mode: true` del TTS v3 conservado a propósito — es la palanca que diferencia v3 de flash y la razón por la que Marcos hizo el cambio. No se toca por mucho que coma latencia.
+- El comportamiento "evento siempre en primary" de `_calendar_id_for_booking` sigue para tenants SIN peluqueros configurados (despachos individuales tipo `test_mario` abogado). Con equipo, la cita va al calendario del peluquero.
+
+---
+
 ## 2026-04-29 (hotfix agente Ana — drift de prompt + LLM)
 
 Llamada real reproduciendo bug: tras `corte de hombre`, Ana pedía el nombre antes de `consultar_disponibilidad` y se quedaba colgada en filler infinito (`Ahhh, entendido...`, `Mm-hmm...`). Diagnóstico: el agente remoto en ElevenLabs (pelu_demo) había sufrido drift respecto a la config canónica, probablemente por edición a mano en la UI:

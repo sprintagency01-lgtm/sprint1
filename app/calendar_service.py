@@ -415,6 +415,76 @@ def listar_huecos_por_peluqueros(
     return resultados
 
 
+def peluqueros_disponibles_en_slot(
+    inicio: datetime,
+    fin: datetime,
+    peluqueros: list[dict],
+    tenant_id: str = "default",
+) -> list[dict]:
+    """Devuelve los peluqueros libres en el slot [inicio, fin] del día indicado.
+
+    Cada elemento del resultado es un dict con:
+      - nombre, calendar_id (heredados del peluquero de entrada).
+      - dias_trabajo (idem).
+      - busy_count_dia: int — número de bloques `busy` que el peluquero tiene
+        ese día (se usa fuera para round-robin / "menos cargado").
+
+    Filtros aplicados:
+      - dias_trabajo del peluquero debe contener el weekday del slot.
+      - El slot no debe colisionar con ningún `busy` de su calendario ese día.
+
+    UNA sola llamada freebusy multi-calendar para todos los peluqueros del día,
+    así que no escala con N peluqueros — el coste es constante (~150-300 ms,
+    o <50 ms si el cache freebusy está caliente del prefetch).
+    """
+    if not peluqueros:
+        return []
+
+    inicio = _ensure_local_tz(inicio)
+    fin = _ensure_local_tz(fin)
+    weekday = inicio.astimezone(TZ).weekday()
+
+    # Trabajan ese día. Si dias_trabajo no está, asumimos que sí (mejor permisivo
+    # que negar al cliente por config incompleta).
+    candidatos = [p for p in peluqueros if weekday in (p.get("dias_trabajo") or list(range(7)))]
+    if not candidatos:
+        return []
+
+    # FreeBusy del DÍA entero (no solo el slot) para poder contar carga.
+    dia = inicio.astimezone(TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    dia_fin = dia + timedelta(days=1)
+
+    svc = _service(tenant_id)
+    body = {
+        "timeMin": dia.isoformat(),
+        "timeMax": dia_fin.isoformat(),
+        "timeZone": settings.default_timezone,
+        "items": [{"id": p["calendar_id"]} for p in candidatos],
+    }
+    try:
+        fb = _freebusy_query(svc, tenant_id, body)
+    except Exception as e:  # noqa: BLE001 — fallback laxo
+        log.warning("peluqueros_disponibles_en_slot: freebusy falló: %s — fallback a 'todos disponibles'", e)
+        return [
+            {**p, "busy_count_dia": 0}
+            for p in candidatos
+        ]
+
+    out: list[dict] = []
+    for p in candidatos:
+        busy_raw = (fb.get("calendars", {}).get(p["calendar_id"], {}) or {}).get("busy", []) or []
+        busy = [
+            (datetime.fromisoformat(b["start"].replace("Z", "+00:00")),
+             datetime.fromisoformat(b["end"].replace("Z", "+00:00")))
+            for b in busy_raw
+        ]
+        # ¿colisiona con [inicio, fin]?
+        colision = any(not (fin <= b_start or inicio >= b_end) for b_start, b_end in busy)
+        if not colision:
+            out.append({**p, "busy_count_dia": len(busy)})
+    return out
+
+
 def crear_evento(
     titulo: str,
     inicio: datetime,

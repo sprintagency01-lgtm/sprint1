@@ -154,20 +154,27 @@ def test_cancelar_fast_path_usa_calendar_id_del_body(client, fake_tenant):
 
 def test_crear_reserva_idempotente_si_ya_existe(client, fake_tenant):
     """Si hay un evento del mismo teléfono en ±5min, devolver duplicate:true
-    y NO llamar a crear_evento."""
+    y NO llamar a crear_evento. Walk-in ('sin preferencia') asigna peluquero
+    automáticamente; mockeamos `peluqueros_disponibles_en_slot` para evitar
+    el freebusy real."""
     buscar_calls = []
     crear_calls = []
 
     def _fake_buscar(tel, desde, hasta, calendar_id, tenant_id):
-        buscar_calls.append({"tel": tel})
+        buscar_calls.append({"tel": tel, "calendar_id": calendar_id})
         return {"id": "evt_existente", "start": {"dateTime": "2026-04-28T10:00:00+02:00"}}
 
     def _fake_crear(**kwargs):
         crear_calls.append(kwargs)
         return {"id": "evt_nuevo"}
 
+    def _fake_disponibles(inicio, fin, peluqueros, tenant_id):
+        # Mario libre, Marcos no — el helper devuelve solo Mario.
+        return [{**peluqueros[0], "busy_count_dia": 0}]
+
     with patch("app.eleven_tools.cal.buscar_evento_por_telefono", side_effect=_fake_buscar), \
-         patch("app.eleven_tools.cal.crear_evento", side_effect=_fake_crear):
+         patch("app.eleven_tools.cal.crear_evento", side_effect=_fake_crear), \
+         patch("app.eleven_tools.cal.peluqueros_disponibles_en_slot", side_effect=_fake_disponibles):
         r = client.post(
             "/tools/crear_reserva?tenant_id=t_test",
             headers={"X-Tool-Secret": "x"},
@@ -184,14 +191,18 @@ def test_crear_reserva_idempotente_si_ya_existe(client, fake_tenant):
     assert body["ok"] is True
     assert body["event_id"] == "evt_existente"
     assert body.get("duplicate") is True
+    # Devuelve el peluquero asignado por walk-in, no "sin preferencia".
+    assert body["peluquero"] == "Mario"
     # No debería haberse llamado a crear_evento.
     assert crear_calls == []
-    # Sí debería haberse hecho la búsqueda idempotente.
+    # Sí debería haberse hecho la búsqueda idempotente y EN EL CALENDARIO
+    # del peluquero asignado, no en el primary.
     assert buscar_calls
+    assert buscar_calls[0]["calendar_id"] == "mario_cal@group.calendar.google.com"
 
 
 def test_crear_reserva_inserta_si_no_hay_duplicado(client, fake_tenant):
-    """Sin duplicado, inserta normalmente."""
+    """Sin duplicado, inserta normalmente. Walk-in asigna peluquero auto."""
     crear_calls = []
 
     def _fake_buscar(tel, desde, hasta, calendar_id, tenant_id):
@@ -201,8 +212,12 @@ def test_crear_reserva_inserta_si_no_hay_duplicado(client, fake_tenant):
         crear_calls.append(kwargs)
         return {"id": "evt_new_123"}
 
+    def _fake_disponibles(inicio, fin, peluqueros, tenant_id):
+        return [{**peluqueros[0], "busy_count_dia": 0}]
+
     with patch("app.eleven_tools.cal.buscar_evento_por_telefono", side_effect=_fake_buscar), \
-         patch("app.eleven_tools.cal.crear_evento", side_effect=_fake_crear):
+         patch("app.eleven_tools.cal.crear_evento", side_effect=_fake_crear), \
+         patch("app.eleven_tools.cal.peluqueros_disponibles_en_slot", side_effect=_fake_disponibles):
         r = client.post(
             "/tools/crear_reserva?tenant_id=t_test",
             headers={"X-Tool-Secret": "x"},
@@ -219,7 +234,76 @@ def test_crear_reserva_inserta_si_no_hay_duplicado(client, fake_tenant):
     assert body["ok"] is True
     assert body["event_id"] == "evt_new_123"
     assert body.get("duplicate") is not True
+    assert body["peluquero"] == "Mario"
     assert len(crear_calls) == 1
+    # El evento se crea en el calendario del peluquero asignado, no en primary.
+    assert crear_calls[0]["calendar_id"] == "mario_cal@group.calendar.google.com"
+
+
+def test_crear_reserva_walkin_elige_menos_cargado(client, fake_tenant):
+    """Round-robin: cuando hay 2 peluqueros libres, gana el de menor busy_count_dia."""
+    crear_calls = []
+
+    def _fake_disponibles(inicio, fin, peluqueros, tenant_id):
+        # Mario tiene 5 eventos hoy, Marcos solo 1 → debe ganar Marcos.
+        return [
+            {**peluqueros[0], "busy_count_dia": 5},
+            {**peluqueros[1], "busy_count_dia": 1},
+        ]
+
+    def _fake_crear(**kwargs):
+        crear_calls.append(kwargs)
+        return {"id": "evt_walkin"}
+
+    with patch("app.eleven_tools.cal.buscar_evento_por_telefono", return_value=None), \
+         patch("app.eleven_tools.cal.crear_evento", side_effect=_fake_crear), \
+         patch("app.eleven_tools.cal.peluqueros_disponibles_en_slot", side_effect=_fake_disponibles):
+        r = client.post(
+            "/tools/crear_reserva?tenant_id=t_test",
+            headers={"X-Tool-Secret": "x"},
+            json={
+                "titulo": "Juan — Consulta",
+                "inicio_iso": "2026-04-28T10:00:00",
+                "fin_iso":    "2026-04-28T10:30:00",
+                "telefono_cliente": "+34600000001",
+                "peluquero": "",  # vacío también cae en walk-in
+            },
+        )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    # Ana (1 evento) gana sobre Mario (5 eventos).
+    assert body["peluquero"] == "Ana"
+    assert crear_calls[0]["calendar_id"] == "ana_cal@group.calendar.google.com"
+
+
+def test_crear_reserva_walkin_falla_si_nadie_libre(client, fake_tenant):
+    """Si no hay peluquero libre a esa hora, ok:false con mensaje legible
+    para que Ana ofrezca otra hora — no se llama a crear_evento."""
+    crear_calls = []
+
+    def _fake_crear(**kwargs):
+        crear_calls.append(kwargs)
+        return {"id": "no_deberia_llegar_aqui"}
+
+    with patch("app.eleven_tools.cal.crear_evento", side_effect=_fake_crear), \
+         patch("app.eleven_tools.cal.peluqueros_disponibles_en_slot", return_value=[]):
+        r = client.post(
+            "/tools/crear_reserva?tenant_id=t_test",
+            headers={"X-Tool-Secret": "x"},
+            json={
+                "titulo": "Juan — Consulta",
+                "inicio_iso": "2026-04-28T10:00:00",
+                "fin_iso":    "2026-04-28T10:30:00",
+                "telefono_cliente": "+34600000001",
+                "peluquero": "sin preferencia",
+            },
+        )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False
+    assert "libre" in body["error"].lower()
+    assert crear_calls == []
 
 
 # ---------------------------------------------------------------------------

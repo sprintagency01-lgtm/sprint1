@@ -83,8 +83,10 @@ CANONICAL_MARKS = [
     # Variables ElevenLabs literales (las pone el runtime).
     "{{system__time}}",
     "{{system__caller_id}}",
-    # Jerarquía RESERVA correcta — nombre al FINAL.
-    "servicio → cuándo → consultar → ofrecer → elegir → NOMBRE → crear",
+    # Jerarquía RESERVA correcta — nombre al FINAL. Tras la ronda hora-concreta
+    # (2026-04-29) la cadena incluye "(día Y hora)" en el paso `cuándo` y
+    # "confirmar/ofrecer" en lugar de solo "ofrecer".
+    "servicio → cuándo (día Y hora) → consultar → confirmar/ofrecer → elegir → NOMBRE → crear",
     # Regla crítica de UNA pregunta por turno (sección dedicada).
     "## UNA pregunta por turno (regla crítica)",
     # Fillers obligatorios.

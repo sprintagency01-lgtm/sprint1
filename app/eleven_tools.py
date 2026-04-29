@@ -230,6 +230,40 @@ def _peluqueros_filtrados(tenant: dict, preferido: str | None) -> list[dict]:
     return pelus
 
 
+def _asignar_peluquero_walkin(
+    tenant: dict, inicio: datetime, fin: datetime,
+) -> dict | None:
+    """Elige un peluquero cuando el cliente NO indicó preferencia.
+
+    Reglas:
+      1. Trabaja ese día (weekday in dias_trabajo).
+      2. Está libre en [inicio, fin] (sin evento solapando).
+      3. De los que cumplen 1 y 2, gana el menos cargado del día. Empates →
+         tie-break aleatorio para repartir walk-ins entre peluqueros que estén
+         igual de tranquilos.
+
+    Devuelve el dict del peluquero (con keys nombre, calendar_id, ...) o `None`
+    si no hay nadie disponible. El llamante decide qué responder al cliente
+    cuando no hay peluquero (típicamente: "ya no me queda nadie a esa hora").
+    """
+    peluqueros = tenant.get("peluqueros") or []
+    if not peluqueros:
+        return None
+
+    libres = cal.peluqueros_disponibles_en_slot(
+        inicio=inicio,
+        fin=fin,
+        peluqueros=peluqueros,
+        tenant_id=tenant.get("id", "default"),
+    )
+    if not libres:
+        return None
+
+    min_carga = min(p["busy_count_dia"] for p in libres)
+    candidatos = [p for p in libres if p["busy_count_dia"] == min_carga]
+    return random.choice(candidatos)
+
+
 def _horario(tenant: dict):
     """Devuelve (apertura, cierre) típicas del negocio.
 
@@ -485,16 +519,53 @@ def crear_reserva(
             "retryable": False,
         }
 
-    destino_cal = _calendar_id_for_booking(tenant, req.peluquero)
-    peluquero = (req.peluquero or "").strip()
-    if peluqueros and peluquero and not _is_sin_preferencia(peluquero):
-        match = [p for p in peluqueros if p["nombre"].strip().lower() == peluquero.lower()]
+    # ----- Resolución de peluquero y calendario destino -----
+    # Tres casos según `req.peluquero`:
+    #   (a) tenant sin peluqueros configurados → primary calendar, sin nombre.
+    #   (b) cliente NO eligió peluquero ("sin preferencia"/vacío) → walk-in:
+    #       elegimos el menos cargado entre los libres ese día y la cita va
+    #       a SU calendario. La response devuelve `peluquero` con su nombre
+    #       real, no "sin preferencia", para que Ana pueda decírselo.
+    #   (c) cliente eligió peluquero concreto → validamos que existe y la
+    #       cita va a su calendario.
+    peluquero_in = (req.peluquero or "").strip()
+    peluquero_asignado = ""
+    if not peluqueros:
+        # (a) Despachos sin equipo (ej. abogado solo): cae al primary.
+        destino_cal = _calendar_id_for_booking(tenant, None)
+    elif _is_sin_preferencia(peluquero_in):
+        # (b) Walk-in: backend asigna por menos-cargado / random tie-break.
+        elegido = _asignar_peluquero_walkin(tenant, inicio_dt, fin_dt)
+        if elegido is None:
+            log.info(
+                "crear_reserva walkin: no hay peluquero libre para %s-%s",
+                req.inicio_iso, req.fin_iso,
+            )
+            return {
+                "ok": False,
+                "error": (
+                    "A esa hora ya no me queda ningún peluquero libre. "
+                    "Ofrécele otra hora al cliente."
+                ),
+                "retryable": False,
+            }
+        peluquero_asignado = elegido["nombre"]
+        destino_cal = elegido["calendar_id"]
+        log.info(
+            "crear_reserva walkin → %s (busy_count_dia=%d)",
+            peluquero_asignado, elegido.get("busy_count_dia", -1),
+        )
+    else:
+        # (c) Peluquero explícito.
+        match = [p for p in peluqueros if p["nombre"].strip().lower() == peluquero_in.lower()]
         if not match:
             raise HTTPException(
                 status_code=400,
-                detail=f"Peluquero '{peluquero}' no existe. "
+                detail=f"Peluquero '{peluquero_in}' no existe. "
                        f"Opciones: " + ", ".join(p["nombre"] for p in peluqueros),
             )
+        peluquero_asignado = match[0]["nombre"]
+        destino_cal = match[0]["calendar_id"]
 
     # Algunos LLMs serializan Python None como la string literal "None" cuando
     # no deberían enviar nada. Normalizamos para que no acabemos poniendo
@@ -537,7 +608,7 @@ def crear_reserva(
                 return {
                     "ok": True,
                     "event_id": ev_existente.get("id"),
-                    "peluquero": peluquero if not _is_sin_preferencia(peluquero) else "sin preferencia",
+                    "peluquero": peluquero_asignado or "sin preferencia",
                     "duplicate": True,
                 }
         except Exception:
@@ -574,7 +645,7 @@ def crear_reserva(
             "retryable": True,
             "detail": str(e)[:200],
         }
-    peluquero_resp = peluquero if not _is_sin_preferencia(peluquero) else "sin preferencia"
+    peluquero_resp = peluquero_asignado or "sin preferencia"
     log.info("Reserva creada por voz: %s (%s)", ev.get("id"), peluquero_resp)
     return {
         "ok": True,
