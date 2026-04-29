@@ -6,6 +6,27 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-29 (hotfix agente Ana — drift de prompt + LLM)
+
+Llamada real reproduciendo bug: tras `corte de hombre`, Ana pedía el nombre antes de `consultar_disponibilidad` y se quedaba colgada en filler infinito (`Ahhh, entendido...`, `Mm-hmm...`). Diagnóstico: el agente remoto en ElevenLabs (pelu_demo) había sufrido drift respecto a la config canónica, probablemente por edición a mano en la UI:
+
+- `llm` = `gemini-3.1-pro-preview` ← está en la lista de descartados (`PROMPT_KNOWLEDGE.md` §4.2: 7-10 s TTFR y cero tool calls). El canónico es `gemini-3-flash-preview`.
+- `prompt` ≠ `ana_prompt_new.txt`. Era una versión más vieja, sin `<!-- REFRESH_BLOCK -->` ni macros de fecha, y con flujo invertido: `servicio → cuándo → NOMBRE → consultar`. Esto pisaba la regla de oro "nombre al FINAL, justo antes de crear_reserva".
+- `thinking_budget` no estaba en `0`.
+
+### Corregido
+
+- PATCH al agente ElevenLabs vía API: prompt restaurado al render de `ana_prompt_new.txt` (con la fecha de hoy hardcodeada por `refresh_agent_prompt.py`), `llm = gemini-3-flash-preview`, `max_tokens = 220`, `temperature = 0.3`, `thinking_budget = 0`. No se ha tocado `ana_prompt_new.txt` local — se ha subido el canónico que ya estaba en repo.
+- Snapshot pre-fix guardado en `docs/elevenlabs_agent_snapshot_pre_fix_2026-04-29.json` para que cualquier futuro drift sea diffeable.
+- Verificado con `scripts/test_dialog.py reserva_sin_peluquero`: 7/7 checks OK, nombre preguntado en turno #6 tras `consultar_disponibilidad`, fechas con año 2026, tools en orden correcto.
+
+### Notas
+
+- El `first_message` remoto sigue siendo `"Hola, soy Ana de la peluquería. ¿En qué te puedo ayudar?"` (sin "hijoputa" — broma de Marcos documentada en `PROMPT_KNOWLEDGE.md` §2.6). No se ha revertido sin permiso.
+- Recordatorio para el futuro yo: **no editar el agente desde la UI de ElevenLabs**. Cualquier cambio va por `ana_prompt_new.txt` + `scripts/refresh_agent_prompt.py` + `scripts/migrate_agent_latency.py`. La UI no respeta la config canónica y el drift es silencioso hasta que un cliente llama.
+
+---
+
 ## 2026-04-29 (auditoría fase 2 — caps de duración, lifespan, docs)
 
 Segunda pasada de auditoría tras los fixes de la mañana. Hallazgos nuevos: duración sin cap en tools de voz, `@app.on_event` deprecated, política de migraciones poco visible.
