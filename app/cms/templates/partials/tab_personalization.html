@@ -1,6 +1,25 @@
 {% set tones = [('cercano','Cercano'),('profesional','Profesional'),('juvenil','Juvenil'),('calido','Cálido'),('formal','Formal')] %}
 
 <form method="post" action="/admin/clientes/{{ t.id }}/personalizacion" class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+  <!-- Aviso de drift voz vs WhatsApp.
+       Solo `assistant_name` se aplica al agente de voz (Ana, vía render_voice_prompt
+       en app/db.py). El resto (tono, tratamiento, emoji, system_prompt_override)
+       alimenta a render_system_prompt — que era el prompt del canal WhatsApp,
+       retirado en abril 2026. Sin este aviso, los clientes editan tono y formalidad
+       esperando que Ana cambie y no pasa nada. Para tunear realmente la voz, hay
+       que ir a la pestaña "Voz". -->
+  <div class="lg:col-span-5">
+    <div class="px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+      <div class="flex items-start gap-2">
+        <svg class="w-4 h-4 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        <div>
+          <strong>Solo el "Nombre del asistente" afecta al agente de voz.</strong>
+          El resto de campos (tono, tratamiento, emojis, prompt avanzado) alimentan al canal de WhatsApp, que está retirado del producto. Para cambiar el comportamiento de Ana en llamadas, edita la pestaña <a href="?tab=voz" class="underline font-medium">Voz</a>.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Editor -->
   <div class="lg:col-span-3 space-y-6">
 

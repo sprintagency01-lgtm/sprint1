@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Config de tenants real (NUNCA commitear; solo tenants.yaml.example va al repo)
+tenants.yaml
+
 # Entornos virtuales
 .venv/
 venv/
@@ -19,6 +22,9 @@ __pycache__/
 # Base de datos y tokens (persisten en el Volume de Railway, no en el repo)
 data.db
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 .tokens/
 
 # Logs

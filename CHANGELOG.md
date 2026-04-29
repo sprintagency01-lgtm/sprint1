@@ -6,6 +6,32 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-29 (auditoría, hardening y limpieza)
+
+Tras un primer fix por la mañana (días laborables del equipo, commit 51b7073), auditoría general del proyecto buscando bugs del mismo tipo y deuda. Encontrados varios bugs reales, otros descartados como falsos positivos. Cambios incluidos en este push:
+
+### Añadido
+
+- **`tests/test_cms_equipo_form.py`**: 3 tests de regresión del POST `/admin/clientes/{id}/equipo` que cubren (a) días distintos por miembro sin mezclas, (b) borrar miembro central y conservar mapeo, (c) descartar miembro al vaciar nombre. Sin estos tests, el bug de `loop.index0` mal indexado podría haberse colado de nuevo.
+- **`docs/archive/AUDITORIA_2026-04-24.md`**: archivada la auditoría profunda de abril (h-1 drift TTS, h-3 idempotencia, etc.) que vivía suelta en raíz como untracked. Se mueve a `docs/archive/` para que esté en el repo y referenciable desde cualquier futuro audit.
+
+### Corregido
+
+- **`app/cms/routes.py`** — `datetime.utcnow()` reemplazado por `_today_local()` (Europe/Madrid) en las dos series de "últimos 30 días" del dashboard (línea ~211 y ~748). Antes, entre las 00:00 y las 02:00 hora Madrid el dashboard mostraba un día atrasado porque `utcnow()` aún estaba en el día anterior. Para los queries SQL contra `created_at` se mantiene UTC naive porque el schema de SQLAlchemy lo es; cambiar el schema requiere migración.
+- **`app/cms/templates/partials/tab_personalization.html`** — banner ámbar en cabecera de la pestaña que avisa que sólo `assistant_name` afecta al agente de voz; el resto (tono, formalidad, emojis, prompt avanzado) alimentan al canal WhatsApp deprecated. Sin este aviso un cliente edita y no entiende por qué Ana sigue igual.
+
+### Hardening
+
+- **`.gitignore`**: añadidos `tenants.yaml` (nunca commitear el real, sólo el example), `*.db-journal`, `*.db-wal`, `*.db-shm` (artefactos transitorios de SQLite).
+
+### Notas
+
+- `tab_general.html` (forms anidados): falso positivo del audit. El form principal cierra antes del bloque de "Acceso al portal del cliente" (línea 102). Los 3 forms del bloque son hermanos, no anidados.
+- Pestaña "Equipo": mantener el patrón "índice del miembro como `midx = loop.index0` en el outer loop + clase `dia-checkbox` + handler submit que renumera" en cualquier nuevo form de lista editable. Memoria persistente sobre esto.
+- Tests del repo: 125 pasan tras este push (3 nuevos sumados).
+
+---
+
 ## 2026-04-29 (CMS — fix: días laborables del equipo no se guardaban)
 
 ### Corregido

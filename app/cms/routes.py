@@ -30,6 +30,7 @@ import json
 import pathlib
 from datetime import datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -40,6 +41,7 @@ from sqlalchemy.orm import Session
 
 from .. import db as db_module
 from .. import elevenlabs_client
+from ..config import settings
 from . import auth
 
 router = APIRouter()
@@ -131,6 +133,16 @@ async def admin_manifest():
 #  HELPERS
 # ==========================================================================
 
+def _today_local() -> datetime:
+    """Hoy en la zona horaria del negocio (Europe/Madrid por defecto).
+
+    Útil para series de dashboard tipo "últimos 30 días" donde el corte de
+    día tiene que ser local: a las 01:30 AM Madrid, datetime.utcnow() está
+    en el día anterior y el dashboard pintaría un día corrido.
+    """
+    return datetime.now(ZoneInfo(settings.default_timezone))
+
+
 def _since_30d() -> datetime:
     return datetime.utcnow() - timedelta(days=30)
 
@@ -197,7 +209,7 @@ def _metrics_for_tenant(s: Session, tenant_id: str) -> dict:
     series_map = {str(row[0]): int(row[1] or 0) for row in series_rows}
     series = []
     for i in range(30):
-        d = (datetime.utcnow() - timedelta(days=29 - i)).date().isoformat()
+        d = (_today_local() - timedelta(days=29 - i)).date().isoformat()
         series.append(series_map.get(d, 0))
 
     return {
@@ -733,7 +745,7 @@ async def dashboard(request: Request, uid: int = Depends(auth.current_user_id)):
         series_map = {str(row[0]): int(row[1] or 0) for row in series_rows}
         global_series = []
         for i in range(30):
-            d = (datetime.utcnow() - timedelta(days=29 - i)).date().isoformat()
+            d = (_today_local() - timedelta(days=29 - i)).date().isoformat()
             global_series.append(series_map.get(d, 0))
 
         # Últimas llamadas (5) — cada una es 1 customer_phone distinto
