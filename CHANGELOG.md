@@ -6,6 +6,31 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-29 (anti-anglicismos en filler de Ana — caza del "duly noted")
+
+Llamada real reproducida con flash_v2_5 (Marcos volvió desde v3 conversational): tras el primer `consultar_disponibilidad` con resultado vacío, Ana lanzaba un segundo `consultar_disponibilidad` ampliando rango y entre los dos colaba muletilla en inglés: "Duly noted... pues a las cinco está completo, pero tengo a las seis y media o a las siete". Patrón típico de LLM cuando el prompt no lista filler para esa situación específica — el modelo tira de muletillas pre-entrenadas en inglés.
+
+### Corregido
+
+- **`ana_prompt_new.txt` — sección nueva "## Idioma — SIEMPRE español de España"** entre "Estilo" y "UNA pregunta por turno". Lista negra explícita: `duly noted`, `noted`, `got it`, `okay`, `alright`, `sure thing`, `let me check`, `one moment`, `right away`, `indeed`. Equivalentes ES dados explícitos. Un BIEN/MAL concreto con la frase real del incidente.
+- **`ana_prompt_new.txt` — "## Fillers antes de tool calls" reescrita**. Antes solo cubría la PRIMERA consulta. Ahora distingue tres categorías:
+  - PRIMERA consulta ("vale, te miro un momento...", etc.).
+  - SEGUNDA consulta tras hueco vacío al ampliar rango ("vale, miro un poco más tarde...", "déjame ampliar un poco la búsqueda...", "a ver si tengo algo más cerca..."). Es justo el slot donde aparecía el "duly noted".
+  - Crear/mover/cancelar ("perfecto, te lo anoto...", etc.).
+
+  Lista cerrada con instrucción literal "NUNCA 'duly noted', 'noted', 'okay' ni cualquier muletilla en inglés".
+
+### Tests
+
+- `pytest tests/`: 131 passing (sin cambios, prompt no rompe marcas canónicas).
+- `scripts/test_dialog.py reserva_sin_peluquero` contra el agente con prompt actualizado: 7/7 OK.
+
+### Notas
+
+- El cambio es defensivo: el LLM puede improvisar otras muletillas inglesas no listadas. Si vuelve a aparecer alguna, se añade a la lista negra. La instrucción genérica "TODO en español, sin excepciones" + ejemplos concretos suele bastar para Gemini 3 según la experiencia previa con encadenar preguntas (ver `PROMPT_KNOWLEDGE.md` §2.5).
+
+---
+
 ## 2026-04-29 (flujo de hora concreta + asignación auto de peluquero + palancas latencia v3)
 
 Tres cambios pedidos por Marcos en sesión: (1) flujo nuevo donde Ana acepta hora concreta del cliente y confirma o propone los 2 más próximos en lugar de soltar siempre 3 huecos, (2) asignación automática de peluquero por round-robin (menos cargado del día) cuando el cliente no expresa preferencia, y (3) más palancas de latencia compatibles con `eleven_v3_conversational` que Marcos prefiere a `eleven_flash_v2_5`.
