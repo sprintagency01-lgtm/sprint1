@@ -11,7 +11,10 @@ Uso:
     python scripts/setup_telegram_bot.py
 
     # O pasando explícitamente la URL pública:
-    python scripts/setup_telegram_bot.py https://web-production-98b02b.up.railway.app
+    python scripts/setup_telegram_bot.py https://sprintiasolutions.com
+
+    # (Antes del cambio de dominio del 2026-04-29 era:
+    #  python scripts/setup_telegram_bot.py https://web-production-98b02b.up.railway.app)
 
 Qué hace:
 

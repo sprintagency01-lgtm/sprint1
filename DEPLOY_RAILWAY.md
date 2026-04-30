@@ -90,7 +90,7 @@ ELEVENLABS_VOICE_ID=
 # === Google Calendar ===
 GOOGLE_CLIENT_ID=<tu_client_id>
 GOOGLE_CLIENT_SECRET=<tu_client_secret>
-GOOGLE_REDIRECT_URI=https://<TU_DOMINIO_RAILWAY>.up.railway.app/oauth/callback
+GOOGLE_REDIRECT_URI=https://sprintiasolutions.com/oauth/callback
 DEFAULT_CALENDAR_ID=primary
 DEFAULT_TIMEZONE=Europe/Madrid
 
@@ -178,7 +178,7 @@ Salida esperada: `[ok] Tenants insertados: 1  actualizados: 0`
 
 ## 6) Login en el CMS
 
-Railway te habrá dado un dominio tipo `https://bot-reservas-whatsapp-production.up.railway.app`.
+El dominio canónico de producción es `https://sprintiasolutions.com` (Railway custom domain conectado el 2026-04-29; ver `DOMAIN_MIGRATION_2026-04-29.md`). El subdominio interno `https://<servicio>.up.railway.app` sigue funcionando como fallback.
 
 1. Ve a `https://<tu-dominio>/admin/login`
 2. Email: el que pusiste en `ADMIN_EMAIL`

@@ -6,6 +6,38 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-04-29 (cambio de dominio canónico → `sprintiasolutions.com`)
+
+Migración del backend del subdominio interno `web-production-98b02b.up.railway.app` al dominio canónico **`sprintiasolutions.com`** (Railway custom domain conectado al servicio `web` del proyecto `marvelous-charm`). Procedimiento completo paso a paso documentado en la guía nueva `DOMAIN_MIGRATION_2026-04-29.md` (DNS Porkbun → propagación → smoke SSL → OAuth → Railway env → webhooks ElevenLabs/Telegram → verificación final). El subdominio interno queda activo como fallback durante la ventana de convivencia.
+
+### Añadido
+
+- `DOMAIN_MIGRATION_2026-04-29.md` — playbook operativo con secciones DNS, OAuth, Railway, smoke tests (4 y 6) y rollback plan.
+- Entrada visible del dominio canónico en `CLAUDE.md`, `BOT_NUEVO_CONFIG.md` y `DEPLOY_RAILWAY.md`.
+
+### Cambiado
+
+- `BOT_NUEVO_CONFIG.md` — todos los ejemplos de curl (`personalization`, `consultar_disponibilidad`, `healthcheck`) y la línea del `setup_elevenlabs_agent.py` ahora usan `https://sprintiasolutions.com`.
+- `DEPLOY_RAILWAY.md` — placeholder de `GOOGLE_REDIRECT_URI` actualizado al dominio canónico; bloque de "Login en el CMS" reescrito reflejando el custom domain.
+- `app/templates/landing.html` — `link rel=canonical`, `og:url`, `og:image`, `twitter:image` y los dos JSON-LD `url` (SoftwareApplication + Organization) ahora apuntan a `https://sprintiasolutions.com/`. Se conserva el email visible `hola@sprint.agency` a propósito hasta confirmar la migración del buzón.
+- `app/cms/templates/leads.html` — copy del header pasa de "Capturados en sprint.agency" a "Capturados en sprintiasolutions.com".
+- `scripts/setup_telegram_bot.py` — docstring de uso muestra el dominio nuevo como ejemplo y deja el antiguo como referencia histórica.
+- `.env.example` — comentario sobre `GOOGLE_REDIRECT_URI` documenta la URL de producción y recuerda registrar la redirect URI en Google Cloud Console.
+
+### Env / despliegue
+
+- **Railway → servicio `web` → Variables**: `GOOGLE_REDIRECT_URI` debe pasar a `https://sprintiasolutions.com/oauth/callback`. El redeploy es automático.
+- **Google Cloud Console → OAuth 2.0 Client**: añadir `https://sprintiasolutions.com/oauth/callback` a Authorized redirect URIs **sin retirar** la antigua todavía.
+- **DNS Porkbun**: ALIAS apex (o CNAME `@` fallback) → `4p43tgc8.up.railway.app`, TTL 600. TXT `_railway-verify` → `railway-verify=10e13822169a8ee6153a98bf521df6dc111b01ddfcc630d6f4884e51111beecf`, TTL 600.
+- Tras desplegar, ejecutar UNA vez `python scripts/setup_elevenlabs_agent.py https://sprintiasolutions.com` y `python scripts/setup_telegram_bot.py https://sprintiasolutions.com` para repintar webhooks externos.
+
+### Notas
+
+- No es breaking en sentido estricto: el subdominio Railway antiguo sigue respondiendo y los webhooks viejos continúan funcionando hasta el cleanup descrito en la sección 10 de la guía.
+- Snapshots ElevenLabs en `docs/elevenlabs_agent_snapshot_*.json` mantienen el dominio antiguo a propósito (son históricos pre-migración).
+
+---
+
 ## 2026-04-29 (anti-anglicismos en filler de Ana — caza del "duly noted")
 
 Llamada real reproducida con flash_v2_5 (Marcos volvió desde v3 conversational): tras el primer `consultar_disponibilidad` con resultado vacío, Ana lanzaba un segundo `consultar_disponibilidad` ampliando rango y entre los dos colaba muletilla en inglés: "Duly noted... pues a las cinco está completo, pero tengo a las seis y media o a las siete". Patrón típico de LLM cuando el prompt no lista filler para esa situación específica — el modelo tira de muletillas pre-entrenadas en inglés.
@@ -27,7 +59,7 @@ Llamada real reproducida con flash_v2_5 (Marcos volvió desde v3 conversational)
 
 ### Notas
 
-- El cambio es defensivo: el LLM puede improvisar otras muletillas inglesas no listadas. Si vuelve a aparecer alguna, se añade a la lista negra. La instrucción genérica "TODO en español, sin excepciones" + ejemplos concretos suele bastar para Gemini 3 según la experiencia previa con encadenar preguntas (ver `PROMPT_KNOWLEDGE.md` §2.5).
+- El cambio es defensivo: el LLM (gemini-3-flash-preview) puede improvisar otras muletillas inglesas no listadas. Si vuelve a aparecer alguna, se añade a la lista negra. La instrucción genérica "TODO en español, sin excepciones" + ejemplos concretos suele bastar para Gemini 3 según la experiencia previa con encadenar preguntas (ver `PROMPT_KNOWLEDGE.md` §2.5).
 
 ---
 

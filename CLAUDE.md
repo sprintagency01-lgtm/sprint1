@@ -4,7 +4,7 @@ Este documento establece convenciones de trabajo para cualquier agente LLM que o
 
 ## Contexto mínimo del proyecto
 
-Backend FastAPI para bot de reservas por **voz** con Google Calendar. Desplegado en Railway (`web-production-98b02b.up.railway.app`). Multi-tenant, agente LLM configurable (OpenAI u Anthropic). El canal activo es voz vía ElevenLabs Conversational AI (SIP directo + webhooks de tools `/tools/*`).
+Backend FastAPI para bot de reservas por **voz** con Google Calendar. Desplegado en Railway, accesible vía dominio canónico `sprintiasolutions.com` (custom domain conectado al servicio `web` del proyecto `marvelous-charm`; el subdominio interno `web-production-98b02b.up.railway.app` sigue activo como fallback pero **todo lo nuevo apunta al custom**). Multi-tenant, agente LLM configurable (OpenAI u Anthropic). El canal activo es voz vía ElevenLabs Conversational AI (SIP directo + webhooks de tools `/tools/*`).
 
 El canal WhatsApp fue **retirado del producto en abril 2026** (commit `d9e1435`). Si ves referencias a Meta Cloud API, Twilio WhatsApp, webhooks `/whatsapp` o archivos `app/whatsapp.py` / `app/twilio_wa.py` / `app/voice.py` en cualquier doc o código, trátalas como histórico y no como parte del producto actual.
 

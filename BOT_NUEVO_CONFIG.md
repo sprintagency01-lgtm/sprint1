@@ -19,7 +19,7 @@ En llamada real de voz con el prefetch activo, el primer `consultar_disponibilid
 2. **Autorizar Google Calendar** desde `/oauth/start?tenant=<id>`.
 3. **Crear el agente ElevenLabs** usando uno de estos dos caminos, los dos equivalentes:
    - Desde el CMS: botón "Crear agente de voz" (ejecuta `app.elevenlabs_client.create_agent_for_tenant`).
-   - A mano: `python scripts/setup_elevenlabs_agent.py https://web-production-98b02b.up.railway.app` (necesita `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `TOOL_SECRET` en `.env`).
+   - A mano: `python scripts/setup_elevenlabs_agent.py https://sprintiasolutions.com` (necesita `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `TOOL_SECRET` en `.env`).
 4. **Copiar el `agent_id`** devuelto al campo `voice_agent_id` del tenant en el CMS.
 5. **Verificar** con `python scripts/migrate_agent_latency.py` (en modo `--dry-run`). Si detecta drift, aplicar sin dry-run.
 6. **Smoke test**: llamada real de 30 s. Ana debe arrancar a hablar <1,5 s tras tu última palabra. Los huecos deben llegar en <3 s.
@@ -145,16 +145,16 @@ Proceso de edición:
 # 1) Personalization endpoint responde en el tenant nuevo
 curl -s -H "X-Tool-Secret: $TOOL_SECRET" -H "Content-Type: application/json" \
   -d '{"caller_id":"+34600000001","tenant_id":"<tu_tid>"}' \
-  https://web-production-98b02b.up.railway.app/tools/eleven/personalization | jq
+  https://sprintiasolutions.com/tools/eleven/personalization | jq
 
 # 2) Consultar disponibilidad real (sin pasar por LLM)
 curl -s -H "X-Tool-Secret: $TOOL_SECRET" -H "Content-Type: application/json" \
   -d '{"fecha_desde_iso":"2026-04-25T15:00:00","fecha_hasta_iso":"2026-04-25T20:30:00","duracion_minutos":30,"peluquero_preferido":"","max_resultados":5}' \
-  "https://web-production-98b02b.up.railway.app/tools/consultar_disponibilidad?tenant_id=<tu_tid>" | jq
+  "https://sprintiasolutions.com/tools/consultar_disponibilidad?tenant_id=<tu_tid>" | jq
 
 # 3) Healthcheck del agente
 curl -s -H "X-Tool-Secret: $TOOL_SECRET" \
-  "https://web-production-98b02b.up.railway.app/_diag/elevenlabs/healthcheck?tenant_id=<tu_tid>" | jq
+  "https://sprintiasolutions.com/_diag/elevenlabs/healthcheck?tenant_id=<tu_tid>" | jq
 
 # 4) Bench WS contra el agente remoto (requiere ELEVENLABS_AGENT_ID apuntando al agente nuevo)
 python scripts/bench_ws.py gemini-3-flash-preview "Hola soy Juan, quiero cita mañana por la tarde para corte de hombre"
