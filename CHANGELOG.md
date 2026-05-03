@@ -6,6 +6,14 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-03 (ronda 8.1 — rollback v3_conversational → flash_v2_5 por pitch shift en prod)
+
+### Corregido
+
+- Cambio audible de pitch durante las llamadas de Ana (`pelu_demo`, `agent_4201...`). PATCH `conversation_config.tts.model_id`: `eleven_v3_conversational` → **`eleven_flash_v2_5`**. Causa: v3_conversational sigue en alpha y, según `BOT_NUEVO_CONFIG.md` (ronda 8), tenía rollback path explícito ante artefactos acústicos. Resto de TTS sin tocar (voice_id, stability 0.67, similarity 0.8, speed 1.04, ulaw_8000, optimize_streaming_latency 4). Verificado con GET post-PATCH. Sin cambios de prompt ni de LLM. `BOT_NUEVO_CONFIG.md` actualizado: la fila de `model_id` vuelve a apuntar a `eleven_flash_v2_5` (ronda 8.1), con nota histórica del intento de v3.
+
+---
+
 ## 2026-05-03 (latencia — ronda 8: pelu_demo a gemini-3-flash + eleven_v3_conversational)
 
 Migración del agente real de `pelu_demo` (`agent_4201kqaqg5b7ead9f305fztndh9r`, "Ana · Peluquería Demo") a la combinación `gemini-3-flash-preview` + `eleven_v3_conversational`. Dos PATCHes encadenados, validados con `bench_audio_ttfa.py`.
