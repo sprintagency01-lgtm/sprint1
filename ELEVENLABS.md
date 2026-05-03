@@ -15,15 +15,15 @@ guardamos aquí un snapshot del estado que sabemos que funciona.
 ## Valores clave (última verificación)
 
 TTS (voz más natural que la inicial):
-- `voice_id`: `1eHrpOW5l98cxiSRjbzJ`
-- `model_id`: `eleven_flash_v2_5`
+- `voice_id`: `1eHrpOW5l98cxiSRjbzJ`  (Raquel — Young, Bright and Cheerful)
+- `model_id`: `eleven_v3_conversational`  ⬅ **nuevo en ronda 8 (2026-05-03)**. Sustituye a `eleven_flash_v2_5`. v3 no tiene badge "high quality base" para Raquel (ni para ninguna voz del workspace) porque sigue en alpha, pero el TTS funciona y suena bien. Bench post-migración: TTFA 1665 ms (vs 3148 ms baseline). Datos en `CHANGELOG.md` → 2026-05-03 (latencia — ronda 8).
 - `stability`: `0.67`
 - `similarity_boost`: `0.8`
 - `speed`: `1.04`
 - `optimize_streaming_latency`: `4`
 
 LLM (Gemini Flash con thinking OFF para bajar latencia):
-- `llm`: `gemini-3-flash-preview`  ⬅ **nuevo en ronda 6 (2026-04-24)**. Sustituye a `gemini-2.5-flash`. El bench con WS text-only midió TTFR ~1200ms vs ~4500ms del anterior (3.5x más rápido), TT_final post-tool ~3000ms vs ~7500-10400ms (2.5-3x). Tool-calling fiable en 4/4 escenarios (reserva simple, reserva con peluquero, mover, cancelar). Datos detallados en `CHANGELOG.md` → 2026-04-24 (latencia — ronda 6).
+- `llm`: `gemini-3-flash-preview`  ⬅ confirmado en ronda 8 (2026-05-03). Antes de la ronda 8 el agente real de `pelu_demo` estaba drifteado a `gemini-3.1-pro-preview` (bug: 0/3 tool calls en bench). Restaurado al canónico en la ronda 8. Original (ronda 6, 2026-04-24): sustituye a `gemini-2.5-flash`. El bench con WS text-only midió TTFR ~1200ms vs ~4500ms del anterior (3.5x más rápido), TT_final post-tool ~3000ms vs ~7500-10400ms (2.5-3x). Tool-calling fiable en 4/4 escenarios (reserva simple, reserva con peluquero, mover, cancelar). Datos detallados en `CHANGELOG.md` → 2026-04-24 (latencia — ronda 6).
 - `thinking_budget`: `0`
 - `temperature`: `0.3`
 - `max_tokens`: `220`  (cap más agresivo para cortar divagaciones y rascar latencia sin perder calidad)

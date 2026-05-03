@@ -42,7 +42,7 @@ Los pasos 3-5 aplican la config que viene abajo automáticamente. Mantén esas r
 
 | Campo | Valor | Por qué |
 |-------|-------|---------|
-| `model_id` | `eleven_flash_v2_5` | Ronda 5. 150-400 ms más rápido al primer audio que `eleven_v3_conversational`. |
+| `model_id` | `eleven_v3_conversational` | Ronda 8 (2026-05-03). Sustituye a `eleven_flash_v2_5`. Bench A/B con voz Raquel + `pre_tool_speech: force`: TTFA con tool 1665 ms (vs 3148 ms del baseline gemini-3.1-pro + flash). Naturalidad subjetiva mejor. v3 no aparece marcado como "high quality base" para ninguna voz del workspace ni en 1607 voces ES de la library porque sigue en alpha; el TTS funciona igualmente. Si v3 da problemas de calidad acústica, rollback a `eleven_flash_v2_5` con un PATCH. |
 | `text_normalisation_type` | `elevenlabs` | Ronda 7. Normalización server-side (no vía prompt). |
 | `agent_output_audio_format` | `ulaw_8000` | Ronda 4. Match nativo de Twilio → sin transcode. |
 | `optimize_streaming_latency` | `4` | Ronda 4. Máximo de la API. |

@@ -45,3 +45,8 @@ Thumbs.db
 screens/
 
 .handoff_state.json
+
+# Snapshots crudos del agente ElevenLabs (contienen X-Tool-Secret real).
+# Solo se commitean los sanitized.
+docs/snapshots/*.json
+!docs/snapshots/*.sanitized.json

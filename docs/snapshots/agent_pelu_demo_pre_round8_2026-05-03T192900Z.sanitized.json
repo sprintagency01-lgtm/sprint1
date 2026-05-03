@@ -26,7 +26,7 @@
       "interruption_ignore_terms": []
     },
     "tts": {
-      "model_id": "eleven_v3_conversational",
+      "model_id": "eleven_flash_v2_5",
       "voice_id": "1eHrpOW5l98cxiSRjbzJ",
       "supported_voices": [],
       "expressive_mode": false,
@@ -90,7 +90,7 @@
       "max_conversation_duration_message": "",
       "prompt": {
         "prompt": "<<see ana_prompt_new.txt>>",
-        "llm": "gemini-3-flash-preview",
+        "llm": "gemini-3.1-pro-preview",
         "reasoning_effort": null,
         "thinking_budget": null,
         "temperature": 0.3,
@@ -514,7 +514,7 @@
   },
   "metadata": {
     "created_at_unix_secs": 1777402910,
-    "updated_at_unix_secs": 1777837639
+    "updated_at_unix_secs": 1777476673
   },
   "platform_settings": {
     "evaluation": {

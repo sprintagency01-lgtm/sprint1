@@ -1,10 +1,10 @@
 {
-  "agent_id": "agent_4201kqaqg5b7ead9f305fztndh9r",
-  "name": "Ana · Peluquería Demo",
+  "agent_id": "agent_3901kprqemrger3rsgky0csea6g0",
+  "name": "Ana - Peluquería Ejemplo",
   "conversation_config": {
     "asr": {
       "quality": "high",
-      "provider": "elevenlabs",
+      "provider": "scribe_realtime",
       "user_input_audio_format": "pcm_16000",
       "keywords": []
     },
@@ -26,15 +26,15 @@
       "interruption_ignore_terms": []
     },
     "tts": {
-      "model_id": "eleven_v3_conversational",
-      "voice_id": "1eHrpOW5l98cxiSRjbzJ",
+      "model_id": "eleven_flash_v2_5",
+      "voice_id": "dNjJKg63Fr5AXwIdkATa",
       "supported_voices": [],
       "expressive_mode": false,
       "suggested_audio_tags": [],
       "agent_output_audio_format": "ulaw_8000",
       "optimize_streaming_latency": 4,
-      "stability": 0.67,
-      "speed": 1.04,
+      "stability": 0.32,
+      "speed": 1.12,
       "similarity_boost": 0.8,
       "text_normalisation_type": "elevenlabs",
       "pronunciation_dictionary_locators": []
@@ -96,11 +96,11 @@
         "temperature": 0.3,
         "max_tokens": 220,
         "tool_ids": [
-          "tool_1101kqaqg63fef4tcgzy9csn0rdg",
-          "tool_3401kqaqg63ge8a8jq30n3stydn0",
-          "tool_1301kqaqg63hewz8w4tkjb8vcav2",
-          "tool_4601kqaqg63jf1jas4xge9ka1ss1",
-          "tool_0201kqaqg63keg5rv2x9xvcr4tq8"
+          "tool_2301kqf25e0dep8saatrk947127r",
+          "tool_4701kqf25e0efs885ftaa47t68mc",
+          "tool_8601kqf25e0fenetw33n27p987bd",
+          "tool_2001kqf25e0gebysqfjyanfc59nd",
+          "tool_9601kqf25e0hf339sgdbd2ztd4br"
         ],
         "built_in_tools": {
           "end_call": null,
@@ -124,7 +124,7 @@
         "native_mcp_server_ids": [],
         "knowledge_base": [],
         "custom_llm": null,
-        "ignore_default_personality": false,
+        "ignore_default_personality": true,
         "rag": {
           "enabled": false,
           "embedding_model": "e5_mistral_7b_instruct",
@@ -138,16 +138,16 @@
         "backup_llm_config": {
           "preference": "disabled"
         },
-        "cascade_timeout_seconds": 8.0,
+        "cascade_timeout_seconds": 4.0,
         "tools": [
           {
             "type": "webhook",
             "name": "consultar_disponibilidad",
-            "description": "Consulta huecos libres en los calendarios del equipo. USA SIEMPRE esta función antes de proponer una hora al cliente. Si el cliente tiene preferencia, pásalo en peluquero_preferido; si no, déjalo vacío.",
+            "description": "Consulta huecos libres en los calendarios de los peluqueros. USA SIEMPRE esta función antes de proponer una hora al cliente. Si el cliente tiene preferencia de peluquero/a, pásalo en peluquero_preferido; si no, déjalo vacío.",
             "response_timeout_secs": 20,
             "disable_interruptions": false,
-            "force_pre_tool_speech": true,
-            "pre_tool_speech": "force",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
             "assignments": [],
             "tool_call_sound": null,
             "tool_call_sound_behavior": "auto",
@@ -161,7 +161,7 @@
                 "X-Tool-Secret": "<<TOOL_SECRET>>",
                 "Content-Type": "application/json"
               },
-              "url": "https://web-production-98b02b.up.railway.app/tools/consultar_disponibilidad?tenant_id=pelu_demo",
+              "url": "https://sprintiasolutions.com/tools/consultar_disponibilidad",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
@@ -200,7 +200,7 @@
                   },
                   "peluquero_preferido": {
                     "type": "string",
-                    "description": "Nombre del miembro del equipo si hay preferencia. Vacío = cualquiera.",
+                    "description": "Nombre del peluquero si hay preferencia. Vacío = cualquiera.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -208,7 +208,7 @@
                   },
                   "max_resultados": {
                     "type": "integer",
-                    "description": "Máximo de huecos a devolver. Por defecto 5.",
+                    "description": "Máximo de huecos. Por defecto 5.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -224,11 +224,11 @@
           {
             "type": "webhook",
             "name": "crear_reserva",
-            "description": "Crea una reserva en el calendario. Confirma SIEMPRE la hora antes. No llamarla sin haber usado consultar_disponibilidad primero.",
+            "description": "Crea la cita en el calendario del peluquero. SOLO tras confirmación explícita del cliente. El título debe ser: 'Servicio — Nombre cliente (con Peluquero)'.",
             "response_timeout_secs": 20,
             "disable_interruptions": false,
-            "force_pre_tool_speech": true,
-            "pre_tool_speech": "force",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
             "assignments": [],
             "tool_call_sound": null,
             "tool_call_sound_behavior": "auto",
@@ -242,7 +242,7 @@
                 "X-Tool-Secret": "<<TOOL_SECRET>>",
                 "Content-Type": "application/json"
               },
-              "url": "https://web-production-98b02b.up.railway.app/tools/crear_reserva?tenant_id=pelu_demo",
+              "url": "https://sprintiasolutions.com/tools/crear_reserva",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
@@ -252,13 +252,14 @@
                   "titulo",
                   "inicio_iso",
                   "fin_iso",
+                  "telefono_cliente",
                   "peluquero"
                 ],
                 "description": "",
                 "properties": {
                   "titulo": {
                     "type": "string",
-                    "description": "Título del evento. FORMATO EXACTO: 'Nombre — Servicio (Peluquero)'. Ejemplos: 'Lucía — Corte mujer (Mario)', 'Juan — Asesoría (sin preferencia)'. El NOMBRE DEL CLIENTE va PRIMERO.",
+                    "description": "Título del evento, formato 'Servicio — Nombre cliente (con Peluquero)' o '(sin preferencia)'.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -282,7 +283,7 @@
                   },
                   "telefono_cliente": {
                     "type": "string",
-                    "description": "Teléfono del cliente. Normalmente es {{system__caller_id}} (el de la llamada).",
+                    "description": "Número de teléfono del cliente.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -290,7 +291,7 @@
                   },
                   "peluquero": {
                     "type": "string",
-                    "description": "Nombre del miembro del equipo asignado o 'sin preferencia'.",
+                    "description": "Nombre del peluquero asignado o 'sin preferencia'.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -314,11 +315,11 @@
           {
             "type": "webhook",
             "name": "buscar_reserva_cliente",
-            "description": "Busca reservas futuras del cliente. Prueba primero por teléfono (el caller_id se pasa automáticamente). Si el cliente dice que la cita está 'a nombre de X' o llama desde otro número, llama a esta función con `nombre_cliente` para buscar por nombre. Úsala antes de mover/cancelar para obtener el event_id y el calendar_id.",
+            "description": "Busca la próxima reserva del cliente cuando pide mover/cancelar. Primero prueba con `telefono_cliente` (suele ser el caller_id). Si el cliente dice que la cita está 'a nombre de X' o no recuerda con qué teléfono reservó, llama otra vez con `nombre_cliente`.",
             "response_timeout_secs": 20,
             "disable_interruptions": false,
-            "force_pre_tool_speech": true,
-            "pre_tool_speech": "force",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
             "assignments": [],
             "tool_call_sound": null,
             "tool_call_sound_behavior": "auto",
@@ -332,7 +333,7 @@
                 "X-Tool-Secret": "<<TOOL_SECRET>>",
                 "Content-Type": "application/json"
               },
-              "url": "https://web-production-98b02b.up.railway.app/tools/buscar_reserva_cliente?tenant_id=pelu_demo",
+              "url": "https://sprintiasolutions.com/tools/buscar_reserva_cliente",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
@@ -343,7 +344,7 @@
                 "properties": {
                   "telefono_cliente": {
                     "type": "string",
-                    "description": "Teléfono del cliente a buscar. Normalmente es {{system__caller_id}}.",
+                    "description": "Teléfono del cliente, con prefijo si lo da.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -351,7 +352,7 @@
                   },
                   "nombre_cliente": {
                     "type": "string",
-                    "description": "Alternativa al teléfono: nombre del cliente tal como lo dio en la reserva ('Mario', 'Ana López'). Útil cuando el cliente llama desde otro número o no recuerda con qué teléfono reservó. El backend busca en summary y client_name del evento.",
+                    "description": "Nombre del cliente tal y como lo dio al reservar ('Mario', 'Ana López'). Alternativa al teléfono.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -375,11 +376,11 @@
           {
             "type": "webhook",
             "name": "mover_reserva",
-            "description": "Mueve una reserva existente a otra hora. Usa event_id obtenido de buscar_reserva_cliente. Pasa también calendar_id si lo recibiste.",
+            "description": "Mueve una reserva a nueva fecha/hora. Reenvía calendar_id si lo obtuviste de buscar_reserva_cliente — el backend mueve directo y baja latencia.",
             "response_timeout_secs": 20,
             "disable_interruptions": false,
-            "force_pre_tool_speech": true,
-            "pre_tool_speech": "force",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
             "assignments": [],
             "tool_call_sound": null,
             "tool_call_sound_behavior": "auto",
@@ -393,7 +394,7 @@
                 "X-Tool-Secret": "<<TOOL_SECRET>>",
                 "Content-Type": "application/json"
               },
-              "url": "https://web-production-98b02b.up.railway.app/tools/mover_reserva?tenant_id=pelu_demo",
+              "url": "https://sprintiasolutions.com/tools/mover_reserva",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
@@ -430,17 +431,9 @@
                     "dynamic_variable": "",
                     "constant_value": ""
                   },
-                  "peluquero": {
-                    "type": "string",
-                    "description": "Nombre del miembro si se mueve a otro peluquero/profesional. Vacío = no cambia.",
-                    "enum": null,
-                    "is_system_provided": false,
-                    "dynamic_variable": "",
-                    "constant_value": ""
-                  },
                   "calendar_id": {
                     "type": "string",
-                    "description": "calendar_id devuelto por buscar_reserva_cliente. Si lo pasas, el backend mueve directo sin iterar peluqueros — MÁS RÁPIDO. Si falta, el backend lo busca.",
+                    "description": "calendar_id devuelto por buscar_reserva_cliente. Si viene, el backend mueve directo sin iterar peluqueros.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -456,11 +449,11 @@
           {
             "type": "webhook",
             "name": "cancelar_reserva",
-            "description": "Cancela una reserva existente. Usa event_id obtenido de buscar_reserva_cliente. Pasa también calendar_id si lo recibiste.",
+            "description": "Cancela una reserva. SOLO tras confirmación explícita. Reenvía calendar_id si lo obtuviste de buscar_reserva_cliente.",
             "response_timeout_secs": 20,
             "disable_interruptions": false,
-            "force_pre_tool_speech": true,
-            "pre_tool_speech": "force",
+            "force_pre_tool_speech": false,
+            "pre_tool_speech": "auto",
             "assignments": [],
             "tool_call_sound": null,
             "tool_call_sound_behavior": "auto",
@@ -474,7 +467,7 @@
                 "X-Tool-Secret": "<<TOOL_SECRET>>",
                 "Content-Type": "application/json"
               },
-              "url": "https://web-production-98b02b.up.railway.app/tools/cancelar_reserva?tenant_id=pelu_demo",
+              "url": "https://sprintiasolutions.com/tools/cancelar_reserva",
               "method": "POST",
               "path_params_schema": {},
               "query_params_schema": null,
@@ -495,7 +488,7 @@
                   },
                   "calendar_id": {
                     "type": "string",
-                    "description": "calendar_id devuelto por buscar_reserva_cliente. Si lo pasas, el backend cancela directo sin iterar peluqueros — MÁS RÁPIDO. Si falta, el backend lo busca.",
+                    "description": "calendar_id devuelto por buscar_reserva_cliente. Si viene, el backend cancela directo sin iterar peluqueros.",
                     "enum": null,
                     "is_system_provided": false,
                     "dynamic_variable": "",
@@ -513,8 +506,8 @@
     }
   },
   "metadata": {
-    "created_at_unix_secs": 1777402910,
-    "updated_at_unix_secs": 1777837639
+    "created_at_unix_secs": 1776798882,
+    "updated_at_unix_secs": 1777596764
   },
   "platform_settings": {
     "evaluation": {
@@ -529,7 +522,7 @@
         "color_1": "#2792dc",
         "color_2": "#9ce6e6"
       },
-      "feedback_mode": "none",
+      "feedback_mode": "during",
       "end_feedback": {
         "type": "rating"
       },
@@ -549,8 +542,8 @@
       "speaking_text": null,
       "shareable_page_text": null,
       "shareable_page_show_terms": true,
-      "terms_text": null,
-      "terms_html": null,
+      "terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.",
+      "terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
       "terms_key": null,
       "show_avatar_when_collapsed": false,
       "disable_banner": false,
@@ -657,7 +650,7 @@
           "similarity_boost": false
         },
         "conversation": {
-          "text_only": false
+          "text_only": true
         },
         "agent": {
           "first_message": false,
@@ -678,7 +671,7 @@
     },
     "workspace_overrides": {
       "conversation_initiation_client_data_webhook": {
-        "url": "https://web-production-98b02b.up.railway.app/tools/eleven/personalization?tenant_id=pelu_demo",
+        "url": "https://sprintiasolutions.com/tools/eleven/personalization?tenant_id=pelu_demo",
         "request_headers": {
           "X-Tool-Secret": "F2XJdxhw07N8inb2sIjukiIjQGmve3XytMlFZ8gThvs",
           "Content-Type": "application/json"
@@ -776,7 +769,7 @@
       }
     },
     "trust_context": "unknown",
-    "analysis_llm": "gemini-2.5-flash",
+    "analysis_llm": "gemini-3.1-pro-preview",
     "safety": {
       "is_blocked_ivc": false,
       "is_blocked_non_ivc": false,
@@ -806,6 +799,8 @@
   "coaching_settings": null,
   "procedures": {},
   "procedures_enabled": false,
-  "procedure_settings": null,
+  "procedure_settings": {
+    "compiler_mode": "append"
+  },
   "trust_context": "unknown"
 }

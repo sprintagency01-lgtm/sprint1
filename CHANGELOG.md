@@ -6,6 +6,82 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-03 (latencia — ronda 8: pelu_demo a gemini-3-flash + eleven_v3_conversational)
+
+Migración del agente real de `pelu_demo` (`agent_4201kqaqg5b7ead9f305fztndh9r`, "Ana · Peluquería Demo") a la combinación `gemini-3-flash-preview` + `eleven_v3_conversational`. Dos PATCHes encadenados, validados con `bench_audio_ttfa.py`.
+
+### Por qué
+
+- El agente de prod estaba en `gemini-3.1-pro-preview` (lista negra del doc canónico ronda 6: 7-10 s TTFR y cero tool calls). Bench confirmó: 0/3 runs llamaban a `consultar_disponibilidad`. Síntoma probable en producción: Ana respondía con texto natural pero **sin consultar el calendario**, alucinando huecos.
+- v3_conversational fue solicitado por Marcos por naturalidad subjetivamente superior. La voz del tenant (Raquel `1eHrpOW5l98cxiSRjbzJ`) no aparece marcada como "high-quality base" para v3 — ninguna de las 1607 voces ES revisadas en la library lo está, porque v3 sigue en alpha. Decisión: aceptar v3 sin badge HQ; el TTS funciona y suena bien en el primer test acústico (mp3 válido devuelto).
+
+### Cambiado
+
+- Agente `agent_4201...` (pelu_demo, prod):
+  - `conversation_config.agent.prompt.llm`: `gemini-3.1-pro-preview` → **`gemini-3-flash-preview`**.
+  - `conversation_config.agent.prompt.thinking_budget`: `null` → `0` (efecto: ninguno, ElevenLabs lo serializa como null cuando vale 0).
+  - `conversation_config.tts.model_id`: `eleven_flash_v2_5` → **`eleven_v3_conversational`**.
+  - `pre_tool_speech: force` ya estaba en las 5 tools (no fue necesario tocar).
+
+### Mediciones (`bench_audio_ttfa.py`, agente real, n=3 por escenario)
+
+Mensaje "Hola, quiero cita para corte de hombre mañana por la tarde":
+
+| Métrica | Baseline (3.1-pro + flash) | Después (3-flash + v3_conv) | Delta |
+|---|---|---|---|
+| TTFA — primer audio que oye el cliente | 3148 ms | **1665 ms** | **−1483 ms** |
+| Tool calls | **0/3** ❌ | **3/3** ✓ | bug arreglado |
+| PostToolAudio | n/a (no llamaba) | 3708 ms | — |
+
+Mensaje "Tengo una cita y quería cancelarla" (n=2): TTFA 1309 ms, `buscar_reserva_cliente` ✓.
+Mensaje "Quiero cambiar mi cita de mañana al viernes" (n=2): TTFA 1290 ms (run válido), `buscar_reserva_cliente` ✓.
+
+### Verificación end-to-end (5 webhooks contra backend Railway)
+
+| Tool | HTTP | Latencia | Resultado |
+|---|---|---|---|
+| `consultar_disponibilidad` | 200 | 0.9 s | 5 huecos devueltos correctamente para Mario y Marcos |
+| `buscar_reserva_cliente` | 200 | 1.3 s | `{"encontrada":false}` para tlf inexistente (esperado) |
+| `crear_reserva` con `peluquero="sin preferencia"` | 200 (`ok:false`) | 1.2 s | **bug preexistente**: 404 de Google Calendar al resolver "sin preferencia" → calendar_id inválido. No introducido por esta ronda; ya estaba antes. |
+| `mover_reserva` con event_id ficticio | 500 | 1.4 s | **bug preexistente**: error sin controlar en lugar de 404. Path real (event_id válido obtenido de `buscar_reserva_cliente`) no testeado en esta ronda. |
+| `cancelar_reserva` con event_id ficticio | 500 | 1.1 s | igual que `mover_reserva`. |
+
+`/_diag/elevenlabs/healthcheck`: 5/5 tools registradas, agente OK, tenant config OK.
+
+### Añadido
+
+- `scripts/bench_audio_ttfa.py` — harness que mide TTFA (latencia hasta primer chunk de audio), no solo TTFR de texto. Soporta `AGENT_ID=...` para apuntar a un agente concreto. Cada run consume créditos TTS de ElevenLabs.
+- `scripts/clone_agent_sandbox.py` — duplica un agente existente con un TTS distinto, para A/B aislados.
+- `scripts/clone_tools_for_sandbox.py` — clona las 5 tools y las asigna al sandbox, para que el A/B no contamine las tools de prod.
+- `docs/snapshots/agent_pelu_demo_pre_round8_2026-05-03T192900Z.sanitized.json` — snapshot del agente real ANTES de la migración.
+
+### Env / despliegue
+
+- Sin cambios en variables ni redeploy. Todos los cambios fueron PATCHes a la API de ElevenLabs.
+- `.gitignore`: ahora excluye `docs/snapshots/*.json` excepto `*.sanitized.json` para no commitear snapshots con `X-Tool-Secret`.
+
+### Pendientes / followup
+
+- **Validación acústica con llamada real de 30 s**: Marcos llama al número del bot, juzga si la voz Raquel suena bien con v3_conversational (sin badge HQ no hay garantía).
+- **Bug pre-existente "sin preferencia"** en `crear_reserva`: investigar la resolución de calendar_id cuando el peluquero es "sin preferencia". Probablemente cae en una rama default que apunta a un calendar inexistente. Bloquea reservas con peluquero indistinto.
+- **Bug pre-existente 500 en mover/cancelar** con event_id inválido: añadir manejo de error controlado (404 + mensaje legible).
+- **Sandbox y tools clonadas**: limpiar (DELETE) cuando todo confirmado: `agent_4301kqqkxk41f8jt9q5j5ecc0d2d` + 5 tools en `/tmp/sandbox_tools_mapping.json`.
+- **Agente DEV** `agent_3901kprqemrger3rsgky0csea6g0` quedó con TTS=v3 y `pre_tool_speech: force` en sus tools. Nadie lo usa en prod, pero queda alineado con el doc canónico para futuros tests.
+
+### Rollback
+
+Si v3 da problemas en clientes reales:
+
+```bash
+curl -X PATCH "https://api.elevenlabs.io/v1/convai/agents/agent_4201kqaqg5b7ead9f305fztndh9r" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" -H "Content-Type: application/json" \
+  -d '{"conversation_config":{"tts":{"model_id":"eleven_flash_v2_5"}}}'
+```
+
+Revertir el LLM (rollback del bug 3.1-pro) NO se recomienda, porque el modelo no llamaba tools.
+
+---
+
 ## 2026-04-29 (cambio de dominio canónico → `sprintiasolutions.com`)
 
 Migración del backend del subdominio interno `web-production-98b02b.up.railway.app` al dominio canónico **`sprintiasolutions.com`** (Railway custom domain conectado al servicio `web` del proyecto `marvelous-charm`). Procedimiento completo paso a paso documentado en la guía nueva `DOMAIN_MIGRATION_2026-04-29.md` (DNS Porkbun → propagación → smoke SSL → OAuth → Railway env → webhooks ElevenLabs/Telegram → verificación final). El subdominio interno queda activo como fallback durante la ventana de convivencia.
