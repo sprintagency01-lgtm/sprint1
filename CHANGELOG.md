@@ -60,12 +60,15 @@ Mensaje "Quiero cambiar mi cita de mañana al viernes" (n=2): TTFA 1290 ms (run 
 - Sin cambios en variables ni redeploy. Todos los cambios fueron PATCHes a la API de ElevenLabs.
 - `.gitignore`: ahora excluye `docs/snapshots/*.json` excepto `*.sanitized.json` para no commitear snapshots con `X-Tool-Secret`.
 
+### Corregido (en el mismo push)
+
+- **Bug crear_reserva 404 cuando calendar de peluquero es solo freebusy** (`app/eleven_tools.py::crear_reserva`). Causa: en `pelu_demo` los calendars de Mario y Marcos son legibles vía freebusy (`consultar_disponibilidad` funciona) pero la OAuth/service account no tiene permiso WRITE → al insertar evento en `308711...` (Mario) o `7523b6...` (Marcos), Google devolvía 404 y la reserva se perdía. Ahora hay fallback automático: si el insert al calendar del peluquero falla con 404 / `notFound` y existe un primary distinto en el tenant (`_calendar_id_for_booking`), se reintenta una sola vez ahí. La cita queda creada con el peluquero asignado en el título; `buscar_reserva_cliente` recorre todos los calendarios del tenant + el principal así que la reserva se sigue encontrando para mover/cancelar. Tests nuevos: `test_crear_reserva_fallback_a_primary_cuando_pelu_404`, `test_crear_reserva_no_fallback_si_no_es_404`. Los 4 tests existentes de `crear_reserva` siguen verdes (clientes con calendars peluquero correctos no notan el cambio).
+
 ### Pendientes / followup
 
 - **Validación acústica con llamada real de 30 s**: Marcos llama al número del bot, juzga si la voz Raquel suena bien con v3_conversational (sin badge HQ no hay garantía).
-- **Bug pre-existente "sin preferencia"** en `crear_reserva`: investigar la resolución de calendar_id cuando el peluquero es "sin preferencia". Probablemente cae en una rama default que apunta a un calendar inexistente. Bloquea reservas con peluquero indistinto.
-- **Bug pre-existente 500 en mover/cancelar** con event_id inválido: añadir manejo de error controlado (404 + mensaje legible).
-- **Sandbox y tools clonadas**: limpiar (DELETE) cuando todo confirmado: `agent_4301kqqkxk41f8jt9q5j5ecc0d2d` + 5 tools en `/tmp/sandbox_tools_mapping.json`.
+- **Bug pre-existente 500 en mover/cancelar** con event_id inválido: añadir manejo de error controlado (404 + mensaje legible). En el flujo real de Ana NO ocurre (siempre obtiene event_id de `buscar_reserva_cliente`), pero deja Internal Server Error si alguien llama el endpoint con event_id ficticio.
+- **Sandbox y tools clonadas**: ya borradas en esta sesión.
 - **Agente DEV** `agent_3901kprqemrger3rsgky0csea6g0` quedó con TTS=v3 y `pre_tool_speech: force` en sus tools. Nadie lo usa en prod, pero queda alineado con el doc canónico para futuros tests.
 
 ### Rollback

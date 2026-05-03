@@ -306,6 +306,91 @@ def test_crear_reserva_walkin_falla_si_nadie_libre(client, fake_tenant):
     assert crear_calls == []
 
 
+def test_crear_reserva_fallback_a_primary_cuando_pelu_404(client, fake_tenant):
+    """Bug observado en pelu_demo (2026-05-03): los calendars de los peluqueros
+    son legibles vía freebusy pero la OAuth no tiene WRITE → Google devuelve
+    404 al crear evento, y la cita se pierde. Ahora hay fallback automático al
+    calendar principal del tenant si el del peluquero da 404 / notFound.
+    """
+    crear_calls = []
+
+    def _fake_crear(**kwargs):
+        crear_calls.append(kwargs["calendar_id"])
+        # Mario (calendar del peluquero asignado por walkin) no acepta write.
+        if kwargs["calendar_id"] == "mario_cal@group.calendar.google.com":
+            raise RuntimeError(
+                "<HttpError 404 when requesting .../mario_cal/events?alt=json returned \"Not Found\". Details: \"Not Found\">"
+            )
+        # El primary del tenant sí acepta.
+        return {"id": "evt_fallback_ok"}
+
+    def _fake_disponibles(inicio, fin, peluqueros, tenant_id):
+        # Solo Mario libre — walkin lo elige, su calendar es el que falla.
+        return [{**peluqueros[0], "busy_count_dia": 0}]
+
+    with patch("app.eleven_tools.cal.buscar_evento_por_telefono", return_value=None), \
+         patch("app.eleven_tools.cal.crear_evento", side_effect=_fake_crear), \
+         patch("app.eleven_tools.cal.peluqueros_disponibles_en_slot", side_effect=_fake_disponibles):
+        r = client.post(
+            "/tools/crear_reserva?tenant_id=t_test",
+            headers={"X-Tool-Secret": "x"},
+            json={
+                "titulo": "Juan — Consulta (sin preferencia)",
+                "inicio_iso": "2026-04-28T10:00:00",
+                "fin_iso":    "2026-04-28T10:30:00",
+                "telefono_cliente": "+34600000001",
+                "peluquero": "sin preferencia",
+            },
+        )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True, f"esperaba ok=True tras fallback, body={body}"
+    assert body["event_id"] == "evt_fallback_ok"
+    # La response sigue informando del peluquero asignado por walkin (Mario),
+    # aunque la cita finalmente se haya guardado en el calendar principal.
+    assert body["peluquero"] == "Mario"
+    # Dos intentos: peluquero (404) → primary (ok).
+    assert crear_calls == [
+        "mario_cal@group.calendar.google.com",
+        "main_cal@group.calendar.google.com",
+    ]
+
+
+def test_crear_reserva_no_fallback_si_no_es_404(client, fake_tenant):
+    """Si el error NO es 404, no entrar en el fallback — los 5xx, rate limits y
+    timeouts ya tienen su propio retry en `_retry_google`. Si fallan ahí, se
+    propaga el ok:false original sin doblar la latencia con un segundo intento.
+    """
+    crear_calls = []
+
+    def _fake_crear(**kwargs):
+        crear_calls.append(kwargs["calendar_id"])
+        raise RuntimeError("permission denied: insufficient scope")
+
+    def _fake_disponibles(inicio, fin, peluqueros, tenant_id):
+        return [{**peluqueros[0], "busy_count_dia": 0}]
+
+    with patch("app.eleven_tools.cal.buscar_evento_por_telefono", return_value=None), \
+         patch("app.eleven_tools.cal.crear_evento", side_effect=_fake_crear), \
+         patch("app.eleven_tools.cal.peluqueros_disponibles_en_slot", side_effect=_fake_disponibles):
+        r = client.post(
+            "/tools/crear_reserva?tenant_id=t_test",
+            headers={"X-Tool-Secret": "x"},
+            json={
+                "titulo": "Juan — Consulta",
+                "inicio_iso": "2026-04-28T10:00:00",
+                "fin_iso":    "2026-04-28T10:30:00",
+                "telefono_cliente": "+34600000001",
+                "peluquero": "sin preferencia",
+            },
+        )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False
+    # Solo se intentó el calendar del peluquero (1 vez), sin fallback.
+    assert crear_calls == ["mario_cal@group.calendar.google.com"]
+
+
 # ---------------------------------------------------------------------------
 #  Caché de tenant in-memory
 # ---------------------------------------------------------------------------

@@ -619,22 +619,58 @@ def crear_reserva(
     # Reintenta ante errores transitorios de Google. Si aun así falla,
     # devolvemos 200 con ok:false + mensaje legible para que Ana pueda decidir
     # si reintenta o deriva al número de tienda, en vez de oír un 500 mudo.
-    try:
-        ev = _retry_google(
+    #
+    # Fallback de 404 al calendar central del tenant: en pelu_demo (y otros
+    # tenants donde los calendars de peluquero solo tienen permiso de freebusy
+    # / read pero no write para nuestra OAuth), Google devuelve 404 al insert.
+    # Antes de rendirse, reintentamos contra `_calendar_id_for_booking`
+    # (normalmente el primary del owner) si es distinto al `destino_cal`
+    # original. La cita queda creada (con el peluquero asignado en el título);
+    # `buscar_reserva_cliente` recorre todos los calendarios del tenant + el
+    # principal, así se sigue encontrando.
+    def _do_insert(cal_id: str) -> dict:
+        return _retry_google(
             lambda: cal.crear_evento(
                 titulo=req.titulo,
                 inicio=inicio_dt,
                 fin=fin_dt,
                 descripcion=req.notas,
                 telefono_cliente=tel,
-                calendar_id=destino_cal,
+                calendar_id=cal_id,
                 tenant_id=tenant.get("id", "default"),
             ),
             "crear_evento",
         )
-    except Exception as e:  # noqa: BLE001 - queremos cualquier excepción
-        log.error("crear_reserva falló tras reintentos: %s\n%s",
-                  e, traceback.format_exc())
+
+    primary_cal = _calendar_id_for_booking(tenant, peluquero_asignado or None)
+    insert_error: Exception | None = None
+    ev = None
+    try:
+        ev = _do_insert(destino_cal)
+    except Exception as e:  # noqa: BLE001
+        insert_error = e
+        # Solo intentamos fallback si parece un 404 de calendar inexistente
+        # y el primary es distinto del que acabamos de probar — para no
+        # repetir la misma llamada y duplicar latencia inútilmente.
+        is_calendar_404 = "404" in str(e) or "notFound" in str(e)
+        if is_calendar_404 and primary_cal and primary_cal != destino_cal:
+            log.warning(
+                "crear_evento 404 en calendar %s — fallback al principal del tenant %s",
+                destino_cal, primary_cal,
+            )
+            try:
+                ev = _do_insert(primary_cal)
+                destino_cal = primary_cal
+                insert_error = None
+            except Exception as e2:  # noqa: BLE001
+                insert_error = e2
+
+    if insert_error is not None or ev is None:
+        log.error(
+            "crear_reserva falló tras reintentos%s: %s\n%s",
+            " (incluido fallback a primary)" if primary_cal != destino_cal else "",
+            insert_error, traceback.format_exc(),
+        )
         return {
             "ok": False,
             "error": (
@@ -643,7 +679,7 @@ def crear_reserva(
                 "Intenta de nuevo en unos segundos."
             ),
             "retryable": True,
-            "detail": str(e)[:200],
+            "detail": str(insert_error)[:200] if insert_error else "no event",
         }
     peluquero_resp = peluquero_asignado or "sin preferencia"
     log.info("Reserva creada por voz: %s (%s)", ev.get("id"), peluquero_resp)
