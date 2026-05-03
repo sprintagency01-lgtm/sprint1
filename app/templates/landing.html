@@ -55,7 +55,7 @@
   "@type": "Organization",
   "name": "Sprint",
   "url": "https://sprintiasolutions.com/",
-  "email": "hola@sprint.agency",
+  "email": "hola@sprintiasolutions.com",
   "description": "Asistente de llamadas con IA 24/7 que reserva citas con voz natural. Bot de Telegram opcional.",
   "areaServed": "ES",
   "sameAs": []
@@ -79,8 +79,8 @@
 <script>
   const TWEAKS = /*EDITMODE-BEGIN*/{
     "palette": "mint",
-    "heroHeadline": "Tu teléfono, atendido siempre.",
-    "heroSubline": "Sprint atiende las llamadas que tú no puedes coger y deja la cita reservada en tu calendario. Y si quieres, monta también un chat automático en Telegram para que tus clientes reserven o pregunten cuando les venga.",
+    "heroHeadline": "Coge cada llamada. Sin coger el teléfono.",
+    "heroSubline": "Una recepcionista de IA atiende tu número 24/7, propone los huecos reales de tu agenda y deja la cita en tu Google Calendar. Tú lo revisas en el panel cuando te venga bien.",
     "ctaLabel": "Habla con nosotros",
     "showBadge": true,
     "heroVariant": "demo"
@@ -309,13 +309,257 @@
   }
   .phone-wrap:hover .phone{ transform: rotate(0deg); }
   .phone-screen{
-    background: #ECE5DD;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(47,122,85,.20) 0%, transparent 55%),
+      linear-gradient(180deg, #0F1A14 0%, #050A07 100%);
     border-radius:32px;
     overflow:hidden;
     position:relative;
     height:620px;
     display:flex; flex-direction:column;
+    color:#F2F5F0;
   }
+
+  /* ---------- CALL SCREEN (hero) — voice-only orb ---------- */
+  .call-header{
+    padding:22px 22px 0;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    text-align:center;
+  }
+  .call-status{
+    font-family:var(--mono); font-size:10.5px;
+    letter-spacing:.18em; text-transform:uppercase;
+    color: rgba(199,224,206,.85);
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .call-status .live{
+    width:7px; height:7px; border-radius:50%;
+    background:#3DD37A;
+    box-shadow: 0 0 0 4px rgba(61,211,122,.20);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .call-caller{
+    margin-top:6px;
+    font-family:var(--sans); font-weight:500; font-size:13px;
+    color: rgba(242,245,240,.65);
+    font-variant-numeric: tabular-nums;
+    letter-spacing:.02em;
+  }
+  .call-timer{
+    font-family:var(--mono); font-size:34px; font-weight:500;
+    color:#F2F5F0; font-variant-numeric: tabular-nums;
+    margin-top:2px;
+    letter-spacing:.02em;
+  }
+  .call-sub{
+    font-size:11.5px; color: rgba(242,245,240,.4);
+    margin-top:2px;
+    font-family:var(--mono); letter-spacing:.04em;
+  }
+
+  /* The orb — Siri / ChatGPT voice style */
+  .voice-stage{
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding: 14px 22px 110px;
+    position:relative;
+  }
+  .voice-orb{
+    position:relative;
+    width:170px; height:170px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* Outer glow */
+  .voice-orb::before{
+    content:""; position:absolute; inset:-44px;
+    background: radial-gradient(circle, rgba(61,211,122,.30) 0%, rgba(61,211,122,0) 65%);
+    border-radius:50%;
+    filter: blur(8px);
+    z-index:0;
+    animation: glowBreathe 4.5s ease-in-out infinite;
+  }
+  @keyframes glowBreathe{
+    0%,100%{ opacity:.55; transform: scale(1); }
+    50%{ opacity:.85; transform: scale(1.08); }
+  }
+  /* Pulsing rings */
+  .voice-orb-ring{
+    position:absolute; inset:0;
+    border-radius:50%;
+    border:1.5px solid rgba(61,211,122,.35);
+    animation: orbRing 3.2s cubic-bezier(.2,.7,.3,1) infinite;
+    z-index:1;
+  }
+  .voice-orb-ring.r2{ animation-delay: 1.05s; }
+  .voice-orb-ring.r3{ animation-delay: 2.1s; }
+  @keyframes orbRing{
+    0%   { transform: scale(.65); opacity: .85; border-color: rgba(61,211,122,.55); }
+    70%  { transform: scale(1.45); opacity: 0; border-color: rgba(61,211,122,.1); }
+    100% { transform: scale(1.45); opacity: 0; }
+  }
+  /* The blob itself — two layers + svg gradient */
+  .voice-orb-core{
+    position:relative;
+    width:130px; height:130px;
+    border-radius:50%;
+    background:
+      radial-gradient(circle at 32% 28%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 30%),
+      radial-gradient(circle at 70% 70%, #1F4A33 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #3DD37A 0%, #2F7A55 55%, #163024 100%);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.08) inset,
+      0 0 60px -10px rgba(61,211,122,.55),
+      0 18px 40px -16px rgba(47,122,85,.6);
+    z-index:2;
+    overflow:hidden;
+    animation: orbBreathe 4.5s ease-in-out infinite;
+  }
+  @keyframes orbBreathe{
+    0%,100%{ transform: scale(1); }
+    50%{ transform: scale(1.04); }
+  }
+  /* Internal liquid layers */
+  .voice-orb-core::before,
+  .voice-orb-core::after{
+    content:""; position:absolute;
+    border-radius:42% 58% 50% 50% / 50% 45% 55% 50%;
+    mix-blend-mode: screen;
+  }
+  .voice-orb-core::before{
+    inset:8%;
+    background: radial-gradient(circle at 30% 40%, rgba(199,224,206,.7), rgba(199,224,206,0) 65%);
+    animation: blob 7s linear infinite;
+  }
+  .voice-orb-core::after{
+    inset:18%;
+    background: radial-gradient(circle at 60% 60%, rgba(255,255,255,.55), rgba(255,255,255,0) 60%);
+    animation: blob 9s linear infinite reverse;
+  }
+  @keyframes blob{
+    0%   { transform: rotate(0deg) scale(1); }
+    33%  { transform: rotate(120deg) scale(1.05); }
+    66%  { transform: rotate(240deg) scale(.95); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+
+  /* When Ana is "speaking": faster + brighter */
+  .voice-orb.speaking::before{ animation-duration: 2s; opacity:1; }
+  .voice-orb.speaking .voice-orb-core{ animation-duration: 1.4s; }
+  .voice-orb.speaking .voice-orb-core::before{ animation-duration: 3.5s; }
+  .voice-orb.speaking .voice-orb-core::after{ animation-duration: 4.5s; }
+  .voice-orb.speaking .voice-orb-ring{ animation-duration: 1.8s; }
+
+  /* When client speaks: slow + dim */
+  .voice-orb.listening::before{ animation-duration: 6s; opacity:.5; }
+  .voice-orb.listening .voice-orb-core{ filter: saturate(.55) brightness(.85); }
+  .voice-orb.listening .voice-orb-ring{ opacity:.5; animation-duration: 4s; }
+
+  /* State chip below orb */
+  .voice-state{
+    margin-top:34px;
+    display:inline-flex; align-items:center; gap:10px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.08);
+    font-size:13px;
+    color:#F2F5F0;
+    min-height:34px;
+    transition: opacity .25s ease;
+  }
+  .voice-state .who{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color: rgba(199,224,206,.7);
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(61,211,122,.14);
+  }
+  .voice-state .who.client{
+    color: rgba(242,245,240,.65);
+    background: rgba(255,255,255,.06);
+  }
+  .voice-state .verb{ color: rgba(242,245,240,.85); font-weight:500; }
+  .voice-state .verb .dotty::after{
+    content:""; display:inline-block; width:18px; text-align:left;
+    animation: dotty 1.4s steps(4,end) infinite;
+  }
+  @keyframes dotty{
+    0%{ content:""; }
+    25%{ content:"."; }
+    50%{ content:".."; }
+    75%{ content:"..."; }
+    100%{ content:""; }
+  }
+
+  /* The pill confirmation that appears at end of cycle */
+  .voice-result{
+    position:absolute;
+    left:50%; bottom:90px;
+    transform: translate(-50%, 8px);
+    opacity:0;
+    display:inline-flex; align-items:center; gap:10px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(61,211,122,.18), rgba(61,211,122,.08));
+    border:1px solid rgba(61,211,122,.35);
+    font-size:12.5px; color:#F2F5F0;
+    backdrop-filter: blur(4px);
+    transition: opacity .4s ease, transform .4s cubic-bezier(.2,.7,.3,1);
+    white-space: nowrap;
+    z-index:4;
+  }
+  .voice-result.show{ opacity:1; transform: translate(-50%, 0); }
+  .voice-result svg{ width:14px; height:14px; color:#3DD37A; }
+  .voice-result .when{ color: rgba(199,224,206,.85); font-variant-numeric: tabular-nums; }
+
+  .call-actions{
+    position:absolute; left:0; right:0; bottom:22px;
+    display:flex; align-items:center; justify-content:center; gap:22px;
+    z-index:3;
+  }
+  .call-action{
+    width:46px; height:46px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.06);
+    color: rgba(242,245,240,.85);
+  }
+  .call-action svg{ width:18px; height:18px; }
+  .call-action.end{
+    background:#E84A4A;
+    color:#fff;
+    border-color: rgba(255,255,255,.1);
+    box-shadow: 0 8px 18px -8px rgba(232,74,74,.6);
+  }
+
+  /* small audio bars near orb (the breathing voice indicator) */
+  .voice-bars{
+    margin-top:18px;
+    display:flex; align-items:flex-end; justify-content:center;
+    gap:4px; height:22px;
+  }
+  .voice-bars span{
+    display:inline-block; width:3px; border-radius:2px;
+    background: rgba(61,211,122,.7);
+    animation: vbar 1.1s ease-in-out infinite;
+  }
+  .voice-bars span:nth-child(1){ animation-delay:-.1s; }
+  .voice-bars span:nth-child(2){ animation-delay:-.4s; }
+  .voice-bars span:nth-child(3){ animation-delay:-.2s; }
+  .voice-bars span:nth-child(4){ animation-delay:-.55s; }
+  .voice-bars span:nth-child(5){ animation-delay:-.05s; }
+  .voice-bars span:nth-child(6){ animation-delay:-.3s; }
+  .voice-bars span:nth-child(7){ animation-delay:-.5s; }
+  .voice-bars span:nth-child(8){ animation-delay:-.15s; }
+  .voice-bars span:nth-child(9){ animation-delay:-.35s; }
+  @keyframes vbar{
+    0%,100%{ height:4px; opacity:.5; }
+    50%{ height:22px; opacity:1; }
+  }
+  .voice-orb.listening ~ .voice-bars span{ animation-duration: 2.4s; opacity:.4; }
   .wa-bar{
     background:#0E0C0A; color:#fff;
     padding:14px 14px 12px;
@@ -1196,17 +1440,16 @@
     <div class="hero-copy">
       <div class="hero-eyebrow" id="badge">
         <span class="dot"></span>
-        Tu teléfono nunca queda sin contestar
+        Demo en directo · así suena una llamada con Sprint
       </div>
       <h1 id="h1">
-        Tu teléfono,<br>
-        <em>atendido siempre.</em>
+        Coge cada llamada.<br>
+        <em>Sin coger el teléfono.</em>
       </h1>
       <p class="lede" id="sub">
-        Sprint atiende las llamadas que tú no puedes coger y deja la cita
-        reservada en tu calendario. Y si quieres, monta también un chat
-        automático en Telegram para que tus clientes reserven o pregunten
-        cuando les venga.
+        Una recepcionista de IA atiende tu número 24/7, propone los huecos
+        reales de tu agenda y deja la cita en tu Google Calendar. Tú lo
+        revisas en el panel cuando te venga bien.
       </p>
       <div class="hero-actions">
         <a href="#final" class="btn btn-primary" id="cta" data-lead="Hero">
@@ -1235,45 +1478,58 @@
       <div class="sprint-badge"><span class="dot"></span>Sprint está atendiendo</div>
 
       <div class="sticker s1">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
-        +38% de reservas
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Responde antes del 2.º tono
       </div>
       <div class="sticker s2">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z"/></svg>
-        24/7, sin café
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Disponible 24/7
       </div>
 
-      <div class="phone">
+      <div class="phone" role="img" aria-label="Pantalla de llamada en curso con la asistente de voz Ana de Sprint. La esfera central pulsa según quién esté hablando, y al final aparece la confirmación de la reserva en Google Calendar.">
         <div class="phone-screen">
-          <div class="wa-bar">
-            <div class="wa-avatar">A</div>
-            <div class="wa-id">
-              <span class="wa-name">Ana · Sprint</span>
-              <span class="wa-status"><span class="rec"></span>En llamada · <span id="call-time">00:42</span></span>
+          <div class="call-header">
+            <span class="call-status"><span class="live"></span>En llamada con Sprint</span>
+            <span class="call-caller">+34 612 ··· 348</span>
+            <span class="call-timer" id="call-time">00:42</span>
+            <span class="call-sub">Asistente de voz · Ana</span>
+          </div>
+
+          <div class="voice-stage">
+            <div class="voice-orb speaking" id="voice-orb" aria-hidden="true">
+              <div class="voice-orb-ring"></div>
+              <div class="voice-orb-ring r2"></div>
+              <div class="voice-orb-ring r3"></div>
+              <div class="voice-orb-core"></div>
             </div>
-            <div class="wa-actions">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="#E84A4A" stroke="none"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z" transform="rotate(135 12 12)"/></svg>
+
+            <div class="voice-bars" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span>
+            </div>
+
+            <div class="voice-state" id="voice-state" aria-live="polite">
+              <span class="who" id="voice-who">Ana</span>
+              <span class="verb" id="voice-verb">está hablando<span class="dotty"></span></span>
+            </div>
+
+            <div class="voice-result" id="voice-result" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+              <span>Reserva guardada</span>
+              <span class="when">· mañana 17:30</span>
             </div>
           </div>
-          <div class="wa-body" id="chat-body">
-            <!-- injected -->
-          </div>
-          <div class="wa-wave" aria-hidden="true">
-            <span style="animation-delay:-.10s"></span>
-            <span style="animation-delay:-.40s"></span>
-            <span style="animation-delay:-.20s"></span>
-            <span style="animation-delay:-.55s"></span>
-            <span style="animation-delay:-.05s"></span>
-            <span style="animation-delay:-.30s"></span>
-            <span style="animation-delay:-.50s"></span>
-            <span style="animation-delay:-.15s"></span>
-            <span style="animation-delay:-.35s"></span>
-            <span style="animation-delay:-.25s"></span>
-            <span style="animation-delay:-.45s"></span>
-            <span style="animation-delay:-.10s"></span>
-            <span style="animation-delay:-.60s"></span>
-            <span style="animation-delay:-.20s"></span>
+
+          <div class="call-actions" aria-hidden="true">
+            <button class="call-action" tabindex="-1" type="button" disabled aria-label="Silenciar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </button>
+            <button class="call-action end" tabindex="-1" type="button" disabled aria-label="Colgar">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z" transform="rotate(135 12 12)"/></svg>
+            </button>
+            <button class="call-action" tabindex="-1" type="button" disabled aria-label="Altavoz">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -1285,14 +1541,14 @@
 <div class="marquee">
   <div class="marquee-track">
     <span class="marq-item">No más llamadas perdidas <span class="sep"></span></span>
-    <span class="marq-item">Reserva mientras duermes <span class="sep"></span></span>
+    <span class="marq-item">Reservas fuera de horario <span class="sep"></span></span>
     <span class="marq-item">Contesta al primer tono <span class="sep"></span></span>
     <span class="marq-item">Habla con tu voz <span class="sep"></span></span>
     <span class="marq-item">Conecta con Google Calendar <span class="sep"></span></span>
     <span class="marq-item">Bot de Telegram opcional <span class="sep"></span></span>
     <!-- duplicate for loop -->
     <span class="marq-item">No más llamadas perdidas <span class="sep"></span></span>
-    <span class="marq-item">Reserva mientras duermes <span class="sep"></span></span>
+    <span class="marq-item">Reservas fuera de horario <span class="sep"></span></span>
     <span class="marq-item">Contesta al primer tono <span class="sep"></span></span>
     <span class="marq-item">Habla con tu voz <span class="sep"></span></span>
     <span class="marq-item">Conecta con Google Calendar <span class="sep"></span></span>
@@ -1305,16 +1561,16 @@
   <div class="container">
     <div class="sec-head">
       <div class="sec-kicker">01 · Lo que hace Sprint</div>
-      <h2>Atiende tus llamadas. <em>Y monta tu chat automático en Telegram.</em></h2>
-      <p>Dos formas de no perder una sola reserva: lo que entra por teléfono lo coge Sprint con voz humana, y lo que llega por chat lo resuelve un bot de Telegram con la misma agenda. Tú dejas de estar pegado al móvil.</p>
+      <h2>Una recepcionista de voz. <em>Y un chat opcional en Telegram.</em></h2>
+      <p>Sprint coge el teléfono con voz humana y agenda la cita en tu calendario. De forma opcional puedes añadir un bot de Telegram con la misma agenda para los clientes que prefieren escribir. Mismo back-end, dos canales.</p>
     </div>
     <div class="channel-grid" style="grid-template-columns: 1fr 1fr;">
       <div class="channel">
         <div class="channel-icon call">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
         </div>
-        <h3>Atiende tus llamadas, también las de las 23:00</h3>
-        <p>Sprint coge el teléfono al primer tono, escucha al cliente, le propone los huecos reales de tu agenda y deja la cita confirmada en tu Google Calendar. Mientras tú trabajas, comes o duermes — la reserva ya está hecha.</p>
+        <h3>Atiende todas tus llamadas, a cualquier hora</h3>
+        <p>Sprint coge el teléfono al primer tono, escucha al cliente, le propone los huecos reales de tu agenda y deja la cita confirmada en tu Google Calendar. Sin que tengas que interrumpir lo que estás haciendo.</p>
         <div class="channel-demo">
           <div class="mini-chat">
             <div class="mini-line" style="align-items:center">
@@ -1401,7 +1657,7 @@
           </div>
           <div class="step-num">PASO 04</div>
           <div class="step-title">Relájate</div>
-          <div class="step-desc">Sprint contesta, agenda y confirma 24/7. Tú ves todo en un panel y recibes resumen diario.</div>
+          <div class="step-desc">Sprint contesta, agenda y confirma 24/7. Tú lo revisas en el panel cuando quieras y recibes notificación de cada cita nueva.</div>
         </div>
       </div>
     </div>
@@ -1437,7 +1693,7 @@
     <div class="sec-head">
       <div class="sec-kicker">04 · Voz y personalidad</div>
       <h2>Que suene a ti. <em>Literalmente.</em></h2>
-      <p>Sprint no habla como un bot de call center. Eliges su tono, su voz para las llamadas — o le pasas un audio tuyo y te clona. Inquietante. Pero funciona.</p>
+      <p>Sprint no habla como un bot de call center. Eliges el tono y la voz para las llamadas, o nos pasas un audio tuyo y clonamos tu voz para que conteste por ti.</p>
     </div>
 
     <div class="voice-grid">
@@ -1464,8 +1720,8 @@
       <!-- Voz de llamadas -->
       <div class="voice-card">
         <div class="voice-label">Voz de las llamadas</div>
-        <h3>Seis voces. Todas <em>suenan humanas.</em></h3>
-        <p class="voice-sub">Elige el timbre que más encaje con tu marca. Acento español de España, latino o mezcla — tú decides.</p>
+        <h3>Catálogo de voces. Todas <em>suenan humanas.</em></h3>
+        <p class="voice-sub">Elige el timbre que más encaje con tu marca. Acento español de España, latino, o una mezcla.</p>
 
         <div class="voice-list" id="voice-list">
           <button class="voice-item playing" data-voice="lucia">
@@ -1474,7 +1730,7 @@
             </span>
             <div class="v-info">
               <span class="v-name">Lucía</span>
-              <span class="v-desc">ES · cálida · 28 años</span>
+              <span class="v-desc">ES · cálida</span>
             </div>
             <div class="v-wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           </button>
@@ -1484,7 +1740,7 @@
             </span>
             <div class="v-info">
               <span class="v-name">Martín</span>
-              <span class="v-desc">ES · profesional · 40 años</span>
+              <span class="v-desc">ES · profesional</span>
             </div>
             <div class="v-wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           </button>
@@ -1494,7 +1750,7 @@
             </span>
             <div class="v-info">
               <span class="v-name">Valentina</span>
-              <span class="v-desc">LATAM · fresca · 24 años</span>
+              <span class="v-desc">LATAM · fresca</span>
             </div>
             <div class="v-wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           </button>
@@ -1510,9 +1766,9 @@
             </div>
           </div>
           <div>
-            <div class="clone-tag"><span class="d"></span>Próximamente · Beta</div>
-            <h3>¿Y si <em>tu voz</em> contestara por ti? Ahora puede.</h3>
-            <p class="voice-sub">Grabas 2 minutos leyendo un texto. Sprint clona tu voz y la usa para responder llamadas con tu forma de hablar, tus muletillas y tu acento. Tus clientes no notarán la diferencia.</p>
+            <div class="clone-tag"><span class="d"></span>Beta privada</div>
+            <h3>Tu propia voz, <em>contestando por ti.</em></h3>
+            <p class="voice-sub">Grabas 2 minutos de audio leyendo un texto. Sprint clona tu voz y la usa para responder llamadas con tu forma de hablar, tus muletillas y tu acento.</p>
             <div class="clone-steps">
               <div class="clone-step"><span class="n">1</span>Graba 2 min</div>
               <div class="clone-step"><span class="n">2</span>Entrenamos tu clon</div>
@@ -1558,7 +1814,7 @@
     <div class="sec-head">
       <div class="sec-kicker">06 · Precios</div>
       <h2>Menos que una llamada perdida. <em>Bastante menos.</em></h2>
-      <p>Sin permanencia. Primera semana de setup incluida. Si no te convence, te devolvemos el dinero.</p>
+      <p>Sin permanencia. Setup incluido. Garantía de devolución si no te convence en los primeros días.</p>
     </div>
     <div class="price-grid">
       <div class="price-card">
@@ -1662,8 +1918,8 @@
       </div>
     </div>
     <div class="foot-bottom">
-      <div>© 2026 Sprint — Hecho en Madrid con mucho café ☕</div>
-      <div>hola@sprint.agency</div>
+      <div>© 2026 Sprint — Hecho en Madrid.</div>
+      <div>hola@sprintiasolutions.com</div>
     </div>
   </div>
 </footer>
@@ -1676,7 +1932,7 @@
       <div class="modal-eyebrow">Hablemos</div>
       <div class="modal-ctx-tag" id="lead-ctx"><span class="d"></span><span id="lead-ctx-label">Hero</span></div>
       <h3 id="lead-title">Déjanos tu teléfono y <em>te llamamos.</em></h3>
-      <p class="mp">En menos de 24 h te contactamos para ver si Sprint encaja con tu negocio. Sin rollos.</p>
+      <p class="mp">En menos de 24 h te contactamos para valorar si Sprint encaja con tu negocio. Sin compromiso.</p>
       <form id="lead-form" novalidate action="/api/leads" method="post">
         <div class="field">
           <label for="lead-phone">Tu teléfono</label>
@@ -1852,105 +2108,89 @@
   });
   try{ window.parent.postMessage({type:'__edit_mode_available'}, '*'); }catch(e){}
 
-  /* ========== CALL TRANSCRIPT LOOP ========== */
-  const CHAT_SCRIPTS = [
-    [
-      {who:'me', text:'Hola, llamo para ver si tenéis hueco mañana para corte y barba.', t:'TÚ', read:true},
-      {who:'typing'},
-      {who:'bot', text:'¡Hola! Claro, déjame mirar… Mañana tengo libre a las 11:00, 13:30 o las 17:30. ¿Cuál te viene mejor?', t:'ANA'},
-      {who:'me', text:'La de las 17:30 perfecta.', t:'TÚ', read:true},
-      {who:'typing'},
-      {who:'bot', text:'Genial. ¿Me confirmas tu nombre y un teléfono para el recordatorio?', t:'ANA'},
-      {who:'me', text:'Juan García, este mismo número.', t:'TÚ', read:true},
-      {who:'card'},
-      {who:'bot', text:'¡Listo, Juan! Mañana a las 17:30 con Paco. Te mando un SMS de recordatorio. ¡Hasta mañana!', t:'ANA'},
-    ],
-    [
-      {who:'me', text:'Buenas, necesitaría mover mi cita del jueves.', t:'TÚ', read:true},
-      {who:'typing'},
-      {who:'bot', text:'Por supuesto. Veo tu cita el jueves 23 a las 16:00, corte. ¿A qué día prefieres moverla?', t:'ANA'},
-      {who:'me', text:'Sábado por la mañana si puede ser.', t:'TÚ', read:true},
-      {who:'typing'},
-      {who:'bot', text:'El sábado 25 tengo libre a las 10:00, 11:30 y 12:45. ¿Cuál te reservo?', t:'ANA'},
-      {who:'me', text:'Las once y media.', t:'TÚ', read:true},
-      {who:'bot', text:'Hecho. Sábado 25 a las 11:30. Te llegará la confirmación al móvil.', t:'ANA'},
-    ],
-    [
-      {who:'me', text:'Hola, ¿está Paco el viernes?', t:'TÚ', read:true},
-      {who:'typing'},
-      {who:'bot', text:'Sí, el viernes Paco tiene hueco a las 09:30 y a las 18:00. ¿Te reservo alguna?', t:'ANA'},
-      {who:'me', text:'A las seis me va genial, a nombre de María.', t:'TÚ', read:true},
-      {who:'typing'},
-      {who:'bot', text:'Reservado · María · viernes a las 18:00 con Paco. Si necesitas cambiarla, llámame cuando quieras.', t:'ANA'},
-    ],
+  /* ========== VOICE ORB STATE LOOP ==========
+     Sin texto de conversación: el orb cambia entre estados que comunican
+     "está pasando una llamada de voz real", y al final aparece el badge
+     de la reserva confirmada. */
+  const VOICE_FLOWS = [
+    { result: 'Reserva guardada · mañana 17:30', steps: [
+      {who:'client', verb:'está hablando',   ms: 2400},
+      {who:'ana',    verb:'consulta tu agenda', ms: 1500},
+      {who:'ana',    verb:'propone tres huecos', ms: 2200},
+      {who:'client', verb:'elige las 17:30',  ms: 1800},
+      {who:'ana',    verb:'confirma la reserva', ms: 1800},
+    ]},
+    { result: 'Cita movida · sábado 11:30', steps: [
+      {who:'client', verb:'pide mover su cita', ms: 2200},
+      {who:'ana',    verb:'busca un nuevo hueco', ms: 1700},
+      {who:'client', verb:'confirma sábado',   ms: 1600},
+      {who:'ana',    verb:'actualiza el calendario', ms: 1900},
+    ]},
+    { result: 'Reserva guardada · viernes 18:00', steps: [
+      {who:'client', verb:'pregunta por Paco',  ms: 2000},
+      {who:'ana',    verb:'mira su disponibilidad', ms: 1700},
+      {who:'ana',    verb:'ofrece dos huecos',   ms: 1900},
+      {who:'client', verb:'reserva las 18:00',  ms: 1600},
+      {who:'ana',    verb:'envía la confirmación', ms: 1900},
+    ]},
   ];
 
-  const chatBody = document.getElementById('chat-body');
-  let scriptIdx = 0;
+  const orb       = document.getElementById('voice-orb');
+  const stateWho  = document.getElementById('voice-who');
+  const stateVerb = document.getElementById('voice-verb');
+  const result    = document.getElementById('voice-result');
+  let flowIdx = 0;
 
-  function bubble({who, text, t, read}){
-    const el = document.createElement('div');
-    if (who === 'typing'){
-      el.className = 'bubble bot';
-      el.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
-    } else {
-      el.className = 'bubble ' + (who === 'me' ? 'me' : 'bot');
-      const timeHTML = t ? `<span class="time${read ? ' read' : ''}">${t}${read ? ' ✓✓' : ''}</span>` : '';
-      el.innerHTML = text + timeHTML;
-    }
-    return el;
+  function setOrbMode(mode){ // 'speaking' | 'listening'
+    orb.classList.remove('speaking','listening');
+    orb.classList.add(mode);
   }
-
-  function cardEl(){
-    const c = document.createElement('div');
-    c.className = 'wa-card';
-    c.style.opacity = '0';
-    c.style.transform = 'translateY(8px)';
-    c.style.transition = 'all .35s cubic-bezier(.2,.7,.3,1)';
-    c.innerHTML = `
-      <div class="cal-h"><span class="cal-dot"></span>Cita confirmada · enviada a Google Calendar</div>
-      <div class="cal-slot chosen"><span>Mañana · 17:30 – 18:15</span><span style="color:#4a8050">★ Paco</span></div>
-      <div class="cal-slot"><span>SMS de recordatorio</span><span style="color:#888">enviado</span></div>
-    `;
-    requestAnimationFrame(()=>{
-      setTimeout(()=>{ c.style.opacity='1'; c.style.transform='translateY(0)'; }, 20);
-    });
-    return c;
+  function setState(who, verb){
+    stateWho.textContent = who === 'ana' ? 'Ana' : 'Cliente';
+    stateWho.className = 'who' + (who === 'client' ? ' client' : '');
+    stateVerb.innerHTML = verb + '<span class="dotty"></span>';
+    setOrbMode(who === 'ana' ? 'speaking' : 'listening');
   }
-
-  async function playScript(list){
-    chatBody.innerHTML = '';
-    for (let i = 0; i < list.length; i++){
-      const msg = list[i];
-      if (msg.who === 'typing'){
-        const t = bubble(msg);
-        chatBody.appendChild(t);
-        await wait(900 + Math.random()*400);
-        chatBody.removeChild(t);
-      } else if (msg.who === 'card'){
-        chatBody.appendChild(cardEl());
-        await wait(1600);
-      } else {
-        chatBody.appendChild(bubble(msg));
-        await wait(msg.who === 'me' ? 600 : 1100);
-      }
-    }
+  function showResult(text){
+    result.querySelector('span:nth-of-type(1)').textContent = text.split('·')[0].trim();
+    const when = text.split('·')[1];
+    result.querySelector('.when').textContent = when ? '· ' + when.trim() : '';
+    result.classList.add('show');
   }
+  function hideResult(){ result.classList.remove('show'); }
 
   function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
 
+  async function playFlow(flow){
+    hideResult();
+    for (const step of flow.steps){
+      setState(step.who, step.verb);
+      await wait(step.ms);
+    }
+    // success state — orb breathes calm green, result appears
+    setOrbMode('speaking');
+    stateWho.textContent = 'Sprint';
+    stateWho.className = 'who';
+    stateVerb.innerHTML = 'reserva confirmada';
+    showResult(flow.result);
+    await wait(2800);
+  }
+
   async function loop(){
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce){
+      // Estado estático: Ana hablando + chip de reserva
+      setState('ana','está hablando');
+      showResult(VOICE_FLOWS[0].result);
+      return;
+    }
     while(true){
-      await playScript(CHAT_SCRIPTS[scriptIdx]);
-      await wait(2500);
-      // fade out existing
-      chatBody.style.transition = 'opacity .5s';
-      chatBody.style.opacity = '0';
-      await wait(500);
-      chatBody.style.opacity = '1';
-      scriptIdx = (scriptIdx + 1) % CHAT_SCRIPTS.length;
+      await playFlow(VOICE_FLOWS[flowIdx]);
+      flowIdx = (flowIdx + 1) % VOICE_FLOWS.length;
     }
   }
+  // Arranca con un primer estado pintado para que no quede vacío durante la primera tick
+  setState('ana','contesta la llamada');
   loop();
 
   /* ========== CALL TIMER ========== */
@@ -1971,7 +2211,7 @@
     pelu: {
       title: 'Peluquerías y barberías',
       emphasis: 'Siempre rapado a tiempo.',
-      body: 'Tus clientes piden cita cuando les viene, no cuando tú puedes contestar. Sprint atiende la llamada al instante con voz natural, propone huecos reales de tu equipo y envía recordatorios para que no te dejen plantado.',
+      body: 'Tus clientes piden cita cuando les viene, no cuando tú puedes contestar. Sprint atiende la llamada al instante con voz natural, propone huecos reales de tu equipo y envía recordatorios para reducir las cancelaciones de última hora.',
       points: [
         'Elige profesional, servicio y duración',
         'Recordatorio 24h antes + confirmación 2h antes',
@@ -2011,7 +2251,7 @@
     consultor: {
       title: 'Consultores, coaches y abogados',
       emphasis: 'Que tu tiempo valga lo que cuesta.',
-      body: 'Sprint sabe que tu hora se paga. Califica al prospecto, le pasa el precio, le pide un depósito por Stripe y solo entonces reserva. Nada de "oye, ¿tienes 5 minutos gratis?".',
+      body: 'Sprint califica al prospecto, le pasa el precio, le pide un depósito por Stripe y solo entonces reserva. Filtra antes de bloquear hueco en tu agenda.',
       points: [
         'Calificación antes de agendar',
         'Cobro de depósito o sesión completa',
@@ -2030,7 +2270,7 @@
     vet: {
       title: 'Veterinarias',
       emphasis: 'Para cuando la consulta eres tú solo.',
-      body: 'Mientras haces una cirugía, Sprint atiende a la familia preocupada del cocker. Agenda visita, diferencia entre vacuna, urgencia y revisión, y te avisa si es algo que no puede esperar.',
+      body: 'Mientras estás en consulta, Sprint atiende las llamadas. Diferencia entre vacuna, urgencia y revisión, agenda según protocolo y te avisa al instante si la llamada no puede esperar.',
       points: [
         'Distingue urgencias de revisiones',
         'Ficha de la mascota en cada reserva',

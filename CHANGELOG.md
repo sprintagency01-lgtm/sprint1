@@ -14,6 +14,38 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-03 (landing — rediseño hero a voice mode + copy polish)
+
+Rediseño del hero de la landing pública: el mockup pasa de un chat tipo WhatsApp a un asistente de voz con orb central pulsante (estilo Siri/ChatGPT voice mode), y se pulen los copies para quitar narrativa proyectada y tics de generación rápida. Cero cambios en backend.
+
+### Por qué
+
+- El mockup anterior (`.wa-bar`, `.wa-body`, fondo `#ECE5DD`, burbujas con cola) era visualmente WhatsApp aunque el producto es voz. El badge "En llamada" no rescataba el malentendido. Visitantes salían pensando que vendíamos un chatbot.
+- Los copies tenían tics de IA: métricas inventadas (`+38% reservas`), narrativa proyectada (`Tú te enteras por la mañana`, `Reservas mientras duermes`, `comes o duermes`), inconsistencias (`Seis voces` cuando solo hay 3 listadas), contradicciones (`Ahora puede` + `Próximamente · Beta`) y coloquialismos para B2B (`Sin rollos`, `preocupada del cocker`).
+
+### Cambiado
+
+- `app/templates/landing.html`:
+  - Hero phone reescrito: nuevo mockup de pantalla de llamada in-progress, fondo oscuro tipo iOS in-call. Header con timer mono grande, caller info y subtítulo `Asistente de voz · Ana`. Orb central animado (gradient verde con blob interno rotando, 3 anillos pulsantes, glow respirando). Voice bars + chip de estado dinámico bajo el orb (`Cliente está hablando` / `Ana propone tres huecos` / `Ana confirma la reserva` / etc.). Pill flotante `Reserva guardada · mañana 17:30` aparece al cerrar cada flujo. Action row decorativa (mute, colgar rojo, altavoz). 3 flujos rotando: reserva nueva, mover cita, reserva con peluquero específico.
+  - JS del hero refactorizado: `playFlow()` cicla estados del orb sin pintar texto de conversación. Respeta `prefers-reduced-motion` (estado estático).
+  - Copies pulidos: H1 a `Coge cada llamada. Sin coger el teléfono.` Subtítulo sin `te enteras por la mañana`. Eyebrow a `Demo en directo · así suena una llamada con Sprint`. Stickers sin métricas inventadas (`Responde antes del 2.º tono`, `Disponible 24/7`). H2 de Canales a `Una recepcionista de voz. Y un chat opcional en Telegram.` Voces sin edad de Bumble bio. Catálogo de voces (no `Seis voces` falso). Clonación coherente con `Beta privada`. Pricing sin `primera semana de setup`. Modal sin `Sin rollos`. Sectores: vet sin `preocupada del cocker`, pelu sin `te dejen plantado`, consultor sin `oye, ¿tienes 5 minutos gratis?`. Step 4 sin `recibes resumen diario` (asunción).
+  - Marquee: `Reserva mientras duermes` → `Reservas fuera de horario` (×2).
+  - Footer: `Hecho en Madrid con mucho café ☕` → `Hecho en Madrid.`
+  - Accesibilidad: `aria-label` descriptivo en el `.phone`, `aria-live="polite"` en chip de estado.
+  - Las clases CSS `.wa-*`, `.bubble`, `.caption` quedan en el archivo pero ningún markup las llama (limpieza para una segunda pasada).
+
+### Añadido
+
+- `LANDING_CRITIQUE.md`: critique completo con framework usabilidad/jerarquía/consistencia/accesibilidad, hallazgos por severidad y recomendaciones priorizadas. Backlog de segunda pasada: iconos SVG vs emojis en sectores, CTA final diferenciado, tabs ARIA con teclado, tokens de radio/sombra unificados.
+- `dev.command`: script ejecutable de doble-click que activa `.venv310` y arranca `uvicorn app.main:app --reload --port 8000`. Cabecera documenta URLs locales (Landing/CMS/Portal).
+
+### Notas
+
+- Cero cambios en backend, rutas, ElevenLabs, Calendar ni CMS. Sólo `app/templates/landing.html` + 2 archivos nuevos en raíz.
+- HTML validado tras los cambios: 0 errores de parsing, 0 etiquetas abiertas.
+
+---
+
 ## 2026-05-03 (latencia — ronda 8: pelu_demo a gemini-3-flash + eleven_v3_conversational)
 
 Migración del agente real de `pelu_demo` (`agent_4201kqaqg5b7ead9f305fztndh9r`, "Ana · Peluquería Demo") a la combinación `gemini-3-flash-preview` + `eleven_v3_conversational`. Dos PATCHes encadenados, validados con `bench_audio_ttfa.py`.
