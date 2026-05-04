@@ -409,71 +409,78 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
                     shutdown.set()
 
             # ---- Task B: Gemini → browser ----
+            # IMPORTANTE: el SDK google-genai termina el iterador async for
+            # session.receive() tras cada turn_complete del modelo. Para
+            # mantener la conversación multi-turno hay que envolverlo en un
+            # while que vuelva a entrar al iterador tras cada turno cerrado.
             evt_count = 0
             async def gemini_to_browser() -> None:
                 nonlocal evt_count
                 try:
-                    async for response in session.receive():
-                        if shutdown.is_set():
-                            return
-                        evt_count += 1
-                        # DIAG VERBOSO: loguea el "shape" de cada evento
-                        # (tipos de campos no None) cada N eventos para ver
-                        # qué llega.
-                        # LOG cada evento (modo debug agresivo)
-                        if True:
-                            shape = []
-                            if response.data: shape.append(f"data={len(response.data)}b")
-                            if response.text: shape.append(f"text={len(response.text)}c")
-                            sc_dbg = getattr(response, "server_content", None)
-                            if sc_dbg is not None:
-                                if getattr(sc_dbg, "interrupted", None): shape.append("interrupted")
-                                if getattr(sc_dbg, "turn_complete", None): shape.append("turn_complete")
-                                if getattr(sc_dbg, "generation_complete", None): shape.append("generation_complete")
-                                if getattr(sc_dbg, "input_transcription", None): shape.append("input_tr")
-                                if getattr(sc_dbg, "output_transcription", None): shape.append("output_tr")
-                            tc_dbg = getattr(response, "tool_call", None)
-                            if tc_dbg: shape.append("tool_call")
-                            log.info("gemini-demo evt #%d: %s", evt_count, ",".join(shape) or "empty")
-                        # Audio del modelo (24kHz PCM16) → binary frame al browser.
-                        if response.data:
-                            try:
-                                await ws.send_bytes(response.data)
-                            except Exception:
-                                shutdown.set()
-                                return
+                  while not shutdown.is_set():
+                      async for response in session.receive():
+                          if shutdown.is_set():
+                              return
+                          evt_count += 1
+                          # DIAG VERBOSO: loguea el "shape" de cada evento
+                          # (tipos de campos no None) cada N eventos para ver
+                          # qué llega.
+                          # LOG cada evento (modo debug agresivo)
+                          if True:
+                              shape = []
+                              if response.data: shape.append(f"data={len(response.data)}b")
+                              if response.text: shape.append(f"text={len(response.text)}c")
+                              sc_dbg = getattr(response, "server_content", None)
+                              if sc_dbg is not None:
+                                  if getattr(sc_dbg, "interrupted", None): shape.append("interrupted")
+                                  if getattr(sc_dbg, "turn_complete", None): shape.append("turn_complete")
+                                  if getattr(sc_dbg, "generation_complete", None): shape.append("generation_complete")
+                                  if getattr(sc_dbg, "input_transcription", None): shape.append("input_tr")
+                                  if getattr(sc_dbg, "output_transcription", None): shape.append("output_tr")
+                              tc_dbg = getattr(response, "tool_call", None)
+                              if tc_dbg: shape.append("tool_call")
+                              log.info("gemini-demo evt #%d: %s", evt_count, ",".join(shape) or "empty")
+                          # Audio del modelo (24kHz PCM16) → binary frame al browser.
+                          if response.data:
+                              try:
+                                  await ws.send_bytes(response.data)
+                              except Exception:
+                                  shutdown.set()
+                                  return
 
-                        sc = getattr(response, "server_content", None)
-                        if sc is not None:
-                            if getattr(sc, "interrupted", False):
-                                await send_evt({"type": "interrupted"})
-                            inp_tr = getattr(sc, "input_transcription", None)
-                            if inp_tr and getattr(inp_tr, "text", None):
-                                await send_evt({"type": "user_transcript", "text": inp_tr.text})
-                            out_tr = getattr(sc, "output_transcription", None)
-                            if out_tr and getattr(out_tr, "text", None):
-                                await send_evt({"type": "assistant_transcript", "text": out_tr.text})
+                          sc = getattr(response, "server_content", None)
+                          if sc is not None:
+                              if getattr(sc, "interrupted", False):
+                                  await send_evt({"type": "interrupted"})
+                              inp_tr = getattr(sc, "input_transcription", None)
+                              if inp_tr and getattr(inp_tr, "text", None):
+                                  await send_evt({"type": "user_transcript", "text": inp_tr.text})
+                              out_tr = getattr(sc, "output_transcription", None)
+                              if out_tr and getattr(out_tr, "text", None):
+                                  await send_evt({"type": "assistant_transcript", "text": out_tr.text})
 
-                        tc = getattr(response, "tool_call", None)
-                        if tc and getattr(tc, "function_calls", None):
-                            await _resolve_tools(tc.function_calls, session, types)
+                          tc = getattr(response, "tool_call", None)
+                          if tc and getattr(tc, "function_calls", None):
+                              await _resolve_tools(tc.function_calls, session, types)
 
-                        tcc = getattr(response, "tool_call_cancellation", None)
-                        if tcc and getattr(tcc, "ids", None):
-                            await send_evt({"type": "tool_cancelled", "ids": list(tcc.ids)})
+                          tcc = getattr(response, "tool_call_cancellation", None)
+                          if tcc and getattr(tcc, "ids", None):
+                              await send_evt({"type": "tool_cancelled", "ids": list(tcc.ids)})
 
-                        # DIAG: loguea eventos de fin de turno y generación.
-                        # Con esto en logs de Railway sabremos si el modelo
-                        # cierra turnos cuando debe (turn_complete) o si se
-                        # queda colgado.
-                        if sc is not None:
-                            if getattr(sc, "turn_complete", False):
-                                log.info("gemini-demo: turn_complete=True (modelo terminó turno)")
-                                await send_evt({"type": "turn_complete"})
-                            if getattr(sc, "generation_complete", False):
-                                log.info("gemini-demo: generation_complete=True")
-                    log.warning("gemini-demo: async for response in session.receive() SALIO normalmente — sesion cerrada por el modelo (evts=%d)", evt_count)
-                    shutdown.set()
+                          # DIAG: loguea eventos de fin de turno y generación.
+                          # Con esto en logs de Railway sabremos si el modelo
+                          # cierra turnos cuando debe (turn_complete) o si se
+                          # queda colgado.
+                          if sc is not None:
+                              if getattr(sc, "turn_complete", False):
+                                  log.info("gemini-demo: turn_complete=True (modelo terminó turno)")
+                                  await send_evt({"type": "turn_complete"})
+                              if getattr(sc, "generation_complete", False):
+                                  log.info("gemini-demo: generation_complete=True")
+                      # async for terminó: turn_complete del modelo. Volvemos
+                      # al while exterior para esperar el siguiente turno del
+                      # usuario. NO marcamos shutdown.
+                      log.info("gemini-demo: turno cerrado, esperando siguiente (evts=%d)", evt_count)
                 except Exception:  # noqa: BLE001
                     log.exception("gemini_to_browser caído")
                     shutdown.set()
