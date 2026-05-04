@@ -6,6 +6,48 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-03 (POC — demo Gemini 3.1 Flash Live paralelo a ElevenLabs)
+
+POC para evaluar **Gemini 3.1 Flash Live preview** como alternativa a ElevenLabs Conversational AI. Dos entregables: un script standalone para pruebas locales con micro y un endpoint web (`/gemini-demo`) para probarlo desde navegador con tools reales contra Railway. El agente de producción (`agent_4201...`) NO se toca.
+
+### Por qué
+
+Gemini 3.1 Flash Live promete latencia inferior a ElevenLabs Conv AI (audio-to-audio nativo, sin pipeline STT→LLM→TTS encadenado) y un modelo de coste potencialmente más bajo. Antes de tomar decisiones de migración hace falta probarlo end-to-end con el mismo prompt de Ana y las mismas tools de Sprintia. Doc oficial: `https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-live-preview`.
+
+### Añadido
+
+- Script standalone Python `demo_gemini_live/` (`gemini_live_demo.py`, `tools_adapter.py`, `prompt.py`, `config.py`). Captura micro del Mac con `sounddevice` (16kHz PCM16 mono), abre sesión Live con `google-genai`, reproduce audio del modelo (24kHz). Resuelve las 5 tools de Ana contra `/tools/*` del backend Railway. README con voces a probar (Kore/Aoede/Puck/Charon/Fenrir), métricas a comparar (TTFA, latencia tool, naturalidad, coste/min) y limitaciones conocidas (sin `pre_tool_speech`, sin reconexión >15min, sin SIP).
+- Endpoint web `/gemini-demo` en el backend (`app/gemini_live_bridge.py`). UI HTML+JS estática (`app/templates/gemini_demo.html`) con `getUserMedia` + `AudioWorklet` (resampling lineal a 16kHz) + `AudioContext` 24kHz para reproducción. WebSocket `/gemini-demo/ws` que hace de bridge browser ↔ Gemini, con resolución de tool calls vía HTTP loopback a `127.0.0.1:$PORT/tools/*`. Eventos JSON al frontend (transcripciones en vivo, tool_start/tool_end, interrupciones, errores). La `GEMINI_API_KEY` vive **solo en server**, nunca llega al browser.
+- Selector en frontend de voz (5 opciones), tenant_id (default `pelu_demo`), caller_id (default `+34600000000`) y modelo (`gemini-3.1-flash-live-preview` vs `gemini-2.5-flash-native-audio-preview-12-2025` para A/B).
+
+### Limitaciones conocidas vs ElevenLabs
+
+- **Function calling solo síncrono** en 3.1 Flash Live — el modelo se queda mudo bloqueado hasta que recibe `send_tool_response`. NO existe equivalente al `pre_tool_speech: force` de ElevenLabs. Si una tool tarda >500ms el silencio se nota. Ana 2.5 sí soporta async — lo dejamos como opción A/B en el dropdown del frontend.
+- **Idioma no se fija por código** en native audio. La doc oficial dice literalmente: *"Native audio output models automatically choose the appropriate language and don't support explicitly setting the language code."* Workaround: refuerzo en el system prompt forzando español de España (lo añade `_render_prompt`).
+- **Duración máxima sesión audio-only: 15 min**. Sin `session_resumption` implementada en el POC — para llamadas largas habría que añadirla.
+- **Sin SIP**: el demo va por micro/altavoz local (script) o navegador (web). Para producción telefónica necesitaría un audio bridge 8kHz µ-law ↔ 16/24kHz PCM16 que Gemini no trae out-of-the-box.
+
+### Env / despliegue
+
+- Nueva variable de entorno **`GEMINI_API_KEY`** ya añadida a Railway (servicio `web` del proyecto `marvelous-charm`, environment `production`) vía API GraphQL con Account Token. Sin ella, el endpoint `/gemini-demo/ws` devuelve mensaje de error legible al frontend pero no rompe el resto del backend.
+- Nuevas dependencias en `requirements.txt`: `google-genai>=1.5.0` y `websockets>=12.0` (este último ya viene con `uvicorn[standard]` pero lo declaramos explícito por defensa en futuro).
+- Para correr el script standalone hace falta además `sounddevice` y `numpy` (declarados en `demo_gemini_live/requirements.txt`, **no** en el `requirements.txt` raíz porque solo se usan en local — el backend no graba audio del Mac de nadie).
+
+### Verificación
+
+- `py_compile` OK en `app/gemini_live_bridge.py`, `app/main.py`, los 4 módulos del demo standalone.
+- Smoke import del bridge OK: registra 3 rutas (`GET /gemini-demo`, `GET /gemini-demo/`, `WS /gemini-demo/ws`), 6 tool declarations bien formadas.
+- Smoke check del backend desde sandbox: `POST /tools/consultar_disponibilidad` con TOOL_SECRET válido → HTTP 200 en 1.56s con 3 huecos reales para mañana lunes 4 de mayo (Mario y Marcos).
+- Render del prompt con fechas 2026-05-03/04/05 sustituidas; refuerzo de idioma castellano presente.
+
+### No tocado
+
+- `ana_prompt_new.txt` (sigue intacto — el bridge lo lee y solo sustituye placeholders).
+- Agente `agent_4201...` de producción (sigue en `gemini-3-flash-preview` + `eleven_flash_v2_5` tras el rollback de la ronda 8.1).
+- Ningún endpoint `/tools/*`, `/admin`, `/app`, `/telegram/*` — el demo solo añade rutas nuevas bajo `/gemini-demo`.
+
+---
+
 ## 2026-05-03 (ronda 8.1 — rollback v3_conversational → flash_v2_5 por pitch shift en prod)
 
 ### Corregido

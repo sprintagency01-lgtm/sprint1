@@ -1,0 +1,13 @@
+# Secretos del demo (API key Gemini, TOOL_SECRET reusado del backend).
+.env
+.env.local
+
+# Audio capturado para debugging.
+*.wav
+*.pcm
+recordings/
+
+# Cachés Python.
+__pycache__/
+*.pyc
+.venv/

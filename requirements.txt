@@ -20,3 +20,11 @@ passlib==1.7.4
 # Fijado a 4.x porque passlib 1.7.4 no es compatible con bcrypt 5.0+
 # (usa bcrypt.__about__.__version__ que fue removido en 4.0).
 bcrypt==4.2.1
+# Demo Gemini 3.1 Flash Live (paralelo a ElevenLabs).
+# Lo usa app/gemini_live_bridge.py (endpoint /gemini-demo).
+# Necesita GEMINI_API_KEY como env var en Railway.
+google-genai>=1.5.0
+# WebSockets para FastAPI (lo usa /gemini-demo/ws). uvicorn[standard] ya trae
+# websockets, pero lo declaramos explícito por si en el futuro alguien quita
+# el extra de uvicorn.
+websockets>=12.0

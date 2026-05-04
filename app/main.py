@@ -27,6 +27,7 @@ from . import oauth_web
 from . import diag
 from . import sheets_sync
 from . import telegram as tg_module
+from . import gemini_live_bridge
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
 from .portal import router as portal_router
@@ -155,6 +156,12 @@ app.include_router(oauth_web.router)
 # Endpoints /_diag/* de mantenimiento (listar/crear calendarios, verificar ids).
 # Protegidos con X-Tool-Secret igual que /tools/*.
 app.include_router(diag.router)
+# Demo Gemini 3.1 Flash Live (POC paralelo a ElevenLabs):
+#   GET  /gemini-demo      → UI HTML para probar Ana en navegador
+#   WS   /gemini-demo/ws   → bridge browser ↔ Gemini Live
+# La GEMINI_API_KEY vive en server (env var). Si no está configurada, el WS
+# devuelve un error legible al frontend.
+app.include_router(gemini_live_bridge.router)
 
 
 # ---------- Warm-up de Google Calendar en startup ----------

@@ -1,0 +1,14 @@
+# Cliente Gemini Live (Google AI Studio).
+# Versión mínima conocida con soporte de gemini-3.1-flash-live-preview.
+google-genai>=1.5.0
+
+# Captura/reproducción de audio del Mac (PortAudio).
+# brew install portaudio si falla la instalación.
+sounddevice>=0.4.6
+numpy>=1.26.0
+
+# Llamadas a las tools del backend de Sprintia (Railway).
+httpx>=0.27.0
+
+# Carga del .env local del demo.
+python-dotenv>=1.0.0

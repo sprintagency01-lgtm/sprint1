@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo Gemini Live · Ana — Sprintia</title>
+<style>
+  :root {
+    --bg: #0e1014;
+    --card: #1a1d24;
+    --text: #e6e8ee;
+    --muted: #8b93a3;
+    --accent: #6ea8ff;
+    --ok: #5dd3a8;
+    --warn: #ffb86b;
+    --err: #ff6e7a;
+    --tool: #b78cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.45;
+  }
+  header {
+    padding: 18px 24px;
+    border-bottom: 1px solid #232733;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  header h1 {
+    font-size: 18px;
+    margin: 0;
+    font-weight: 600;
+  }
+  header .sub { color: var(--muted); font-size: 13px; }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 800px) {
+    main { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid #232733;
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .card h2 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  select, input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    background: #0e1014;
+    color: var(--text);
+    border: 1px solid #2c3140;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #0e1014;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: opacity 0.15s;
+  }
+  button:hover:not(:disabled) { opacity: 0.85; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.stop { background: var(--err); color: white; }
+
+  #status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: #0e1014;
+    border-radius: 6px;
+    border: 1px solid #2c3140;
+  }
+  #status .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #555; transition: background 0.2s;
+  }
+  #status.ready .dot { background: var(--ok); }
+  #status.listening .dot { background: var(--accent); animation: pulse 1.4s infinite; }
+  #status.speaking .dot { background: var(--warn); animation: pulse 0.8s infinite; }
+  #status.error .dot { background: var(--err); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  .panels {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 16px;
+    height: calc(100vh - 180px);
+    min-height: 500px;
+  }
+  .panel { display: flex; flex-direction: column; }
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    background: #0e1014;
+    border-radius: 6px;
+    padding: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    border: 1px solid #2c3140;
+  }
+  .panel-body .turn { margin-bottom: 10px; }
+  .panel-body .turn .who {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+  .panel-body .turn.usr .who { color: var(--accent); }
+  .panel-body .turn.ana .who { color: var(--ok); }
+  .panel-body .turn .text { white-space: pre-wrap; word-break: break-word; }
+
+  .log-line {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: var(--muted);
+  }
+  .log-line.tool_start { color: var(--tool); }
+  .log-line.tool_end { color: var(--tool); }
+  .log-line.error { color: var(--err); }
+  .log-line.event { color: var(--warn); }
+
+  footer {
+    padding: 12px 24px;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    border-top: 1px solid #232733;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Demo Gemini 3.1 Flash Live · Ana</h1>
+    <div class="sub">Recepcionista de pelu_demo — tools reales contra Sprintia</div>
+  </div>
+  <div class="sub">v0.1 · A/B vs ElevenLabs</div>
+</header>
+
+<main>
+  <aside class="card" id="settings-card">
+    <h2>Sesión</h2>
+
+    <label for="voice">Voz</label>
+    <select id="voice">
+      <option value="Kore" selected>Kore — neutra (default)</option>
+      <option value="Aoede">Aoede — femenina cálida</option>
+      <option value="Puck">Puck — juvenil</option>
+      <option value="Charon">Charon — masculina grave</option>
+      <option value="Fenrir">Fenrir — masculina alt</option>
+    </select>
+
+    <label for="tenant">Tenant</label>
+    <input type="text" id="tenant" value="pelu_demo">
+
+    <label for="caller">Caller ID (teléfono simulado)</label>
+    <input type="text" id="caller" value="+34600000000">
+
+    <label for="model">Modelo</label>
+    <select id="model">
+      <option value="gemini-3.1-flash-live-preview" selected>gemini-3.1-flash-live-preview</option>
+      <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5 (A/B)</option>
+    </select>
+
+    <button id="btn-start">Empezar a hablar</button>
+    <button id="btn-stop" class="stop" style="display:none;">Colgar</button>
+
+    <div id="status">
+      <div class="dot"></div>
+      <div id="status-text">Inactivo</div>
+    </div>
+
+    <div style="margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.5;">
+      <strong style="color: var(--text);">Tip:</strong> habla con voz clara, frases cortas. Si no oyes a Ana, sube el volumen del Mac. Ctrl+Shift+R para forzar recargar si algo se atasca.
+    </div>
+  </aside>
+
+  <section class="panels">
+    <div class="card panel">
+      <h2>Conversación</h2>
+      <div class="panel-body" id="transcript"></div>
+    </div>
+    <div class="card panel">
+      <h2>Eventos / tool calls</h2>
+      <div class="panel-body" id="logs"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Demo paralelo a ElevenLabs · GEMINI_API_KEY vive en el server, no se expone al browser ·
+  <a href="https://github.com/anthropics" target="_blank" rel="noopener">backend en sprintiasolutions.com</a>
+</footer>
+
+<script type="module">
+  // ──────────────────────────────────────────────────────────────────────────
+  // Estado
+  // ──────────────────────────────────────────────────────────────────────────
+  let ws = null;
+  let mediaStream = null;
+  let audioCtx = null;
+  let workletNode = null;
+  let outputCtx = null;        // contexto de reproducción a 24kHz
+  let playbackTime = 0;        // currentTime futuro donde encolar el siguiente buffer
+  let isRunning = false;
+
+  const $start = document.getElementById('btn-start');
+  const $stop = document.getElementById('btn-stop');
+  const $status = document.getElementById('status');
+  const $statusText = document.getElementById('status-text');
+  const $transcript = document.getElementById('transcript');
+  const $logs = document.getElementById('logs');
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UI helpers
+  // ──────────────────────────────────────────────────────────────────────────
+  function setStatus(state, text) {
+    $status.className = state;
+    $statusText.textContent = text;
+  }
+
+  function appendTurn(who, text) {
+    // Si el último turno es del mismo speaker, lo extendemos en vez de crear uno nuevo.
+    const last = $transcript.lastElementChild;
+    if (last && last.dataset.who === who) {
+      last.querySelector('.text').textContent += text;
+    } else {
+      const el = document.createElement('div');
+      el.className = `turn ${who}`;
+      el.dataset.who = who;
+      el.innerHTML = `<div class="who">${who === 'usr' ? 'Tú' : 'Ana'}</div><div class="text"></div>`;
+      el.querySelector('.text').textContent = text;
+      $transcript.appendChild(el);
+    }
+    $transcript.scrollTop = $transcript.scrollHeight;
+  }
+
+  function appendLog(type, text) {
+    const ts = new Date().toLocaleTimeString('es-ES', {hour12: false});
+    const el = document.createElement('div');
+    el.className = `log-line ${type}`;
+    el.textContent = `[${ts}] ${text}`;
+    $logs.appendChild(el);
+    $logs.scrollTop = $logs.scrollHeight;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // AudioWorklet (downsample y conversión a PCM16)
+  // ──────────────────────────────────────────────────────────────────────────
+  // Escrito como string para inyectarlo con audioWorklet.addModule(blobURL).
+  const workletCode = `
+    class Downsampler16k extends AudioWorkletProcessor {
+      constructor() {
+        super();
+        this.targetRate = 16000;
+        this.ratio = sampleRate / this.targetRate;
+        this.buffer = [];
+        this.position = 0;
+        // Tamaño de chunk a enviar: ~50ms = 800 samples a 16kHz.
+        this.flushEvery = 800;
+        this.outBuffer = [];
+      }
+      process(inputs) {
+        const input = inputs[0];
+        if (!input || !input[0]) return true;
+        const channel = input[0];
+        for (let i = 0; i < channel.length; i++) this.buffer.push(channel[i]);
+
+        // Resample lineal al target rate.
+        while (this.position + this.ratio <= this.buffer.length) {
+          const idx = this.position;
+          const lo = Math.floor(idx);
+          const hi = lo + 1;
+          const frac = idx - lo;
+          let s;
+          if (hi >= this.buffer.length) s = this.buffer[lo];
+          else s = this.buffer[lo] * (1 - frac) + this.buffer[hi] * frac;
+          this.outBuffer.push(s);
+          this.position += this.ratio;
+        }
+
+        // Drop ya-consumido del buffer interno para no crecer infinito.
+        const consumed = Math.floor(this.position);
+        if (consumed > 0) {
+          this.buffer.splice(0, consumed);
+          this.position -= consumed;
+        }
+
+        // Flush en chunks de ~50ms.
+        while (this.outBuffer.length >= this.flushEvery) {
+          const chunk = this.outBuffer.splice(0, this.flushEvery);
+          const pcm = new Int16Array(chunk.length);
+          for (let i = 0; i < chunk.length; i++) {
+            const v = Math.max(-1, Math.min(1, chunk[i]));
+            pcm[i] = v < 0 ? v * 0x8000 : v * 0x7FFF;
+          }
+          this.port.postMessage(pcm.buffer, [pcm.buffer]);
+        }
+        return true;
+      }
+    }
+    registerProcessor('downsampler-16k', Downsampler16k);
+  `;
+
+  async function loadWorklet(ctx) {
+    const blob = new Blob([workletCode], {type: 'application/javascript'});
+    const url = URL.createObjectURL(blob);
+    await ctx.audioWorklet.addModule(url);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Reproducción audio Gemini (24kHz PCM16) en cola
+  // ──────────────────────────────────────────────────────────────────────────
+  function playPCM24k(pcm16Bytes) {
+    if (!outputCtx) return;
+    // Convierte Int16 → Float32 [-1, 1].
+    const view = new Int16Array(pcm16Bytes);
+    const float = new Float32Array(view.length);
+    for (let i = 0; i < view.length; i++) {
+      float[i] = view[i] / (view[i] < 0 ? 0x8000 : 0x7FFF);
+    }
+    const buffer = outputCtx.createBuffer(1, float.length, 24000);
+    buffer.getChannelData(0).set(float);
+
+    const src = outputCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(outputCtx.destination);
+
+    // Encadena el siguiente buffer al final del anterior para reproducción
+    // continua sin gaps.
+    const now = outputCtx.currentTime;
+    if (playbackTime < now) playbackTime = now;
+    src.start(playbackTime);
+    playbackTime += buffer.duration;
+  }
+
+  function flushPlayback() {
+    // Cuando el modelo es interrumpido, queremos parar la reproducción a medias.
+    // No hay "stop all" trivial sin trackear cada source; el atajo es resetear
+    // el contexto de output (cierra y reabre).
+    if (outputCtx) {
+      outputCtx.close().catch(() => {});
+      outputCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 24000});
+      playbackTime = 0;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Start / Stop
+  // ──────────────────────────────────────────────────────────────────────────
+  async function start() {
+    if (isRunning) return;
+    isRunning = true;
+    $start.style.display = 'none';
+    $stop.style.display = 'block';
+    $transcript.innerHTML = '';
+    $logs.innerHTML = '';
+    setStatus('', 'Conectando…');
+
+    const voice = document.getElementById('voice').value;
+    const tenant = document.getElementById('tenant').value || 'pelu_demo';
+    const caller = document.getElementById('caller').value || '+34600000000';
+    const model = document.getElementById('model').value;
+
+    // 1) Pedir permiso de micro y abrir contextos.
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+    } catch (e) {
+      setStatus('error', 'Permiso de micro denegado');
+      appendLog('error', 'getUserMedia falló: ' + e.message);
+      stop();
+      return;
+    }
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    outputCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 24000});
+    playbackTime = 0;
+
+    try {
+      await loadWorklet(audioCtx);
+    } catch (e) {
+      setStatus('error', 'AudioWorklet no soportado en este browser');
+      appendLog('error', 'addModule: ' + e.message);
+      stop();
+      return;
+    }
+
+    const source = audioCtx.createMediaStreamSource(mediaStream);
+    workletNode = new AudioWorkletNode(audioCtx, 'downsampler-16k');
+    source.connect(workletNode);
+    // No conectamos workletNode a destination — sería feedback; solo recogemos
+    // sus mensajes con port.onmessage.
+
+    // 2) Abrir WebSocket al bridge.
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${proto}//${location.host}/gemini-demo/ws` +
+                `?voice=${encodeURIComponent(voice)}` +
+                `&tenant_id=${encodeURIComponent(tenant)}` +
+                `&caller_id=${encodeURIComponent(caller)}` +
+                `&model=${encodeURIComponent(model)}`;
+    appendLog('event', 'Abriendo WS: ' + url);
+    ws = new WebSocket(url);
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = () => {
+      setStatus('listening', 'Escuchando…');
+      appendLog('event', 'WS abierto. Habla cuando quieras.');
+      // Cuando el WS está listo, empezamos a enviar los chunks del worklet.
+      workletNode.port.onmessage = (ev) => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(ev.data);
+        }
+      };
+    };
+
+    ws.onmessage = (ev) => {
+      if (typeof ev.data === 'string') {
+        try {
+          const msg = JSON.parse(ev.data);
+          handleEvent(msg);
+        } catch {
+          appendLog('event', 'msg no JSON: ' + ev.data.slice(0, 100));
+        }
+      } else {
+        // Audio binario del modelo (PCM16 24kHz).
+        playPCM24k(ev.data);
+        if ($status.className !== 'speaking') setStatus('speaking', 'Ana hablando…');
+      }
+    };
+
+    ws.onclose = () => {
+      appendLog('event', 'WS cerrado');
+      stop();
+    };
+
+    ws.onerror = (e) => {
+      appendLog('error', 'WS error: ' + (e.message || 'unknown'));
+      setStatus('error', 'Error WS');
+    };
+  }
+
+  function handleEvent(msg) {
+    switch (msg.type) {
+      case 'ready':
+        appendLog('event', `Sesión Gemini lista (model=${msg.model}, voice=${msg.voice}, tenant=${msg.tenant_id})`);
+        break;
+      case 'user_transcript':
+        appendTurn('usr', msg.text);
+        break;
+      case 'assistant_transcript':
+        appendTurn('ana', msg.text);
+        if ($status.className !== 'speaking') setStatus('speaking', 'Ana hablando…');
+        break;
+      case 'interrupted':
+        appendLog('event', '⚡ usuario interrumpió — vaciando audio out');
+        flushPlayback();
+        setStatus('listening', 'Escuchando…');
+        break;
+      case 'tool_start':
+        appendLog('tool_start', `→ ${msg.name}(${JSON.stringify(msg.args)})`);
+        break;
+      case 'tool_end':
+        appendLog('tool_end', `← ${msg.name} → ${typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result)}`);
+        break;
+      case 'tool_cancelled':
+        appendLog('event', `tool calls canceladas: ${msg.ids.join(', ')}`);
+        break;
+      case 'error':
+        appendLog('error', msg.message);
+        setStatus('error', 'Error');
+        break;
+      default:
+        appendLog('event', 'evento: ' + JSON.stringify(msg).slice(0, 150));
+    }
+  }
+
+  function stop() {
+    isRunning = false;
+    $start.style.display = 'block';
+    $stop.style.display = 'none';
+    setStatus('', 'Inactivo');
+    try { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: 'stop'})); } catch {}
+    try { if (ws) ws.close(); } catch {}
+    ws = null;
+    try { if (workletNode) workletNode.disconnect(); } catch {}
+    workletNode = null;
+    try { if (mediaStream) mediaStream.getTracks().forEach(t => t.stop()); } catch {}
+    mediaStream = null;
+    try { if (audioCtx) audioCtx.close(); } catch {}
+    audioCtx = null;
+    try { if (outputCtx) outputCtx.close(); } catch {}
+    outputCtx = null;
+    playbackTime = 0;
+  }
+
+  $start.addEventListener('click', start);
+  $stop.addEventListener('click', stop);
+
+  window.addEventListener('beforeunload', stop);
+</script>
+
+</body>
+</html>
