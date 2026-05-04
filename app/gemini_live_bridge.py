@@ -338,21 +338,10 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
         "tools": [{"function_declarations": TOOL_DECLARATIONS}],
         "input_audio_transcription": {},
         "output_audio_transcription": {},
-        # VAD explícito: si lo dejamos por defecto algunos modelos no detectan
-        # bien el fin del turno del usuario y el modelo se queda esperando
-        # eternamente. Con silence_duration_ms=800 cierra turno tras 0.8s de
-        # silencio (estándar para conversación natural). turn_coverage limita
-        # a actividad de audio (no contar silencios largos como parte del turno).
-        "realtime_input_config": {
-            "automatic_activity_detection": {
-                "disabled": False,
-                "start_of_speech_sensitivity": "START_SENSITIVITY_LOW",
-                "end_of_speech_sensitivity": "END_SENSITIVITY_LOW",
-                "prefix_padding_ms": 20,
-                "silence_duration_ms": 800,
-            },
-            "turn_coverage": "TURN_INCLUDES_ONLY_ACTIVITY",
-        },
+        # VAD: dejamos los defaults de Gemini. Probamos con sensitivity LOW +
+        # prefix_padding 20ms y resultaba que el usuario tenía que gritar para
+        # que el modelo registrara start_of_speech del 2º turno. Default funciona
+        # mejor en práctica.
     }
 
     http = httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0))
@@ -370,7 +359,10 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
             await send_evt({"type": "ready", "model": model, "voice": voice, "tenant_id": tenant_id})
 
             # ---- Task A: browser → Gemini ----
+            chunks_recv = 0
+            bytes_recv = 0
             async def browser_to_gemini() -> None:
+                nonlocal chunks_recv, bytes_recv
                 try:
                     while not shutdown.is_set():
                         msg = await ws.receive()
@@ -379,6 +371,17 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
                             return
                         # Audio crudo viene en bytes binarios (PCM16 16kHz mono).
                         if "bytes" in msg and msg["bytes"]:
+                            chunks_recv += 1
+                            bytes_recv += len(msg["bytes"])
+                            if chunks_recv % 40 == 0:
+                                # ~2s de audio (a 50ms/chunk). Loguea para confirmar
+                                # que el browser sigue mandando audio durante toda
+                                # la sesión (ayuda a discriminar fallo de browser
+                                # vs fallo de VAD del modelo).
+                                log.info(
+                                    "gemini-demo audio in: chunks=%d bytes=%d (~%.1fs)",
+                                    chunks_recv, bytes_recv, chunks_recv * 0.05,
+                                )
                             await session.send_realtime_input(
                                 audio=types.Blob(
                                     data=msg["bytes"],
@@ -401,11 +404,31 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
                     shutdown.set()
 
             # ---- Task B: Gemini → browser ----
+            evt_count = 0
             async def gemini_to_browser() -> None:
+                nonlocal evt_count
                 try:
                     async for response in session.receive():
                         if shutdown.is_set():
                             return
+                        evt_count += 1
+                        # DIAG VERBOSO: loguea el "shape" de cada evento
+                        # (tipos de campos no None) cada N eventos para ver
+                        # qué llega.
+                        if evt_count % 20 == 0:
+                            shape = []
+                            if response.data: shape.append(f"data={len(response.data)}b")
+                            if response.text: shape.append(f"text={len(response.text)}c")
+                            sc_dbg = getattr(response, "server_content", None)
+                            if sc_dbg is not None:
+                                if getattr(sc_dbg, "interrupted", None): shape.append("interrupted")
+                                if getattr(sc_dbg, "turn_complete", None): shape.append("turn_complete")
+                                if getattr(sc_dbg, "generation_complete", None): shape.append("generation_complete")
+                                if getattr(sc_dbg, "input_transcription", None): shape.append("input_tr")
+                                if getattr(sc_dbg, "output_transcription", None): shape.append("output_tr")
+                            tc_dbg = getattr(response, "tool_call", None)
+                            if tc_dbg: shape.append("tool_call")
+                            log.info("gemini-demo evt #%d: %s", evt_count, ",".join(shape) or "empty")
                         # Audio del modelo (24kHz PCM16) → binary frame al browser.
                         if response.data:
                             try:
