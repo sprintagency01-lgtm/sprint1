@@ -79,7 +79,7 @@
 <script>
   const TWEAKS = /*EDITMODE-BEGIN*/{
     "accent": "electric",
-    "heroHeadline": "Tus reservas, resueltas antes de que suenen.",
+    "heroHeadline": "Tus *reservas*,\nresueltas antes\nde que suenen.",
     "heroSubline": "Sprintia atiende cada llamada, confirma cada cita y mantiene tu agenda impecable — mientras tú haces el trabajo que sí importa.",
     "ctaLabel": "Probar Sprintia",
     "showBadge": true,
@@ -1319,11 +1319,11 @@
     <div class="hero-copy">
       <div class="hero-eyebrow" id="badge">
         <span class="dot"></span>
-        CONCIERGE DIGITAL · 24 / 7
+        ASISTENTE VIRTUAL · 24 / 7
       </div>
       <h1 id="h1">
-        Tus reservas,<br>
-        <em>resueltas</em> antes<br>de que suenen.
+        Tus <em>reservas</em>,<br>
+        resueltas antes<br>de que suenen.
       </h1>
       <p class="lede" id="sub">
         Sprintia atiende cada llamada, confirma cada cita y mantiene tu
@@ -1911,16 +1911,13 @@
     });
     // copy
     const h1 = document.getElementById('h1');
-    // wrap last word in em
-    const parts = t.heroHeadline.split(/\s+/);
-    if (parts.length >= 2){
-      const mid = Math.ceil(parts.length/2);
-      const first = parts.slice(0, mid).join(' ');
-      const em = parts.slice(mid).join(' ');
-      h1.innerHTML = first + '<br><em>' + em + '</em>';
-    } else {
-      h1.textContent = t.heroHeadline;
-    }
+    // Sintaxis: *palabra* → <em>palabra</em> (serif italic accent),
+    //          \n     → <br>. Permite controlar exactamente qué se enfatiza.
+    const escaped = t.heroHeadline
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    h1.innerHTML = escaped
+      .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
     document.getElementById('sub').textContent = t.heroSubline;
     const ctaNode = document.getElementById('cta');
     ctaNode.innerHTML = t.ctaLabel + ' <span class="arrow">→</span>';
