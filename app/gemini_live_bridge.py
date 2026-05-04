@@ -398,17 +398,12 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
             # señal de descolgar (Ana saluda primero, como en una llamada
             # real). turn_complete=True cierra el turno del usuario y deja
             # al modelo generar su respuesta inmediatamente.
+            # send_client_content esta limitado a historial inicial en Gemini
+            # 3.1 Flash Live. Usamos send_realtime_input(text=...) que SI
+            # provoca generacion del modelo en runtime.
             try:
-                await session.send_client_content(
-                    turns=[
-                        types.Content(
-                            role="user",
-                            parts=[types.Part(text="[INICIO_LLAMADA]")],
-                        )
-                    ],
-                    turn_complete=True,
-                )
-                log.info("gemini-demo: trigger [INICIO_LLAMADA] enviado")
+                await session.send_realtime_input(text="[INICIO_LLAMADA]")
+                log.info("gemini-demo: trigger [INICIO_LLAMADA] enviado via send_realtime_input(text)")
             except Exception:
                 log.exception("gemini-demo: fallo enviando trigger inicial")
 
