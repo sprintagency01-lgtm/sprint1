@@ -703,7 +703,7 @@ def _build_ics_content(
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//Sprint Agency//Bot reservas//ES",
+        "PRODID:-//Sprintia//Bot reservas//ES",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         "BEGIN:VEVENT",

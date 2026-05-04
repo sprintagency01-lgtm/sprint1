@@ -3,51 +3,50 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sin conexión · Sprint</title>
+<title>Sin conexión · Sprintia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: light dark; }
+  :root{
+    color-scheme: light dark;
+    --ink:#15161a; --bone:#f4efe6; --stone:#7d7c78; --accent:#2d4cff;
+  }
   body{
     margin:0; min-height:100vh;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:#f8fafc; color:#0f172a;
+    font-family:'Inter Tight',-apple-system,BlinkMacSystemFont,sans-serif;
+    background:var(--bone); color:var(--ink);
     display:flex; align-items:center; justify-content:center; padding:24px;
   }
-  .wrap{
-    max-width:380px; text-align:center;
-  }
-  .logo{
-    width:56px; height:56px; border-radius:14px;
-    background:#0F1A14; color:#fff;
-    display:inline-flex; align-items:center; justify-content:center;
-    font-weight:700; font-size:24px;
-    margin-bottom:18px;
-    position:relative;
-  }
-  .logo::after{
-    content:""; position:absolute; right:-2px; top:-2px;
-    width:14px; height:14px; border-radius:50%; background:#2F7A55;
-    border:2px solid #f8fafc;
-  }
-  h1{ font-size:22px; margin:0 0 8px; letter-spacing:-0.01em; }
-  p{ color:#475569; line-height:1.5; margin:0 0 22px; }
+  .wrap{ max-width:380px; text-align:center; }
+  .mark{ width:60px; height:60px; margin:0 auto 22px; display:block; }
+  h1{ font-family:'Instrument Serif',serif; font-style:italic; font-size:34px; margin:0 0 10px; letter-spacing:-0.02em; }
+  p{ color:var(--stone); line-height:1.5; margin:0 0 24px; font-size:15px; }
   button{
-    background:#059669; color:#fff; border:none;
-    padding:12px 22px; border-radius:10px; font-size:15px; font-weight:600;
-    cursor:pointer;
+    background:var(--ink); color:var(--bone); border:none;
+    padding:13px 24px; border-radius:999px; font-size:14px; font-weight:500;
+    cursor:pointer; font-family:inherit;
+    transition: background .15s;
   }
-  button:hover{ background:#047857; }
+  button:hover{ background:var(--accent); }
   @media (prefers-color-scheme: dark){
-    body{ background:#0f172a; color:#f1f5f9; }
-    p{ color:#94a3b8; }
-    .logo::after{ border-color:#0f172a; }
+    body{ background:#0a0a0a; color:#f4efe6; }
+    p{ color:#94928e; }
+    button{ background:var(--accent); }
+    button:hover{ background:#1f37c4; }
   }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="logo">S</div>
+    <svg class="mark" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14.1"  y="21.6" width="7.8" height="24"   rx="3.9" fill="currentColor"/>
+      <rect x="26.1"  y="12"   width="7.8" height="38.4" rx="3.9" fill="currentColor"/>
+      <rect x="38.1"  y="25.2" width="7.8" height="18"   rx="3.9" fill="currentColor"/>
+      <circle cx="42" cy="13.2" r="5.1" fill="#2d4cff"/>
+    </svg>
     <h1>Sin conexión</h1>
-    <p>No hay red. Cuando vuelva, tu panel volverá a estar disponible.</p>
+    <p>No hay red. Cuando vuelva, tu panel de Sprintia estará de nuevo disponible.</p>
     <button onclick="location.reload()">Reintentar</button>
   </div>
 </body>

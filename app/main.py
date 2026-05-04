@@ -188,8 +188,8 @@ def _landing_html() -> str:
         except FileNotFoundError:
             _LANDING_CACHE = (
                 "<!doctype html><meta charset=utf-8>"
-                "<title>Sprint</title>"
-                "<h1>Sprint</h1><p>La landing aún no está desplegada.</p>"
+                "<title>Sprintia</title>"
+                "<h1>Sprintia</h1><p>La landing aún no está desplegada.</p>"
             )
     return _LANDING_CACHE
 

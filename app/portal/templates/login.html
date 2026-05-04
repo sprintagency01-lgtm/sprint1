@@ -3,44 +3,58 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Entrar · Sprint</title>
+<title>Entrar · Sprintia</title>
 
 <!-- PWA -->
 <link rel="manifest" href="/app/static/manifest.json">
-<meta name="theme-color" content="#059669">
-<meta name="application-name" content="Sprint">
+<meta name="theme-color" content="#15161a">
+<meta name="application-name" content="Sprintia">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Sprint">
+<meta name="apple-mobile-web-app-title" content="Sprintia">
 <link rel="apple-touch-icon" href="/app/static/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/app/static/icons/favicon-32.png">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
+  // Sprintia Pulse — paleta brand (electric blue) + ink
   tailwind.config = {
     theme: { extend: {
-      fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','-apple-system','sans-serif'] },
+      fontFamily: {
+        sans: ['Inter Tight','ui-sans-serif','system-ui','-apple-system','sans-serif'],
+        serif: ['Instrument Serif','Georgia','serif'],
+      },
       colors: { brand: {
-        50:'#ecfdf5',500:'#10b981',600:'#059669',700:'#047857',
+        50:'#eef1ff', 500:'#2d4cff', 600:'#1f37c4', 700:'#172a99', 900:'#15161a',
       } }
     } }
   };
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>body { font-family: 'Inter', sans-serif; }</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter Tight', sans-serif; background:#f4efe6; }
+  .pulse-mark{ width:36px; height:36px; }
+  .pulse-mark .bar{ fill:#15161a; }
+  .pulse-mark .dot{ fill:#2d4cff; }
+</style>
 </head>
-<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 text-slate-900 antialiased">
+<body class="min-h-screen flex items-center justify-center p-4 text-slate-900 antialiased">
   <div class="w-full max-w-sm">
-    <div class="flex items-center gap-2 mb-6 justify-center">
-      <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white font-semibold">S</div>
-      <div class="text-lg font-semibold tracking-tight">Sprintagency</div>
+    <div class="flex items-center gap-3 mb-7 justify-center">
+      <svg class="pulse-mark" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect class="bar" x="8.46"  y="12.96" width="4.68" height="14.4"  rx="2.34"/>
+        <rect class="bar" x="15.66" y="7.2"   width="4.68" height="23.04" rx="2.34"/>
+        <rect class="bar" x="22.86" y="15.12" width="4.68" height="10.8"  rx="2.34"/>
+        <circle class="dot" cx="25.2" cy="7.92" r="3.06"/>
+      </svg>
+      <div class="text-xl font-semibold tracking-tight" style="letter-spacing:-0.035em">Sprintia</div>
     </div>
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-      <h1 class="text-xl font-semibold mb-1">Entra a tu panel</h1>
-      <p class="text-sm text-slate-500 mb-5">Gestiona tu bot, reservas y equipo.</p>
+      <h1 class="text-xl font-semibold mb-1" style="font-family:'Instrument Serif',serif;font-style:italic;font-size:30px;letter-spacing:-0.02em">Entra a tu panel</h1>
+      <p class="text-sm text-slate-500 mb-5">Gestiona tu agente, reservas y equipo.</p>
 
       {% if error %}
         <div class="mb-4 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">{{ error }}</div>
@@ -64,7 +78,7 @@
         </button>
       </form>
     </div>
-    <div class="text-center text-xs text-slate-400 mt-4">¿Problemas para entrar? Escribe a tu contacto en Sprint.</div>
+    <div class="text-center text-xs text-slate-400 mt-4">¿Problemas para entrar? Escribe a tu contacto en Sprintia.</div>
   </div>
 
 <!-- PWA: registramos el SW también desde login para que se pueda instalar

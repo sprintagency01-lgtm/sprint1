@@ -6,6 +6,44 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-04 (rebranding Sprint → Sprintia · identidad Pulse)
+
+Adopción de la nueva identidad visual **Sprintia · Pulse** en landing, CMS y portal. Cero cambios funcionales en backend, agente Ana, ElevenLabs, Calendar ni rutas.
+
+### Por qué
+
+- La marca pasa de "Sprint" a "Sprintia". Brand guide canónico (artifact en claude.ai/design): tipografías Inter Tight + Instrument Serif + JetBrains Mono, paleta Pulse (ink #15161a + bone #f4efe6 + paper #fafaf7 + stone #7d7c78 + mist #e3ddd0) con dos acentos seleccionables vía Tweaks: Electric Blue #2d4cff (default) y Sage Deep #1f4d3a.
+- Logo nuevo: PulseMark (3 barras verticales en proporción 5·8·4 sobre rejilla 16, punto del color acento sobre la barra corta) + wordmark "Sprintia" en Inter Tight 600.
+
+### Cambiado
+
+- `app/templates/landing.html`:
+  - Tokens CSS reescritos a Pulse (`--ink`, `--bone`, `--paper`, `--stone`, `--mist`, `--line`, `--accent`, `--accent-soft`). Compatibilidad legada (`--bg`, `--bg-card`, `--bg-deep`, `--ink-2`, `--muted`) mappeada para que el resto del CSS siga funcionando.
+  - Tipografías: Fraunces sustituida por **Instrument Serif** (italic editorial) + Inter Tight para sans body. Tipografía mono mantiene JetBrains Mono.
+  - Logo: nuevo PulseMark inline SVG en nav y footer + wordmark "Sprintia". Favicon SVG inline regenerado.
+  - Hero reescrito a copy editorial: H1 sans 102px (`Tus reservas, _resueltas_ antes de que suenen.`) con palabra clave en serif italic accent. Subline más concreto. Eyebrow mono caps `CONCIERGE DIGITAL · 24 / 7`.
+  - Hero phone reescrito como **VoiceMockup Pulse**: pantalla ink, eyebrow mono `EN LLAMADA`, frase serif italic gigante con palabra clave en accent (`«Tengo libre el _jueves a las 18:30_, ¿le funciona?»`), mark Pulse del agente + sublabel del negocio, waveform de barras con centro accent, tabs Transcripción/Acciones/Contexto. JS rotando 4 frases.
+  - Tweaks panel: paleta antigua (terracota / mint / ink / plum) sustituida por selector de **Acento** (Electric Blue / Sage Deep). `data-palette` → `data-accent`. Default: `electric`.
+  - Botones: btn-primary ink+bone con hover accent. btn-ghost border ink con hover invertido.
+  - Renombre Sprint → Sprintia en todos los copies de la página: navegación, sec-kickers, h2, párrafos de canales, sectores, voz, integraciones, modal lead, footer.
+  - Marquee, sec-head, sticker badges adaptados a la paleta nueva.
+- `app/cms/templates/base.html`: title/og/manifest a "Sprintia Admin". Tipografía Inter Tight + Instrument Serif. Tailwind config con `brand` ink + electric blue. CSS tokens Pulse expuestos.
+- `app/cms/static/offline.html`: rediseñado con identidad Pulse (PulseMark inline, serif italic h1, paleta bone).
+- `app/portal/templates/portal.html`: title/manifest a "Sprintia". Tailwind config Pulse. Tokens CSS expuestos. Mantiene dark mode adaptado.
+- `app/portal/templates/login.html`: rediseñado con PulseMark inline (3 barras + dot accent), wordmark "Sprintia", h1 en Instrument Serif italic.
+- `app/portal/static/offline.html`: idem CMS, con dark mode media query.
+- `app/main.py`: fallback de landing con `<title>Sprintia</title>`.
+- `app/agent.py`: `PRODID:-//Sprint Agency//...` → `PRODID:-//Sprintia//...` en el VCALENDAR generado para invitaciones de cita.
+
+### Notas
+
+- Esto NO toca backend, rutas, agente Ana, ElevenLabs, prompts ni tenants. Solo capa visual + nombre del producto.
+- Las clases CSS antiguas del mockup orb (`.voice-orb*`, `.call-action*`, `.voice-state`, `.voice-bars`, `.voice-result`) se han eliminado del CSS al ya no usarse el markup.
+- HTML de landing validado: 0 errores de parsing, 0 etiquetas abiertas.
+- Pendiente para una segunda pasada: aplicar la identidad a los partials del CMS (`tab_*.html`, `dashboard.html`, etc.) y al resto de pantallas del portal (`screen_*.jsx`). Esta entrega cubre los layouts/headers comunes; el contenido interno sigue con la apariencia anterior hasta esa ronda.
+
+---
+
 ## 2026-05-03 (POC — demo Gemini 3.1 Flash Live paralelo a ElevenLabs)
 
 POC para evaluar **Gemini 3.1 Flash Live preview** como alternativa a ElevenLabs Conversational AI. Dos entregables: un script standalone para pruebas locales con micro y un endpoint web (`/gemini-demo`) para probarlo desde navegador con tools reales contra Railway. El agente de producción (`agent_4201...`) NO se toca.
