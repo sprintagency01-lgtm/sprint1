@@ -338,6 +338,21 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
         "tools": [{"function_declarations": TOOL_DECLARATIONS}],
         "input_audio_transcription": {},
         "output_audio_transcription": {},
+        # VAD explícito: si lo dejamos por defecto algunos modelos no detectan
+        # bien el fin del turno del usuario y el modelo se queda esperando
+        # eternamente. Con silence_duration_ms=800 cierra turno tras 0.8s de
+        # silencio (estándar para conversación natural). turn_coverage limita
+        # a actividad de audio (no contar silencios largos como parte del turno).
+        "realtime_input_config": {
+            "automatic_activity_detection": {
+                "disabled": False,
+                "start_of_speech_sensitivity": "START_SENSITIVITY_LOW",
+                "end_of_speech_sensitivity": "END_SENSITIVITY_LOW",
+                "prefix_padding_ms": 20,
+                "silence_duration_ms": 800,
+            },
+            "turn_coverage": "TURN_INCLUDES_ONLY_ACTIVITY",
+        },
     }
 
     http = httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0))
@@ -417,6 +432,17 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
                         tcc = getattr(response, "tool_call_cancellation", None)
                         if tcc and getattr(tcc, "ids", None):
                             await send_evt({"type": "tool_cancelled", "ids": list(tcc.ids)})
+
+                        # DIAG: loguea eventos de fin de turno y generación.
+                        # Con esto en logs de Railway sabremos si el modelo
+                        # cierra turnos cuando debe (turn_complete) o si se
+                        # queda colgado.
+                        if sc is not None:
+                            if getattr(sc, "turn_complete", False):
+                                log.info("gemini-demo: turn_complete=True (modelo terminó turno)")
+                                await send_evt({"type": "turn_complete"})
+                            if getattr(sc, "generation_complete", False):
+                                log.info("gemini-demo: generation_complete=True")
                 except Exception:  # noqa: BLE001
                     log.exception("gemini_to_browser caído")
                     shutdown.set()

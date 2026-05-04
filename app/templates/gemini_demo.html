@@ -241,6 +241,9 @@
   let outputCtx = null;        // contexto de reproducción a 24kHz
   let playbackTime = 0;        // currentTime futuro donde encolar el siguiente buffer
   let isRunning = false;
+  let activeSources = [];      // BufferSourceNodes en cola para poder pararlos en barge-in
+  let chunksOut = 0;           // contador de chunks enviados al server (debug)
+  let chunksIn = 0;            // contador de chunks de audio recibidos (debug)
 
   const $start = document.getElementById('btn-start');
   const $stop = document.getElementById('btn-stop');
@@ -351,6 +354,9 @@
   // ──────────────────────────────────────────────────────────────────────────
   function playPCM24k(pcm16Bytes) {
     if (!outputCtx) return;
+    // Defensivo: AudioContext suspendido (políticas de browser) se reactiva.
+    if (outputCtx.state === 'suspended') outputCtx.resume().catch(() => {});
+
     // Convierte Int16 → Float32 [-1, 1].
     const view = new Int16Array(pcm16Bytes);
     const float = new Float32Array(view.length);
@@ -370,17 +376,26 @@
     if (playbackTime < now) playbackTime = now;
     src.start(playbackTime);
     playbackTime += buffer.duration;
+
+    // Trackea para poder pararlo en barge-in (si Ana es interrumpida).
+    activeSources.push(src);
+    src.onended = () => {
+      const i = activeSources.indexOf(src);
+      if (i >= 0) activeSources.splice(i, 1);
+    };
   }
 
   function flushPlayback() {
-    // Cuando el modelo es interrumpido, queremos parar la reproducción a medias.
-    // No hay "stop all" trivial sin trackear cada source; el atajo es resetear
-    // el contexto de output (cierra y reabre).
-    if (outputCtx) {
-      outputCtx.close().catch(() => {});
-      outputCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 24000});
-      playbackTime = 0;
-    }
+    // Cuando el modelo es interrumpido por el usuario, paramos la reproducción
+    // del audio en cola SIN cerrar el AudioContext (cerrarlo y reabrirlo deja
+    // el nuevo en estado 'suspended' por las políticas del browser y los
+    // siguientes turnos no suenan).
+    activeSources.forEach(s => {
+      try { s.stop(); } catch {}
+      try { s.disconnect(); } catch {}
+    });
+    activeSources = [];
+    if (outputCtx) playbackTime = outputCtx.currentTime;
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -393,6 +408,9 @@
     $stop.style.display = 'block';
     $transcript.innerHTML = '';
     $logs.innerHTML = '';
+    chunksOut = 0;
+    chunksIn = 0;
+    activeSources = [];
     setStatus('', 'Conectando…');
 
     const voice = document.getElementById('voice').value;
@@ -452,8 +470,15 @@
       appendLog('event', 'WS abierto. Habla cuando quieras.');
       // Cuando el WS está listo, empezamos a enviar los chunks del worklet.
       workletNode.port.onmessage = (ev) => {
+        // Defensivo: AudioContext suspendido (cambio de pestaña, idle) → reanudar.
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
         if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(ev.data);
+          chunksOut++;
+          if (chunksOut % 40 === 0) {
+            // ~2s de audio enviado; loguea para confirmar que sigue fluyendo.
+            console.log(`[mic] chunksOut=${chunksOut} (~${(chunksOut * 0.05).toFixed(1)}s audio)`);
+          }
         }
       };
     };
@@ -469,6 +494,10 @@
       } else {
         // Audio binario del modelo (PCM16 24kHz).
         playPCM24k(ev.data);
+        chunksIn++;
+        if (chunksIn % 80 === 0) {
+          console.log(`[ana] chunksIn=${chunksIn}`);
+        }
         if ($status.className !== 'speaking') setStatus('speaking', 'Ana hablando…');
       }
     };
@@ -510,6 +539,16 @@
       case 'tool_cancelled':
         appendLog('event', `tool calls canceladas: ${msg.ids.join(', ')}`);
         break;
+      case 'turn_complete':
+        appendLog('event', '✓ turno cerrado por el modelo — esperando tu próximo turno');
+        // Tras pequeño delay (para no cortar el último audio en la cola),
+        // pasamos a estado 'listening' para que sepas que puedes hablar.
+        setTimeout(() => {
+          if (isRunning && $status.className !== 'listening') {
+            setStatus('listening', 'Escuchando…');
+          }
+        }, 500);
+        break;
       case 'error':
         appendLog('error', msg.message);
         setStatus('error', 'Error');
@@ -536,6 +575,7 @@
     try { if (outputCtx) outputCtx.close(); } catch {}
     outputCtx = null;
     playbackTime = 0;
+    activeSources = [];
   }
 
   $start.addEventListener('click', start);
