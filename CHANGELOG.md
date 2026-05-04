@@ -6,6 +6,17 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-04 (landing — retoque hero post-Pulse)
+
+### Cambiado
+
+- `app/templates/landing.html`:
+  - Eyebrow del hero: `CONCIERGE DIGITAL · 24 / 7` → **`ASISTENTE VIRTUAL · 24 / 7`** (más concreto y menos pretencioso para el target B2B real).
+  - H1: el énfasis serif italic accent se reduce a la palabra clave **`reservas`**; el resto del titular vuelve a sans regular para que la jerarquía editorial mande sin que el verso italic se coma toda la página.
+  - JS de TWEAKS: la lógica que partía el headline en mitades automáticas se sustituye por sintaxis tipo markdown (`*palabra*` → `<em>`, `\n` → `<br>`). Permite controlar exactamente qué palabra se enfatiza desde el panel de Tweaks sin que el script lo adivine.
+
+---
+
 ## 2026-05-04 (rebranding Sprint → Sprintia · identidad Pulse)
 
 Adopción de la nueva identidad visual **Sprintia · Pulse** en landing, CMS y portal. Cero cambios funcionales en backend, agente Ana, ElevenLabs, Calendar ni rutas.
