@@ -382,12 +382,17 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
                                     "gemini-demo audio in: chunks=%d bytes=%d (~%.1fs)",
                                     chunks_recv, bytes_recv, chunks_recv * 0.05,
                                 )
-                            await session.send_realtime_input(
-                                audio=types.Blob(
-                                    data=msg["bytes"],
-                                    mime_type="audio/pcm;rate=16000",
-                                ),
-                            )
+                            try:
+                                await session.send_realtime_input(
+                                    audio=types.Blob(
+                                        data=msg["bytes"],
+                                        mime_type="audio/pcm;rate=16000",
+                                    ),
+                                )
+                            except Exception as exc:
+                                log.error("send_realtime_input EXCEPCION chunk=%d: %s", chunks_recv, exc)
+                                shutdown.set()
+                                return
                         elif "text" in msg and msg["text"]:
                             # Mensajes de control desde el browser (p.ej. "stop").
                             try:
@@ -415,7 +420,8 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
                         # DIAG VERBOSO: loguea el "shape" de cada evento
                         # (tipos de campos no None) cada N eventos para ver
                         # qué llega.
-                        if evt_count % 20 == 0:
+                        # LOG cada evento (modo debug agresivo)
+                        if True:
                             shape = []
                             if response.data: shape.append(f"data={len(response.data)}b")
                             if response.text: shape.append(f"text={len(response.text)}c")
@@ -466,6 +472,8 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
                                 await send_evt({"type": "turn_complete"})
                             if getattr(sc, "generation_complete", False):
                                 log.info("gemini-demo: generation_complete=True")
+                    log.warning("gemini-demo: async for response in session.receive() SALIO normalmente — sesion cerrada por el modelo (evts=%d)", evt_count)
+                    shutdown.set()
                 except Exception:  # noqa: BLE001
                     log.exception("gemini_to_browser caído")
                     shutdown.set()

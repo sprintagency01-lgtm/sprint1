@@ -23,7 +23,7 @@ bcrypt==4.2.1
 # Demo Gemini 3.1 Flash Live (paralelo a ElevenLabs).
 # Lo usa app/gemini_live_bridge.py (endpoint /gemini-demo).
 # Necesita GEMINI_API_KEY como env var en Railway.
-google-genai>=1.21.0
+google-genai>=1.30.0,<2.0
 # WebSockets para FastAPI (lo usa /gemini-demo/ws). uvicorn[standard] ya trae
 # websockets, pero lo declaramos explícito por si en el futuro alguien quita
 # el extra de uvicorn.
