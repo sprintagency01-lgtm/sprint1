@@ -6,9 +6,15 @@ Entrada más reciente arriba.
 
 ---
 
-## 2026-05-05 (gemini-demo · arreglo VAD continuo + conexión desde landing)
+## 2026-05-05 (gemini-demo · VAD continuo + bloque "Llamada de prueba" en la landing)
 
-Arreglo del demo público `/gemini-demo`: el modelo no detectaba la voz del usuario porque el frontend estaba en push-to-talk con el AudioWorklet muteado por defecto, y los visitantes no descubrían que tenían que mantener pulsado el botón. Cambio a VAD continuo (que es lo que Gemini 3.1 Flash Live espera nativamente), botón mic convertido en toggle de mute opcional, y los CTAs "Probar Sprintia" de la landing ahora abren el demo en lugar del modal de leads.
+Arreglo del demo público `/gemini-demo`: el modelo no detectaba la voz del usuario porque el frontend estaba en push-to-talk con el AudioWorklet muteado por defecto, y los visitantes no descubrían que tenían que mantener pulsado el botón. Cambio a VAD continuo (que es lo que Gemini 3.1 Flash Live espera nativamente), botón mic convertido en toggle de mute opcional, y nueva sección **"Llamada de prueba"** en la landing con un modal-popup que embebe el demo en iframe — el visitante prueba sin salir de la página.
+
+### Añadido
+
+- **Sección `#probar` en la landing** (entre "Cómo funciona" y "Sectores"): card oscura con eyebrow `DEMO EN VIVO`, h2 "Habla con Ana _ahora_." con `ahora` en serif italic accent-soft, lede explicando el escenario (peluquería de prueba), CTA prominente `Llamada de prueba →` y meta inferior con dos hints (acceso al micro, mejor con auriculares).
+- **Modal iframe** (`#demo-modal`): embebe `/gemini-demo?embed=1` con `allow="microphone; autoplay"`, fondo blur ink, card 780×760 con border-radius 22, botón cerrar en esquina, transición suave. Se abre desde el botón "Llamada de prueba"; cierre con `Esc`, click backdrop o botón ×. Al cerrar se vacía el `src` para liberar mic, WebSocket y reproducción.
+- `?embed=1` en la URL del iframe queda como flag para futuros ajustes de UI dentro del modal (ocultar topbar, etc.) — por ahora el demo se ve correcto sin cambios extra.
 
 ### Por qué
 

@@ -1080,6 +1080,110 @@
   .price-feat svg{ width:16px; height:16px; color:var(--accent); flex-shrink:0; margin-top:3px; }
   .price-card .btn{ margin-top:auto; justify-content:center; }
 
+  /* ---------- TRY-IT (sección demo en vivo + modal) ---------- */
+  .try-it{
+    background:var(--ink); color:var(--bone);
+    border-radius:var(--radius-lg);
+    margin:0 28px;
+    padding:88px 0;
+    position:relative; overflow:hidden;
+  }
+  @media(max-width:860px){ .try-it{ margin:0 16px; padding:64px 0; } }
+  .try-it::before{
+    content:""; position:absolute; right:-120px; top:-120px;
+    width:380px; height:380px; border-radius:50%;
+    background: radial-gradient(circle, color-mix(in oklab, var(--accent) 35%, transparent) 0%, transparent 65%);
+    pointer-events:none;
+  }
+  .try-it-inner{
+    max-width:680px; margin:0 auto; text-align:center;
+    position:relative; z-index:2;
+  }
+  .try-it .sec-kicker{ color:var(--accent-soft); justify-content:center; }
+  .try-it .sec-kicker::before{ background:var(--accent-soft); opacity:.6; }
+  .try-it h2{
+    font-family:var(--sans); font-weight:500;
+    font-size: clamp(34px, 4.4vw, 56px);
+    line-height:1.02; letter-spacing:-0.035em;
+    color:var(--bone);
+    margin-bottom:18px;
+    text-wrap: balance;
+  }
+  .try-it h2 em{
+    font-family:var(--serif); font-style:italic;
+    color:var(--accent-soft);
+    font-weight:400; letter-spacing:-0.02em;
+  }
+  .try-it p{
+    font-size: clamp(16px, 1.2vw, 18px); line-height:1.55;
+    color: rgba(244,239,230,.7);
+    margin: 0 auto 30px; max-width:560px;
+    text-wrap: pretty;
+  }
+  .btn.btn-try{
+    background:var(--bone); color:var(--ink);
+    padding:18px 30px; font-size:16px;
+    box-shadow: 0 14px 40px -14px rgba(45,76,255,.55);
+  }
+  .btn.btn-try:hover{ background:var(--accent); color:var(--bone); }
+  .try-it-meta{
+    margin-top:24px;
+    display:flex; justify-content:center; gap:24px; flex-wrap:wrap;
+    font-family:var(--mono); font-size:11px;
+    text-transform:uppercase; letter-spacing:.18em;
+    color: rgba(244,239,230,.45);
+  }
+  .try-it-meta span{ display:inline-flex; align-items:center; gap:7px; }
+  .try-it-meta svg{ width:11px; height:11px; color:var(--accent-soft); }
+
+  /* Demo modal — iframe sobre fondo blur ink */
+  .demo-modal{
+    position:fixed; inset:0; z-index:100;
+    background: color-mix(in oklab, var(--ink) 78%, transparent);
+    backdrop-filter: blur(10px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    opacity:0; pointer-events:none;
+    transition: opacity .25s ease;
+  }
+  .demo-modal.open{ opacity:1; pointer-events:auto; }
+  .demo-modal-card{
+    width:780px; max-width:100%;
+    height:760px; max-height:calc(100vh - 40px);
+    background:var(--ink);
+    border-radius:22px;
+    overflow:hidden;
+    position:relative;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.06),
+      0 40px 80px -30px rgba(0,0,0,.5);
+    transform: translateY(12px);
+    transition: transform .3s cubic-bezier(.2,.7,.3,1);
+  }
+  .demo-modal.open .demo-modal-card{ transform: translateY(0); }
+  .demo-modal-card iframe{
+    width:100%; height:100%;
+    border:none;
+    background:var(--ink);
+    display:block;
+  }
+  .demo-modal-close{
+    position:absolute; top:14px; right:14px;
+    width:36px; height:36px; border-radius:50%;
+    background: rgba(255,255,255,.10);
+    color:var(--bone);
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:18px; line-height:1;
+    z-index:3;
+    transition: background .15s, transform .12s;
+  }
+  .demo-modal-close:hover{ background: rgba(255,255,255,.20); }
+  .demo-modal-close:active{ transform: scale(.94); }
+  .demo-modal-close svg{ width:16px; height:16px; }
+
+  /* Mientras la página tiene modal abierto, paramos scroll del body */
+  body.demo-open{ overflow:hidden; }
+
   /* ---------- FINAL CTA ---------- */
   .final-cta{
     background:var(--accent);
@@ -1540,6 +1644,36 @@
   </div>
 </section>
 
+<!-- TRY-IT (demo en vivo en popup) -->
+<section id="probar" style="padding:0 0 96px;">
+  <div class="try-it">
+    <div class="container">
+      <div class="try-it-inner">
+        <div class="sec-kicker">DEMO EN VIVO</div>
+        <h2>Habla con Ana <em>ahora</em>.</h2>
+        <p>
+          Ana es la recepcionista de una peluquería de prueba. Pídele cita
+          para mañana, muévela a otro día, pregúntale por horarios o precios.
+          Sin registro, sin enviar tus datos.
+        </p>
+        <button class="btn btn-try" id="open-demo" type="button">
+          Llamada de prueba <span class="arrow">→</span>
+        </button>
+        <div class="try-it-meta">
+          <span>
+            <svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><circle cx="6" cy="6" r="3"/></svg>
+            Pide acceso al micrófono
+          </span>
+          <span>
+            <svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><circle cx="6" cy="6" r="3"/></svg>
+            Mejor con auriculares
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- SECTORES -->
 <section class="sectors" id="sectores">
   <div class="container">
@@ -1806,6 +1940,19 @@
     </div>
   </div>
 </footer>
+
+<!-- DEMO MODAL — embebe /gemini-demo en iframe -->
+<div class="demo-modal" id="demo-modal" role="dialog" aria-modal="true" aria-label="Llamada de prueba con Ana" aria-hidden="true">
+  <div class="demo-modal-card">
+    <button class="demo-modal-close" id="demo-close" type="button" aria-label="Cerrar llamada de prueba">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <line x1="3.5" y1="3.5" x2="12.5" y2="12.5"/>
+        <line x1="12.5" y1="3.5" x2="3.5" y2="12.5"/>
+      </svg>
+    </button>
+    <iframe id="demo-iframe" src="" allow="microphone; autoplay" title="Llamada de prueba con Ana — demo de Sprintia" loading="lazy"></iframe>
+  </div>
+</div>
 
 <!-- LEAD MODAL -->
 <div class="modal-backdrop" id="lead-modal" role="dialog" aria-modal="true" aria-labelledby="lead-title" aria-hidden="true">
@@ -2292,6 +2439,36 @@
   document.getElementById('lead-reset').addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('on')) closeModal(); });
+
+  // ────────────────────────────────────────────────────────────────────
+  // Demo modal: embebe /gemini-demo en un iframe sobre la landing.
+  // El iframe se carga al abrir y se descarga al cerrar para que el
+  // micrófono y el WebSocket queden liberados.
+  // ────────────────────────────────────────────────────────────────────
+  const $demoModal  = document.getElementById('demo-modal');
+  const $demoIframe = document.getElementById('demo-iframe');
+  const $demoClose  = document.getElementById('demo-close');
+  const $openDemo   = document.getElementById('open-demo');
+
+  function openDemo(){
+    if (!$demoIframe.src) $demoIframe.src = '/gemini-demo?embed=1';
+    $demoModal.classList.add('open');
+    $demoModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('demo-open');
+  }
+  function closeDemo(){
+    $demoModal.classList.remove('open');
+    $demoModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('demo-open');
+    // Vaciamos src para parar el WS, el mic y la reproducción de audio.
+    setTimeout(() => { if (!$demoModal.classList.contains('open')) $demoIframe.src = ''; }, 280);
+  }
+  if ($openDemo) $openDemo.addEventListener('click', openDemo);
+  if ($demoClose) $demoClose.addEventListener('click', closeDemo);
+  $demoModal.addEventListener('click', (e) => { if (e.target === $demoModal) closeDemo(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $demoModal.classList.contains('open')) closeDemo();
+  });
 
   function validPhone(s){ return /^\+?[0-9\s\-\(\)\.]{6,25}$/.test(s); }
 
