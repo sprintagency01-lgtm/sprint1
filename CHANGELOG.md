@@ -6,6 +6,38 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-05 (gemini-demo · arreglo VAD continuo + conexión desde landing)
+
+Arreglo del demo público `/gemini-demo`: el modelo no detectaba la voz del usuario porque el frontend estaba en push-to-talk con el AudioWorklet muteado por defecto, y los visitantes no descubrían que tenían que mantener pulsado el botón. Cambio a VAD continuo (que es lo que Gemini 3.1 Flash Live espera nativamente), botón mic convertido en toggle de mute opcional, y los CTAs "Probar Sprintia" de la landing ahora abren el demo en lugar del modal de leads.
+
+### Por qué
+
+- Marcos reportó "no detecta mi voz entrante" desde el demo en producción. Inspección del frontend: `AudioWorkletProcessor.muted = true` por defecto, sólo se desmuta mientras el botón PTT está pulsado. En la práctica el visitante medio no entiende el patrón push-to-talk en una llamada de voz (es contraintuitivo: las llamadas reales no funcionan así). El bridge backend recibe 0 bytes, los logs `gemini-demo audio in: chunks=N` nunca aparecen, el modelo no tiene input y la sesión se queda en silencio.
+- Gemini 3.1 Flash Live tiene VAD nativo (start/end-of-speech automático). La UX correcta es mic abierto continuamente, igual que ElevenLabs Conversational AI.
+
+### Cambiado
+
+- `app/templates/gemini_demo.html`:
+  - **AudioWorkletProcessor**: `this.muted = true` → `this.muted = false`. Worklet arranca activo desde el momento en que el usuario da permiso al micro.
+  - **Botón inferior**: el botón push-to-talk se sustituye por un **toggle de mute** (`#btn-mic`). Por defecto: bone bg + ico mic abierto = micro encendido. Estado `.muted`: transparente con borde tenue + ico mic-off, indica que el usuario pausó manualmente. Estado `.speaking`: accent bg con ring animado, se enciende cuando Gemini emite `user_transcript` (es decir, cuando detecta que el usuario está hablando).
+  - **Hint inferior**: "Mantén pulsado para hablar" → "Tu micrófono está abierto · Ana te oye" (y "Micrófono silenciado · toca para reactivar" cuando el toggle está en mute).
+  - **Atajo teclado**: barra espaciadora ahora hace toggle de mute en vez de PTT.
+  - **handleEvent**: `user_transcript` añade `.speaking` al botón mic (feedback visual de que el modelo está captando voz). `turn_complete` y `tool_start` lo quitan.
+  - Aria-label del botón: "Mantén pulsado para hablar" → "Silenciar micrófono" + `aria-pressed`.
+- `app/templates/landing.html`:
+  - **Hero CTA** (`#cta`): `href="#final"` → `href="/gemini-demo"`. Los visitantes que pulsen "Probar Sprintia" en el hero entran directamente al demo de voz.
+  - **Nav CTA** (`.nav-cta .btn-primary`): idem, → `/gemini-demo`. El texto inline pasa de "Habla con nosotros" a "Probar Sprintia" para coherencia con el JS de TWEAKS que ya lo reescribía en runtime.
+  - **Final CTA** (`#final-cta`): `href="#"` → `href="/gemini-demo"`. Texto inline: "Habla con nosotros" → "Probar Sprintia".
+  - **Handler de `[data-lead]`**: antes interceptaba TODOS los clicks con preventDefault y abría el modal. Ahora respeta el `href` cuando NO empieza por `#`, así los enlaces a `/gemini-demo` (y futuros enlaces a `/admin`, `/app`, etc.) navegan en lugar de abrir el modal. Los CTAs de planes y modal lead siguen abriendo el modal porque mantienen `href="#final"`.
+
+### Notas
+
+- Nada del backend tocado: el bridge `gemini_live_bridge.py` ya estaba bien, solo no recibía audio del frontend. El fix es 100% en cliente.
+- Push-to-talk eliminado del UX flow pero el SDK del worklet mantiene los comandos `mute`/`unmute` por si en el futuro se quiere reintroducir.
+- HTML validado: 0 errores de parsing en `gemini_demo.html` y `landing.html`.
+
+---
+
 ## 2026-05-04 (CMS + portal · logo Pulse en todas las vistas + criterio editorial del italic)
 
 Continúa el rebrand a Sprintia · Pulse: aplicación del logo PulseMark + nombre "Sprintia" en headers/sidebars del CMS y portal, sustitución del placeholder "ReservaBot" en titles/footers, color brand de gráficos del verde antiguo (#059669) al accent electric (#2d4cff), y reducción del énfasis serif italic en la landing a **una sola palabra por bloque** (la más relevante).

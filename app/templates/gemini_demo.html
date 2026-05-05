@@ -2,334 +2,587 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Demo Gemini Live · Ana — Sprintia</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Habla con Ana · Demo · Sprintia</title>
+<meta name="theme-color" content="#15161a">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="7.52" y="11.52" width="4.16" height="12.8" rx="2.08" fill="%2315161a"/><rect x="13.92" y="6.4" width="4.16" height="20.48" rx="2.08" fill="%2315161a"/><rect x="20.32" y="13.44" width="4.16" height="9.6" rx="2.08" fill="%2315161a"/><circle cx="22.4" cy="7.04" r="2.72" fill="%232d4cff"/></svg>'>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
-  :root {
-    --bg: #0e1014;
-    --card: #1a1d24;
-    --text: #e6e8ee;
-    --muted: #8b93a3;
-    --accent: #6ea8ff;
-    --ok: #5dd3a8;
-    --warn: #ffb86b;
-    --err: #ff6e7a;
-    --tool: #b78cff;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    line-height: 1.45;
-  }
-  header {
-    padding: 18px 24px;
-    border-bottom: 1px solid #232733;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-  }
-  header h1 {
-    font-size: 18px;
-    margin: 0;
-    font-weight: 600;
-  }
-  header .sub { color: var(--muted); font-size: 13px; }
-  main {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px;
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 24px;
-  }
-  @media (max-width: 800px) {
-    main { grid-template-columns: 1fr; }
-  }
-  .card {
-    background: var(--card);
-    border: 1px solid #232733;
-    border-radius: 10px;
-    padding: 18px;
-  }
-  .card h2 {
-    margin: 0 0 12px 0;
-    font-size: 13px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
-  select, input[type="text"] {
-    width: 100%;
-    padding: 8px 10px;
-    background: #0e1014;
-    color: var(--text);
-    border: 1px solid #2c3140;
-    border-radius: 6px;
-    font-size: 14px;
-  }
-  button {
-    width: 100%;
-    padding: 12px;
-    background: var(--accent);
-    color: #0e1014;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 16px;
-    transition: opacity 0.15s;
-  }
-  button:hover:not(:disabled) { opacity: 0.85; }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  button.stop { background: var(--err); color: white; }
+  :root{
+    --ink:    #15161a;
+    --bone:   #f4efe6;
+    --paper:  #fafaf7;
+    --stone:  #7d7c78;
+    --mist:   #e3ddd0;
+    --line:   rgba(21,22,26,0.10);
+    --accent: #2d4cff;
+    --accent-2: #1f37c4;
+    --accent-soft: #dee3ff;
 
-  #status {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-    margin-top: 14px;
-    padding: 10px 12px;
-    background: #0e1014;
-    border-radius: 6px;
-    border: 1px solid #2c3140;
+    --serif: "Instrument Serif", "Georgia", serif;
+    --sans:  "Inter Tight", system-ui, sans-serif;
+    --mono:  "JetBrains Mono", ui-monospace, monospace;
+
+    --err: #e84a4a;
+    --ok:  #1f4d3a;
   }
-  #status .dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: #555; transition: background 0.2s;
+  *{ box-sizing: border-box; margin: 0; padding: 0; }
+  html, body{ height: 100%; }
+  body{
+    background: var(--ink); color: var(--bone);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
   }
-  #status.ready .dot { background: var(--ok); }
-  #status.listening .dot { background: var(--accent); animation: pulse 1.4s infinite; }
-  #status.speaking .dot { background: var(--warn); animation: pulse 0.8s infinite; }
-  #status.error .dot { background: var(--err); }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
+  a{ color: inherit; text-decoration: none; }
+  button{ font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+  /* ───────────────── Layout ───────────────── */
+  .wrap{
+    display: flex; flex-direction: column;
+    height: 100vh; height: 100dvh;
+    max-width: 720px; margin: 0 auto;
+    padding: 24px 22px 28px;
   }
 
-  .panels {
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-    gap: 16px;
-    height: calc(100vh - 180px);
-    min-height: 500px;
+  /* ───────────────── Top bar ───────────────── */
+  .topbar{
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 8px;
   }
-  .panel { display: flex; flex-direction: column; }
-  .panel-body {
+  .brand{ display: inline-flex; align-items: center; gap: 10px; color: var(--bone); }
+  .brand-mark{ width: 26px; height: 26px; display: block; }
+  .brand-name{ font-weight: 600; font-size: 19px; letter-spacing: -0.035em; }
+  .back-link{
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: .18em;
+    color: rgba(244,239,230,.5);
+    transition: color .15s;
+  }
+  .back-link:hover{ color: var(--bone); }
+  .back-link svg{ width: 12px; height: 12px; }
+
+  /* ───────────────── Hero / inicio ───────────────── */
+  .stage{
     flex: 1;
-    overflow-y: auto;
-    background: #0e1014;
-    border-radius: 6px;
-    padding: 12px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 14px;
-    border: 1px solid #2c3140;
-  }
-  .panel-body .turn { margin-bottom: 10px; }
-  .panel-body .turn .who {
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 2px;
-  }
-  .panel-body .turn.usr .who { color: var(--accent); }
-  .panel-body .turn.ana .who { color: var(--ok); }
-  .panel-body .turn .text { white-space: pre-wrap; word-break: break-word; }
-
-  .log-line {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 12px;
-    margin-bottom: 4px;
-    color: var(--muted);
-  }
-  .log-line.tool_start { color: var(--tool); }
-  .log-line.tool_end { color: var(--tool); }
-  .log-line.error { color: var(--err); }
-  .log-line.event { color: var(--warn); }
-
-  footer {
-    padding: 12px 24px;
-    color: var(--muted);
-    font-size: 12px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
     text-align: center;
-    border-top: 1px solid #232733;
+    padding: 28px 0;
+    position: relative;
   }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
+
+  .eyebrow{
+    font-family: var(--mono); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .22em;
+    color: rgba(244,239,230,.55);
+    display: inline-flex; align-items: center; gap: 9px;
+    margin-bottom: 24px;
+  }
+  .eyebrow .dot{
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 22%, transparent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 22%, transparent); }
+    50%{ box-shadow: 0 0 0 8px color-mix(in oklab, var(--accent) 6%, transparent); }
+  }
+
+  /* Mensaje principal en el centro: rota con la transcripción de Ana */
+  .quote{
+    font-family: var(--serif); font-style: italic;
+    font-size: clamp(28px, 5vw, 44px);
+    line-height: 1.08; letter-spacing: -0.02em;
+    color: var(--bone);
+    max-width: 540px;
+    transition: opacity .35s ease;
+    min-height: 1.4em;
+  }
+  .quote.fade{ opacity: 0; }
+  .quote em{ color: var(--accent); font-style: italic; }
+
+  .agent-row{
+    margin-top: 22px;
+    display: inline-flex; align-items: center; gap: 11px;
+    color: rgba(244,239,230,.7);
+  }
+  .agent-mark{
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(244,239,230,.06);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--bone);
+  }
+  .agent-mark svg{ width: 18px; height: 18px; display: block; }
+  .agent-info{ display: flex; flex-direction: column; line-height: 1.2; align-items: flex-start; }
+  .agent-name{ font-size: 13.5px; color: var(--bone); font-weight: 500; }
+  .agent-sub{ font-size: 11px; color: rgba(244,239,230,.5); }
+
+  /* Estado: «Te escucho», «Ana habla», etc */
+  .state{
+    margin-top: 28px;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: .2em;
+    color: rgba(244,239,230,.55);
+    display: inline-flex; align-items: center; gap: 9px;
+    min-height: 16px;
+  }
+  .state .ring{
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(244,239,230,.25);
+    transition: background .2s, box-shadow .2s;
+  }
+  .state.idle    .ring{ background: rgba(244,239,230,.25); }
+  .state.connecting .ring{ background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+  .state.listening  .ring{ background: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 22%, transparent); animation: pulse 1.6s ease-in-out infinite; }
+  .state.speaking   .ring{ background: var(--bone); animation: pulse 1.0s ease-in-out infinite; }
+  .state.error      .ring{ background: var(--err); }
+
+  /* Waveform sutil bajo el estado */
+  .wave{
+    display: flex; align-items: center; justify-content: center;
+    gap: 3px; height: 32px; margin-top: 16px;
+    opacity: .55; transition: opacity .25s;
+  }
+  .wave.active{ opacity: 1; }
+  .wave span{
+    width: 3px; border-radius: 2px;
+    background: rgba(244,239,230,.4);
+    height: 6px;
+    transition: background .15s, height .12s ease-out;
+  }
+  .wave span.hi{ background: var(--accent); }
+
+  /* ───────────────── Bottom controls ───────────────── */
+  .bottom{
+    padding-top: 18px;
+    border-top: 1px solid rgba(244,239,230,.08);
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+  }
+
+  .ptt-hint{
+    font-family: var(--mono); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .18em;
+    color: rgba(244,239,230,.55);
+    text-align: center;
+    min-height: 14px;
+  }
+
+  .controls{
+    display: flex; align-items: center; gap: 18px;
+  }
+
+  /* Mic toggle: por defecto abierto (bone bg + ink ico). Cuando el usuario
+     se silencia, vuelve transparente con borde para indicar el estado off. */
+  .ptt{
+    width: 86px; height: 86px; border-radius: 50%;
+    background: var(--bone); color: var(--ink);
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 18px 46px -16px rgba(45,76,255,.55);
+    transition: transform .12s ease, background .15s, color .15s, box-shadow .15s, border-color .15s;
+    user-select: none; -webkit-user-select: none; touch-action: manipulation;
+    position: relative;
+    border: 2px solid transparent;
+  }
+  .ptt:hover{ transform: scale(1.02); }
+  .ptt:active{ transform: scale(.96); }
+  /* Estado: usuario está hablando ahora (input transcripción activa) */
+  .ptt.speaking{
+    background: var(--accent); color: var(--bone);
+    box-shadow: 0 0 0 14px color-mix(in oklab, var(--accent) 16%, transparent),
+                0 18px 46px -16px rgba(45,76,255,.7);
+  }
+  /* Estado: usuario silenció el micro */
+  .ptt.muted{
+    background: transparent;
+    color: rgba(244,239,230,.6);
+    border-color: rgba(244,239,230,.25);
+    box-shadow: none;
+  }
+  .ptt[disabled]{ opacity: .35; cursor: not-allowed; }
+  .ptt svg{ width: 32px; height: 32px; }
+  .ptt .ring-anim{
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    border: 2px solid color-mix(in oklab, var(--accent) 50%, transparent);
+    opacity: 0; transform: scale(.85);
+    pointer-events: none;
+  }
+  .ptt.speaking .ring-anim{
+    animation: pttRing 1.4s ease-out infinite;
+  }
+  @keyframes pttRing{
+    0%   { opacity: .9; transform: scale(.85); }
+    80%  { opacity: 0;  transform: scale(1.4); }
+    100% { opacity: 0;  transform: scale(1.4); }
+  }
+
+  .end-call{
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--err); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background .15s, transform .12s;
+    box-shadow: 0 10px 28px -8px rgba(232,74,74,.6);
+  }
+  .end-call:hover{ background: #c33d3d; }
+  .end-call:active{ transform: scale(.94); }
+  .end-call svg{ width: 22px; height: 22px; }
+
+  /* ───────────────── Splash inicial ───────────────── */
+  .splash{
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 28px;
+    background: var(--ink);
+    transition: opacity .35s ease;
+  }
+  .splash.hidden{ opacity: 0; pointer-events: none; }
+
+  .splash-eyebrow{
+    font-family: var(--mono); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .22em;
+    color: rgba(244,239,230,.55);
+    display: inline-flex; align-items: center; gap: 9px;
+    margin-bottom: 26px;
+  }
+  .splash-eyebrow .dot{
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 22%, transparent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  .splash h1{
+    font-family: var(--sans); font-weight: 500;
+    font-size: clamp(36px, 6vw, 64px);
+    line-height: .98; letter-spacing: -0.04em;
+    color: var(--bone);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  .splash h1 em{ font-family: var(--serif); font-style: italic; color: var(--accent); font-weight: 400; letter-spacing: -0.025em; }
+  .splash p{
+    font-size: clamp(15px, 1.5vw, 17px);
+    line-height: 1.5; color: rgba(244,239,230,.7);
+    max-width: 460px; margin: 0 auto 30px;
+    text-wrap: pretty;
+  }
+  .start-btn{
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--bone); color: var(--ink);
+    padding: 16px 28px; border-radius: 999px;
+    font-weight: 500; font-size: 15px;
+    transition: background .15s, color .15s, transform .1s;
+    margin-bottom: 14px;
+  }
+  .start-btn:hover{ background: var(--accent); color: var(--bone); }
+  .start-btn:active{ transform: translateY(1px); }
+  .start-btn svg{ width: 18px; height: 18px; }
+  .start-btn[disabled]{ opacity: .55; cursor: progress; }
+
+  .splash-meta{
+    display: inline-flex; gap: 22px; flex-wrap: wrap; justify-content: center;
+    font-family: var(--mono); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .18em;
+    color: rgba(244,239,230,.45);
+    margin-top: 8px;
+  }
+  .splash-meta span{ display: inline-flex; align-items: center; gap: 7px; }
+  .splash-meta svg{ width: 11px; height: 11px; color: var(--accent); }
+
+  /* ───────────────── Errores ───────────────── */
+  .err-banner{
+    position: fixed; left: 50%; bottom: 20px;
+    transform: translateX(-50%);
+    background: var(--err); color: #fff;
+    padding: 10px 16px; border-radius: 999px;
+    font-size: 13px; font-weight: 500;
+    box-shadow: 0 12px 32px -10px rgba(232,74,74,.5);
+    opacity: 0; transition: opacity .25s, transform .25s;
+    pointer-events: none; max-width: calc(100% - 40px);
+  }
+  .err-banner.show{ opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  /* ───────────────── Mobile ───────────────── */
+  @media (max-width: 480px){
+    .wrap{ padding: 16px 18px 22px; }
+    .splash h1{ font-size: 38px; }
+    .quote{ font-size: 26px; }
+    .ptt{ width: 78px; height: 78px; }
+    .ptt svg{ width: 28px; height: 28px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after { animation-duration: .001s !important; transition-duration: .001s !important; }
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <div>
-    <h1>Demo Gemini 3.1 Flash Live · Ana</h1>
-    <div class="sub">Recepcionista de pelu_demo — tools reales contra Sprintia</div>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="brand" href="/" aria-label="Sprintia · volver a la home">
+      <svg class="brand-mark" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="6.58"  y="10.08" width="3.64" height="11.2"  rx="1.82" fill="currentColor"/>
+        <rect x="12.18" y="5.6"   width="3.64" height="17.92" rx="1.82" fill="currentColor"/>
+        <rect x="17.78" y="11.76" width="3.64" height="8.4"   rx="1.82" fill="currentColor"/>
+        <circle cx="19.6" cy="6.16" r="2.38" fill="#2d4cff"/>
+      </svg>
+      <span class="brand-name">Sprintia</span>
+    </a>
+
+    <a class="back-link" href="/" aria-label="Volver a la web">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 2 3.5 6l4 4"/></svg>
+      Volver a la web
+    </a>
   </div>
-  <div class="sub">v0.1 · A/B vs ElevenLabs</div>
-</header>
 
-<main>
-  <aside class="card" id="settings-card">
-    <h2>Sesión</h2>
+  <div class="stage" id="stage" aria-live="polite">
 
-    <label for="voice">Voz</label>
-    <select id="voice">
-      <option value="Kore" selected>Kore — neutra (default)</option>
-      <option value="Aoede">Aoede — femenina cálida</option>
-      <option value="Puck">Puck — juvenil</option>
-      <option value="Charon">Charon — masculina grave</option>
-      <option value="Fenrir">Fenrir — masculina alt</option>
-    </select>
-
-    <label for="tenant">Tenant</label>
-    <input type="text" id="tenant" value="pelu_demo">
-
-    <label for="caller">Caller ID (teléfono simulado)</label>
-    <input type="text" id="caller" value="+34600000000">
-
-    <label for="model">Modelo</label>
-    <select id="model">
-      <option value="gemini-3.1-flash-live-preview" selected>gemini-3.1-flash-live-preview</option>
-      <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5 (A/B)</option>
-    </select>
-
-    <button id="btn-start">Empezar a hablar</button>
-    <button id="btn-stop" class="stop" style="display:none;">Colgar</button>
-
-    <div id="status">
-      <div class="dot"></div>
-      <div id="status-text">Inactivo</div>
+    <!-- Splash inicial: lo que ve el usuario al entrar -->
+    <div class="splash" id="splash">
+      <div class="splash-eyebrow">
+        <span class="dot"></span>
+        Demo en vivo · Habla con Ana
+      </div>
+      <h1>
+        Probador de <em>llamada</em>.
+      </h1>
+      <p>
+        Ana es la recepcionista de una peluquería de demo. Pídele una cita
+        para mañana, muévela a otro día, pregúntale por horarios o precios.
+        Te responde con voz natural en español.
+      </p>
+      <button class="start-btn" id="btn-start" type="button">
+        Iniciar llamada
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
+      </button>
+      <div class="splash-meta">
+        <span>
+          <svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><circle cx="6" cy="6" r="3"/></svg>
+          Pide acceso al micrófono
+        </span>
+        <span>
+          <svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><circle cx="6" cy="6" r="3"/></svg>
+          Funciona mejor con auriculares
+        </span>
+      </div>
     </div>
 
-    <div style="margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.5;">
-      <strong style="color: var(--text);">Tip:</strong> habla con voz clara, frases cortas. Si no oyes a Ana, sube el volumen del Mac. Ctrl+Shift+R para forzar recargar si algo se atasca.
+    <!-- Llamada activa -->
+    <div class="eyebrow" id="call-eyebrow" hidden>
+      <span class="dot"></span>
+      <span>En llamada · </span>
+      <span id="call-timer">00:00</span>
     </div>
-  </aside>
 
-  <section class="panels">
-    <div class="card panel">
-      <h2>Conversación</h2>
-      <div class="panel-body" id="transcript"></div>
+    <div class="quote" id="quote" hidden>
+      Esperando a Ana<span class="dotty">…</span>
     </div>
-    <div class="card panel">
-      <h2>Eventos / tool calls</h2>
-      <div class="panel-body" id="logs"></div>
-    </div>
-  </section>
-</main>
 
-<footer>
-  Demo paralelo a ElevenLabs · GEMINI_API_KEY vive en el server, no se expone al browser ·
-  <a href="https://github.com/anthropics" target="_blank" rel="noopener">backend en sprintiasolutions.com</a>
-</footer>
+    <div class="agent-row" id="agent-row" hidden>
+      <span class="agent-mark" aria-hidden="true">
+        <svg viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5.16"  y="7.92" width="2.86" height="8.8"  rx="1.43" fill="currentColor"/>
+          <rect x="9.57"  y="4.4"  width="2.86" height="14.08" rx="1.43" fill="currentColor"/>
+          <rect x="13.98" y="9.24" width="2.86" height="6.6"  rx="1.43" fill="currentColor"/>
+          <circle cx="15.4" cy="4.84" r="1.87" fill="#2d4cff"/>
+        </svg>
+      </span>
+      <div class="agent-info">
+        <span class="agent-name">Ana · agente</span>
+        <span class="agent-sub" id="agent-sub">contestando por Peluquería Demo</span>
+      </div>
+    </div>
+
+    <div class="state idle" id="state" hidden>
+      <span class="ring"></span>
+      <span id="state-text">Lista para hablar</span>
+    </div>
+
+    <div class="wave" id="wave" hidden aria-hidden="true">
+      <!-- 24 bars -->
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <div class="bottom" id="bottom" hidden>
+    <div class="ptt-hint" id="ptt-hint">
+      Tu micrófono está abierto · Ana te oye
+    </div>
+    <div class="controls">
+      <button class="ptt" id="btn-mic" type="button" aria-label="Silenciar micrófono" aria-pressed="false">
+        <span class="ring-anim" aria-hidden="true"></span>
+        <svg class="ico-mic-on"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="2" width="6" height="13" rx="3"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/>
+        </svg>
+        <svg class="ico-mic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none">
+          <line x1="3" y1="3" x2="21" y2="21"/>
+          <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-5.94-.6"/>
+          <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="8"  y1="22" x2="16" y2="22"/>
+        </svg>
+      </button>
+      <button class="end-call" id="btn-end" type="button" aria-label="Colgar">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z" transform="rotate(135 12 12)"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="err-banner" id="err-banner" role="alert" aria-live="assertive"></div>
 
 <script type="module">
-  // ──────────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────
+  // Configuración (vía query params, defaults sensatos para marketing)
+  // ──────────────────────────────────────────────────────────────────────
+  const qs = new URLSearchParams(location.search);
+  const VOICE  = qs.get('voice')  || 'Aoede'; // femenina cálida, mejor para recepción
+  const TENANT = qs.get('tenant') || 'pelu_demo';
+  const CALLER = qs.get('caller') || '+34600000000';
+  const MODEL  = qs.get('model')  || 'gemini-3.1-flash-live-preview';
+  const DEBUG  = qs.has('debug');
+
+  // ──────────────────────────────────────────────────────────────────────
+  // DOM
+  // ──────────────────────────────────────────────────────────────────────
+  const $splash    = document.getElementById('splash');
+  const $start     = document.getElementById('btn-start');
+  const $eyebrow   = document.getElementById('call-eyebrow');
+  const $timer     = document.getElementById('call-timer');
+  const $quote     = document.getElementById('quote');
+  const $agentRow  = document.getElementById('agent-row');
+  const $agentSub  = document.getElementById('agent-sub');
+  const $state     = document.getElementById('state');
+  const $stateText = document.getElementById('state-text');
+  const $wave      = document.getElementById('wave');
+  const $waveBars  = $wave.querySelectorAll('span');
+  const $bottom    = document.getElementById('bottom');
+  const $mic       = document.getElementById('btn-mic');
+  const $micOnIco  = $mic.querySelector('.ico-mic-on');
+  const $micOffIco = $mic.querySelector('.ico-mic-off');
+  const $pttHint   = document.getElementById('ptt-hint');
+  const $end       = document.getElementById('btn-end');
+  const $err       = document.getElementById('err-banner');
+
+  // ──────────────────────────────────────────────────────────────────────
   // Estado
-  // ──────────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────
   let ws = null;
   let mediaStream = null;
-  let audioCtx = null;
+  let inputCtx = null;
+  let outputCtx = null;
   let workletNode = null;
-  let outputCtx = null;        // contexto de reproducción a 24kHz
-  let playbackTime = 0;        // currentTime futuro donde encolar el siguiente buffer
+  let analyser = null;
+  let playbackTime = 0;
+  let activeSources = [];
   let isRunning = false;
-  let activeSources = [];      // BufferSourceNodes en cola para poder pararlos en barge-in
-  let chunksOut = 0;           // contador de chunks enviados al server (debug)
-  let chunksIn = 0;            // contador de chunks de audio recibidos (debug)
+  let isMuted = false;          // toggle del micro (por defecto abierto)
+  let chunksOut = 0;
+  let chunksIn = 0;
+  let currentAnaTurn = '';   // texto acumulado del turno actual de Ana
+  let currentUsrTurn = '';
+  let timerStart = 0;
+  let timerInterval = null;
+  let waveRAF = null;
 
-  const $start = document.getElementById('btn-start');
-  const $stop = document.getElementById('btn-stop');
-  const $status = document.getElementById('status');
-  const $statusText = document.getElementById('status-text');
-  const $transcript = document.getElementById('transcript');
-  const $logs = document.getElementById('logs');
-
-  // ──────────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────
   // UI helpers
-  // ──────────────────────────────────────────────────────────────────────────
-  function setStatus(state, text) {
-    $status.className = state;
-    $statusText.textContent = text;
+  // ──────────────────────────────────────────────────────────────────────
+  function setState(cls, text){
+    $state.className = `state ${cls}`;
+    $stateText.textContent = text;
   }
-
-  function appendTurn(who, text) {
-    // Si el último turno es del mismo speaker, lo extendemos en vez de crear uno nuevo.
-    const last = $transcript.lastElementChild;
-    if (last && last.dataset.who === who) {
-      last.querySelector('.text').textContent += text;
+  function setQuote(html){
+    if (!$quote.hidden) {
+      $quote.classList.add('fade');
+      setTimeout(() => {
+        $quote.innerHTML = html;
+        $quote.classList.remove('fade');
+      }, 280);
     } else {
-      const el = document.createElement('div');
-      el.className = `turn ${who}`;
-      el.dataset.who = who;
-      el.innerHTML = `<div class="who">${who === 'usr' ? 'Tú' : 'Ana'}</div><div class="text"></div>`;
-      el.querySelector('.text').textContent = text;
-      $transcript.appendChild(el);
+      $quote.innerHTML = html;
     }
-    $transcript.scrollTop = $transcript.scrollHeight;
   }
-
-  function appendLog(type, text) {
-    const ts = new Date().toLocaleTimeString('es-ES', {hour12: false});
-    const el = document.createElement('div');
-    el.className = `log-line ${type}`;
-    el.textContent = `[${ts}] ${text}`;
-    $logs.appendChild(el);
-    $logs.scrollTop = $logs.scrollHeight;
+  function showErr(msg){
+    $err.textContent = msg;
+    $err.classList.add('show');
+    setTimeout(() => $err.classList.remove('show'), 4500);
   }
+  function pad(n){ return n.toString().padStart(2, '0'); }
+  function startTimer(){
+    timerStart = Date.now();
+    timerInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - timerStart) / 1000);
+      $timer.textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+    }, 500);
+  }
+  function stopTimer(){ if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // AudioWorklet (downsample y conversión a PCM16)
-  // ──────────────────────────────────────────────────────────────────────────
-  // Escrito como string para inyectarlo con audioWorklet.addModule(blobURL).
+  // Mini frase rotativa mientras Ana aún no ha dicho nada
+  const WAITING_QUOTES = [
+    'Marcando el número<span class="dotty">…</span>',
+    'Esperando a Ana<span class="dotty">…</span>',
+  ];
+  let waitingIdx = 0;
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Audio: AudioWorklet para downsampling 48k→16k + PCM16
+  // ──────────────────────────────────────────────────────────────────────
   const workletCode = `
     class Downsampler16k extends AudioWorkletProcessor {
       constructor() {
         super();
-        this.targetRate = 16000;
-        this.ratio = sampleRate / this.targetRate;
-        this.buffer = [];
-        this.position = 0;
-        // Tamaño de chunk a enviar: ~50ms = 800 samples a 16kHz.
-        this.flushEvery = 800;
-        this.outBuffer = [];
+        this.ratio = sampleRate / 16000;
+        this.buf = [];
+        this.pos = 0;
+        this.flushEvery = 800; // ~50ms a 16kHz
+        this.out = [];
+        // VAD continuo: el worklet arranca ACTIVO. Gemini Live tiene VAD
+        // nativo y detecta inicio/fin de speech por sí mismo. El botón mic
+        // del UI es solo un toggle de mute opcional para pausar.
+        this.muted = false;
+        this.port.onmessage = (e) => {
+          if (e.data && e.data.cmd === 'mute')   this.muted = true;
+          if (e.data && e.data.cmd === 'unmute') { this.muted = false; this.out.length = 0; }
+        };
       }
       process(inputs) {
         const input = inputs[0];
         if (!input || !input[0]) return true;
-        const channel = input[0];
-        for (let i = 0; i < channel.length; i++) this.buffer.push(channel[i]);
-
-        // Resample lineal al target rate.
-        while (this.position + this.ratio <= this.buffer.length) {
-          const idx = this.position;
+        if (this.muted) return true; // descartamos el audio si el usuario pausó manualmente
+        const ch = input[0];
+        for (let i = 0; i < ch.length; i++) this.buf.push(ch[i]);
+        while (this.pos + this.ratio <= this.buf.length) {
+          const idx = this.pos;
           const lo = Math.floor(idx);
           const hi = lo + 1;
           const frac = idx - lo;
           let s;
-          if (hi >= this.buffer.length) s = this.buffer[lo];
-          else s = this.buffer[lo] * (1 - frac) + this.buffer[hi] * frac;
-          this.outBuffer.push(s);
-          this.position += this.ratio;
+          if (hi >= this.buf.length) s = this.buf[lo];
+          else s = this.buf[lo] * (1 - frac) + this.buf[hi] * frac;
+          this.out.push(s);
+          this.pos += this.ratio;
         }
-
-        // Drop ya-consumido del buffer interno para no crecer infinito.
-        const consumed = Math.floor(this.position);
-        if (consumed > 0) {
-          this.buffer.splice(0, consumed);
-          this.position -= consumed;
-        }
-
-        // Flush en chunks de ~50ms.
-        while (this.outBuffer.length >= this.flushEvery) {
-          const chunk = this.outBuffer.splice(0, this.flushEvery);
+        const consumed = Math.floor(this.pos);
+        if (consumed > 0) { this.buf.splice(0, consumed); this.pos -= consumed; }
+        while (this.out.length >= this.flushEvery) {
+          const chunk = this.out.splice(0, this.flushEvery);
           const pcm = new Int16Array(chunk.length);
           for (let i = 0; i < chunk.length; i++) {
             const v = Math.max(-1, Math.min(1, chunk[i]));
@@ -342,83 +595,71 @@
     }
     registerProcessor('downsampler-16k', Downsampler16k);
   `;
-
-  async function loadWorklet(ctx) {
+  async function loadWorklet(ctx){
     const blob = new Blob([workletCode], {type: 'application/javascript'});
-    const url = URL.createObjectURL(blob);
-    await ctx.audioWorklet.addModule(url);
+    await ctx.audioWorklet.addModule(URL.createObjectURL(blob));
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Reproducción audio Gemini (24kHz PCM16) en cola
-  // ──────────────────────────────────────────────────────────────────────────
-  function playPCM24k(pcm16Bytes) {
+  // Reproducción 24kHz PCM16 que llega del bridge
+  function playPCM24k(bytes){
     if (!outputCtx) return;
-    // Defensivo: AudioContext suspendido (políticas de browser) se reactiva.
     if (outputCtx.state === 'suspended') outputCtx.resume().catch(() => {});
-
-    // Convierte Int16 → Float32 [-1, 1].
-    const view = new Int16Array(pcm16Bytes);
+    const view = new Int16Array(bytes);
     const float = new Float32Array(view.length);
-    for (let i = 0; i < view.length; i++) {
+    for (let i = 0; i < view.length; i++){
       float[i] = view[i] / (view[i] < 0 ? 0x8000 : 0x7FFF);
     }
-    const buffer = outputCtx.createBuffer(1, float.length, 24000);
-    buffer.getChannelData(0).set(float);
-
+    const buf = outputCtx.createBuffer(1, float.length, 24000);
+    buf.getChannelData(0).set(float);
     const src = outputCtx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(outputCtx.destination);
-
-    // Encadena el siguiente buffer al final del anterior para reproducción
-    // continua sin gaps.
+    src.buffer = buf; src.connect(outputCtx.destination);
     const now = outputCtx.currentTime;
     if (playbackTime < now) playbackTime = now;
     src.start(playbackTime);
-    playbackTime += buffer.duration;
-
-    // Trackea para poder pararlo en barge-in (si Ana es interrumpida).
+    playbackTime += buf.duration;
     activeSources.push(src);
     src.onended = () => {
       const i = activeSources.indexOf(src);
       if (i >= 0) activeSources.splice(i, 1);
     };
   }
-
-  function flushPlayback() {
-    // Cuando el modelo es interrumpido por el usuario, paramos la reproducción
-    // del audio en cola SIN cerrar el AudioContext (cerrarlo y reabrirlo deja
-    // el nuevo en estado 'suspended' por las políticas del browser y los
-    // siguientes turnos no suenan).
-    activeSources.forEach(s => {
-      try { s.stop(); } catch {}
-      try { s.disconnect(); } catch {}
-    });
+  function stopPlayback(){
+    activeSources.forEach(s => { try{ s.stop(); }catch{} try{ s.disconnect(); }catch{} });
     activeSources = [];
     if (outputCtx) playbackTime = outputCtx.currentTime;
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
+  // Waveform animation (out: cuando Ana habla; in: cuando user habla)
+  function animateWave(active){
+    if (!waveRAF){
+      const tick = () => {
+        const now = Date.now() / 200;
+        $waveBars.forEach((b, i) => {
+          const phase = (i - $waveBars.length/2) * 0.5;
+          const noise = (Math.sin(now + phase) + Math.cos(now*1.3 + phase*0.7)) * 0.5 + 0.5;
+          const factor = active === 'speaking' ? (0.4 + 0.6*noise)
+                       : active === 'listening' ? (0.25 + 0.5*noise)
+                       : 0.2;
+          const h = 6 + factor * 24;
+          b.style.height = h.toFixed(1) + 'px';
+          b.classList.toggle('hi', i === Math.floor($waveBars.length/2) || i === Math.floor($waveBars.length/2)+3);
+        });
+        waveRAF = requestAnimationFrame(tick);
+      };
+      waveRAF = requestAnimationFrame(tick);
+    }
+  }
+  function stopWave(){ if (waveRAF) cancelAnimationFrame(waveRAF); waveRAF = null; }
+
+  // ──────────────────────────────────────────────────────────────────────
   // Start / Stop
-  // ──────────────────────────────────────────────────────────────────────────
-  async function start() {
+  // ──────────────────────────────────────────────────────────────────────
+  async function start(){
     if (isRunning) return;
     isRunning = true;
-    $start.style.display = 'none';
-    $stop.style.display = 'block';
-    $transcript.innerHTML = '';
-    $logs.innerHTML = '';
-    chunksOut = 0;
-    chunksIn = 0;
-    activeSources = [];
-    setStatus('', 'Conectando…');
+    $start.disabled = true;
 
-    const voice = document.getElementById('voice').value;
-    const tenant = document.getElementById('tenant').value || 'pelu_demo';
-    const caller = document.getElementById('caller').value || '+34600000000';
-    const model = document.getElementById('model').value;
-
-    // 1) Pedir permiso de micro y abrir contextos.
+    // 1. Permiso de micrófono
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -426,162 +667,235 @@
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-        },
+        }
       });
-    } catch (e) {
-      setStatus('error', 'Permiso de micro denegado');
-      appendLog('error', 'getUserMedia falló: ' + e.message);
-      stop();
+    } catch (e){
+      isRunning = false; $start.disabled = false;
+      showErr('No has dado permiso al micrófono.');
       return;
     }
 
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 2. Audio contexts
+    inputCtx  = new (window.AudioContext || window.webkitAudioContext)();
     outputCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 24000});
     playbackTime = 0;
 
     try {
-      await loadWorklet(audioCtx);
-    } catch (e) {
-      setStatus('error', 'AudioWorklet no soportado en este browser');
-      appendLog('error', 'addModule: ' + e.message);
-      stop();
+      await loadWorklet(inputCtx);
+    } catch (e){
+      cleanup();
+      showErr('Tu navegador no soporta AudioWorklet. Prueba en Chrome o Firefox.');
       return;
     }
 
-    const source = audioCtx.createMediaStreamSource(mediaStream);
-    workletNode = new AudioWorkletNode(audioCtx, 'downsampler-16k');
-    source.connect(workletNode);
-    // No conectamos workletNode a destination — sería feedback; solo recogemos
-    // sus mensajes con port.onmessage.
+    const src = inputCtx.createMediaStreamSource(mediaStream);
+    workletNode = new AudioWorkletNode(inputCtx, 'downsampler-16k');
+    src.connect(workletNode);
+    // VAD continuo: el worklet arranca ABIERTO. El user puede silenciar
+    // tocando el botón mic, pero por defecto Ana le oye desde el segundo
+    // uno y Gemini Live decide cuándo es start/end-of-speech.
+    isMuted = false;
+    $mic.classList.remove('muted');
+    $mic.setAttribute('aria-pressed', 'false');
+    $micOnIco.style.display  = '';
+    $micOffIco.style.display = 'none';
 
-    // 2) Abrir WebSocket al bridge.
+    // 3. Transición visual al modo llamada
+    $splash.classList.add('hidden');
+    setTimeout(() => $splash.style.display = 'none', 360);
+    $eyebrow.hidden = false;
+    $quote.hidden = false;
+    $agentRow.hidden = false;
+    $state.hidden = false;
+    $wave.hidden = false;
+    $bottom.hidden = false;
+    setState('connecting', 'Conectando');
+    setQuote(WAITING_QUOTES[0]);
+    animateWave('idle');
+    startTimer();
+
+    // 4. WebSocket al bridge
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = `${proto}//${location.host}/gemini-demo/ws` +
-                `?voice=${encodeURIComponent(voice)}` +
-                `&tenant_id=${encodeURIComponent(tenant)}` +
-                `&caller_id=${encodeURIComponent(caller)}` +
-                `&model=${encodeURIComponent(model)}`;
-    appendLog('event', 'Abriendo WS: ' + url);
+                `?voice=${encodeURIComponent(VOICE)}` +
+                `&tenant_id=${encodeURIComponent(TENANT)}` +
+                `&caller_id=${encodeURIComponent(CALLER)}` +
+                `&model=${encodeURIComponent(MODEL)}`;
+    if (DEBUG) console.log('[demo] connecting to', url);
     ws = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
 
     ws.onopen = () => {
-      setStatus('listening', 'Escuchando…');
-      appendLog('event', 'WS abierto. Habla cuando quieras.');
-      // Cuando el WS está listo, empezamos a enviar los chunks del worklet.
+      setState('listening', 'Te escucho');
+      $pttHint.textContent = 'Tu micrófono está abierto · Ana te oye';
+      // Worklet → WS: enviamos cada chunk PCM16 16kHz que produce el
+      // worklet. Sin gating manual; el VAD nativo de Gemini decide cuándo
+      // es start/end-of-speech.
       workletNode.port.onmessage = (ev) => {
-        // Defensivo: AudioContext suspendido (cambio de pestaña, idle) → reanudar.
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        if (inputCtx && inputCtx.state === 'suspended') inputCtx.resume().catch(() => {});
         if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(ev.data);
           chunksOut++;
-          if (chunksOut % 40 === 0) {
-            // ~2s de audio enviado; loguea para confirmar que sigue fluyendo.
-            console.log(`[mic] chunksOut=${chunksOut} (~${(chunksOut * 0.05).toFixed(1)}s audio)`);
-          }
         }
       };
     };
 
     ws.onmessage = (ev) => {
-      if (typeof ev.data === 'string') {
-        try {
-          const msg = JSON.parse(ev.data);
-          handleEvent(msg);
-        } catch {
-          appendLog('event', 'msg no JSON: ' + ev.data.slice(0, 100));
-        }
-      } else {
-        // Audio binario del modelo (PCM16 24kHz).
-        playPCM24k(ev.data);
-        chunksIn++;
-        if (chunksIn % 80 === 0) {
-          console.log(`[ana] chunksIn=${chunksIn}`);
-        }
-        if ($status.className !== 'speaking') setStatus('speaking', 'Ana hablando…');
+      if (typeof ev.data === 'string'){
+        try { handleEvent(JSON.parse(ev.data)); }
+        catch { /* mensaje no JSON, ignoramos */ }
+        return;
+      }
+      // Audio binario de Ana
+      playPCM24k(ev.data);
+      chunksIn++;
+      if ($state.className.indexOf('speaking') < 0){
+        setState('speaking', 'Ana está hablando');
+        animateWave('speaking');
       }
     };
 
     ws.onclose = () => {
-      appendLog('event', 'WS cerrado');
-      stop();
+      if (isRunning){
+        showErr('Se cortó la conexión. Vuelve a intentarlo.');
+        stop();
+      }
     };
-
-    ws.onerror = (e) => {
-      appendLog('error', 'WS error: ' + (e.message || 'unknown'));
-      setStatus('error', 'Error WS');
+    ws.onerror = () => {
+      if (DEBUG) console.warn('[demo] ws error');
+      showErr('Error de conexión con el servidor.');
     };
   }
 
-  function handleEvent(msg) {
-    switch (msg.type) {
+  function handleEvent(msg){
+    if (DEBUG) console.log('[demo] event', msg);
+    switch (msg.type){
       case 'ready':
-        appendLog('event', `Sesión Gemini lista (model=${msg.model}, voice=${msg.voice}, tenant=${msg.tenant_id})`);
-        break;
-      case 'user_transcript':
-        appendTurn('usr', msg.text);
+        $agentSub.textContent = `contestando por Peluquería Demo`;
         break;
       case 'assistant_transcript':
-        appendTurn('ana', msg.text);
-        if ($status.className !== 'speaking') setStatus('speaking', 'Ana hablando…');
+        currentAnaTurn += msg.text;
+        // Cogemos la última frase no vacía como quote principal
+        const sentences = currentAnaTurn.split(/(?<=[.!?¿…])\s+/).filter(s => s.trim().length > 4);
+        const last = sentences[sentences.length - 1] || currentAnaTurn;
+        setQuote(`«${last.trim()}»`);
         break;
-      case 'interrupted':
-        appendLog('event', '⚡ usuario interrumpió — vaciando audio out');
-        flushPlayback();
-        setStatus('listening', 'Escuchando…');
-        break;
-      case 'tool_start':
-        appendLog('tool_start', `→ ${msg.name}(${JSON.stringify(msg.args)})`);
-        break;
-      case 'tool_end':
-        appendLog('tool_end', `← ${msg.name} → ${typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result)}`);
-        break;
-      case 'tool_cancelled':
-        appendLog('event', `tool calls canceladas: ${msg.ids.join(', ')}`);
+      case 'user_transcript':
+        // Usuario está hablando ahora (Gemini empieza a transcribir input):
+        // marcamos el botón mic en color accent + estado "Escuchando".
+        currentUsrTurn += msg.text;
+        $mic.classList.add('speaking');
+        if (isRunning && !isMuted){
+          setState('listening', 'Te escucho');
+          animateWave('listening');
+        }
         break;
       case 'turn_complete':
-        appendLog('event', '✓ turno cerrado por el modelo — esperando tu próximo turno');
-        // Tras pequeño delay (para no cortar el último audio en la cola),
-        // pasamos a estado 'listening' para que sepas que puedes hablar.
-        setTimeout(() => {
-          if (isRunning && $status.className !== 'listening') {
-            setStatus('listening', 'Escuchando…');
-          }
-        }, 500);
+        // Reset del turno acumulado para la siguiente respuesta
+        currentAnaTurn = '';
+        currentUsrTurn = '';
+        $mic.classList.remove('speaking');
+        if (isRunning){
+          setState('listening', isMuted ? 'Micro silenciado' : 'Te escucho');
+          animateWave(isMuted ? 'idle' : 'listening');
+        }
+        break;
+      case 'interrupted':
+        stopPlayback();
+        if (isRunning) setState('listening', isMuted ? 'Micro silenciado' : 'Te escucho');
+        break;
+      case 'tool_start':
+        setState('connecting', 'Consultando agenda');
+        $mic.classList.remove('speaking');
+        break;
+      case 'tool_end':
+        // Volvemos a 'speaking' o 'listening' según contexto
         break;
       case 'error':
-        appendLog('error', msg.message);
-        setStatus('error', 'Error');
+        showErr(msg.message || 'Error en la sesión');
+        setState('error', 'Error');
         break;
-      default:
-        appendLog('event', 'evento: ' + JSON.stringify(msg).slice(0, 150));
     }
   }
 
-  function stop() {
+  function stop(){
+    if (!isRunning) return;
     isRunning = false;
-    $start.style.display = 'block';
-    $stop.style.display = 'none';
-    setStatus('', 'Inactivo');
-    try { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: 'stop'})); } catch {}
-    try { if (ws) ws.close(); } catch {}
-    ws = null;
-    try { if (workletNode) workletNode.disconnect(); } catch {}
+    isMuted = false;
+    $mic.classList.remove('muted', 'speaking');
+    stopTimer();
+    stopWave();
+    try { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: 'stop'})); } catch{}
+    try { if (ws) ws.close(); } catch{}
+    cleanup();
+    // Volver al splash
+    $splash.style.display = 'flex';
+    setTimeout(() => $splash.classList.remove('hidden'), 20);
+    $start.disabled = false;
+    $eyebrow.hidden = true;
+    $quote.hidden = true;
+    $agentRow.hidden = true;
+    $state.hidden = true;
+    $wave.hidden = true;
+    $bottom.hidden = true;
+    $timer.textContent = '00:00';
+    currentAnaTurn = '';
+    currentUsrTurn = '';
+  }
+
+  function cleanup(){
+    try { if (workletNode) workletNode.disconnect(); } catch{}
     workletNode = null;
-    try { if (mediaStream) mediaStream.getTracks().forEach(t => t.stop()); } catch {}
+    try { if (mediaStream) mediaStream.getTracks().forEach(t => t.stop()); } catch{}
     mediaStream = null;
-    try { if (audioCtx) audioCtx.close(); } catch {}
-    audioCtx = null;
-    try { if (outputCtx) outputCtx.close(); } catch {}
+    try { if (inputCtx) inputCtx.close(); } catch{}
+    inputCtx = null;
+    try { if (outputCtx) outputCtx.close(); } catch{}
     outputCtx = null;
-    playbackTime = 0;
-    activeSources = [];
+    stopPlayback();
+    ws = null;
+    chunksOut = 0;
+    chunksIn = 0;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Mic toggle (mute/unmute) — VAD continuo, no push-to-talk
+  // ──────────────────────────────────────────────────────────────────────
+  function toggleMute(){
+    if (!isRunning || !workletNode) return;
+    isMuted = !isMuted;
+    workletNode.port.postMessage({cmd: isMuted ? 'mute' : 'unmute'});
+    $mic.classList.toggle('muted', isMuted);
+    $mic.classList.remove('speaking');
+    $mic.setAttribute('aria-pressed', isMuted ? 'true' : 'false');
+    $micOnIco.style.display  = isMuted ? 'none' : '';
+    $micOffIco.style.display = isMuted ? '' : 'none';
+    $pttHint.textContent = isMuted
+      ? 'Micrófono silenciado · toca para reactivar'
+      : 'Tu micrófono está abierto · Ana te oye';
+    if (isMuted){
+      setState('idle', 'Micro silenciado');
+      animateWave('idle');
+    } else {
+      setState('listening', 'Te escucho');
+      animateWave('listening');
+    }
   }
 
   $start.addEventListener('click', start);
-  $stop.addEventListener('click', stop);
+  $end.addEventListener('click', stop);
+  $mic.addEventListener('click', toggleMute);
 
-  window.addEventListener('beforeunload', stop);
+  // Espacio = toggle mute (más cómodo que click)
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && isRunning && !e.repeat
+        && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)){
+      e.preventDefault();
+      toggleMute();
+    }
+  });
+
+  window.addEventListener('beforeunload', () => { try{ stop(); }catch{} });
 </script>
 
 </body>
