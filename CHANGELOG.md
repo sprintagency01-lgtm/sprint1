@@ -6,6 +6,14 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-05 (landing · bloque "Llamada de prueba" al segundo lugar)
+
+### Cambiado
+
+- `app/templates/landing.html`: la sección `#probar` se mueve de su posición original (entre "Cómo funciona" y "Sectores") a **justo después del Hero**, antes del marquee. Razón: tras leer el hero el visitante ya tiene la promesa, y el siguiente bloque ahora le da la prueba inmediata sin tener que scrollear hasta la mitad de la página. El padding del section pasa de `0 0 96px` a `48px 0 56px` para que respire del hero y conecte mejor con el marquee.
+
+---
+
 ## 2026-05-05 (gemini-demo · iframe absoluto + cache busting — segundo round del modal)
 
 Pese al fix del `100dvh`, el modal seguía saliendo completamente negro. Tras refrescar producción se confirma que la causa probable era doble: cache del browser sirviendo una versión vieja del demo, y la altura del wrap dependiendo de cálculos en cadena (`html 100%` → `body 100%` → `.wrap 100%`) que algún navegador no resuelve bien dentro de iframe con padre que tiene `height` + `max-height`.
