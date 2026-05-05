@@ -6,6 +6,19 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-05 (gemini-demo · fix de altura en iframe — modal ya no sale negro)
+
+Bugfix del modal de "Llamada de prueba" en la landing: el contenido del demo aparecía completamente negro porque el `.wrap` usaba `height: 100dvh`, y dentro de iframe Chrome/Safari resuelven `100dvh` a la altura del viewport del browser top-level (no del iframe). Con un viewport de ~900px y un modal de ~760px, el splash quedaba renderizado pero fuera del área visible del iframe → modal negro.
+
+### Corregido
+
+- `app/templates/gemini_demo.html`:
+  - En `body.embed`, el `.wrap` ahora usa `height: 100%` + `min-height: 0` + `max-height: none`. El iframe tiene su propia altura (definida por la card del modal: 760px max) y el contenido se ajusta a ese contenedor real, no al viewport del browser padre.
+  - `body.embed { overflow: hidden; height: 100% }` para que la altura se propague desde el iframe sin scroll.
+  - Standalone (sin embed) sigue usando `height: 100dvh` y se ve igual que antes.
+
+---
+
 ## 2026-05-05 (gemini-demo · UI viva en el splash + modo embed para el modal)
 
 Refuerzo visual del demo para que el modal de la landing muestre algo elegante desde el primer momento (no un cuadrado negro hasta que el visitante pulse "Iniciar llamada"), y modo `embed` automático cuando se carga dentro de iframe.
