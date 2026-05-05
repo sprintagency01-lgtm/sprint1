@@ -6,6 +6,24 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-05 (gemini-demo · UI viva en el splash + modo embed para el modal)
+
+Refuerzo visual del demo para que el modal de la landing muestre algo elegante desde el primer momento (no un cuadrado negro hasta que el visitante pulse "Iniciar llamada"), y modo `embed` automático cuando se carga dentro de iframe.
+
+### Cambiado
+
+- `app/templates/gemini_demo.html`:
+  - **Avatar circular grande en el splash** (140×140 → 100×100 en mobile/iframe pequeño): círculo con gradiente `accent → accent-2`, sombra azul, icono de teléfono dentro, y dos anillos pulsantes con animación `avatarRing` 2.6 s desfasados — efecto tipo iOS in-call. El splash ya no se ve "vacío" mientras el visitante decide si empezar.
+  - **Modo `embed`**: nuevo bloque CSS `body.embed` que oculta la topbar (logo + "Volver a la web" — redundante dentro del modal de la landing), reduce el padding del wrap, escala el avatar/h1/p al tamaño del modal (780×760), y compacta el botón de inicio.
+  - **JS detecta el modo embed** automáticamente: `?embed=1` en la URL **o** `window !== window.parent` (estamos en iframe). Aplica `<body class="embed">` en cuanto carga. Así, aunque la landing cambie el query string, el demo se adapta solo al venir embebido.
+
+### Notas
+
+- Sin cambios en backend ni en el bridge `gemini_live_bridge.py`.
+- HTML validado: 0 errores.
+
+---
+
 ## 2026-05-05 (gemini-demo · VAD continuo + bloque "Llamada de prueba" en la landing)
 
 Arreglo del demo público `/gemini-demo`: el modelo no detectaba la voz del usuario porque el frontend estaba en push-to-talk con el AudioWorklet muteado por defecto, y los visitantes no descubrían que tenían que mantener pulsado el botón. Cambio a VAD continuo (que es lo que Gemini 3.1 Flash Live espera nativamente), botón mic convertido en toggle de mute opcional, y nueva sección **"Llamada de prueba"** en la landing con un modal-popup que embebe el demo en iframe — el visitante prueba sin salir de la página.
