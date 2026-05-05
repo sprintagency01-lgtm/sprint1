@@ -6,6 +6,42 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-04 (CMS + portal · logo Pulse en todas las vistas + criterio editorial del italic)
+
+Continúa el rebrand a Sprintia · Pulse: aplicación del logo PulseMark + nombre "Sprintia" en headers/sidebars del CMS y portal, sustitución del placeholder "ReservaBot" en titles/footers, color brand de gráficos del verde antiguo (#059669) al accent electric (#2d4cff), y reducción del énfasis serif italic en la landing a **una sola palabra por bloque** (la más relevante).
+
+### Cambiado
+
+- `app/cms/templates/_layout.html`:
+  - Sidebar header: el cuadrado `bg-brand-600` con icono de chat se sustituye por el **PulseMark inline SVG** (3 barras + dot accent) y el nombre pasa de "ReservaBot" a **"Sprintia"** en Inter Tight 600 con tracking -0.035em.
+  - Macros de gráficos `bar_chart` y `sparkline`: color por defecto `#059669` → `#2d4cff` (electric blue, color de marca Pulse).
+- `app/cms/templates/login.html`:
+  - Logo del header rediseñado a PulseMark + "Sprintia" en lugar del cuadrado verde con icono de chat.
+  - H1 "Iniciar sesión" pasa a Instrument Serif italic (consistencia con el resto del rebrand).
+  - Fondo del flow de login: bone (#f4efe6) en lugar de slate-50.
+  - Footer "ReservaBot · Panel interno" → "Sprintia · Panel interno".
+- `app/cms/templates/{billing, bookings, client_detail, clients_list, conversations, dashboard, leads, settings}.html`:
+  - Title block: `· ReservaBot` → `· Sprintia · Admin`. Cero cambios visuales más allá del title (todas extienden `_layout.html` y heredan el header nuevo automáticamente).
+- `app/portal/static/shell.jsx`:
+  - Nuevo componente `PulseMark` exportado a `window` para reutilización por todas las screens del portal.
+  - Sidebar desktop: cuadrado `bg-brand-600` con `ICONS.reservas` reemplazado por **PulseMark** + nombre del negocio + sublabel "**por Sprintia**". Co-branding limpio: la marca primaria sigue siendo el negocio del cliente, Sprintia es la firma discreta.
+  - Drawer mobile: idem.
+
+### Cambiado · landing
+
+- `app/templates/landing.html`:
+  - Énfasis serif italic accent reducido a **una sola palabra por bloque** (la más relevante semánticamente). Antes había bloques con frases enteras en italic (`*'ya lo resolvió Sprintia'*`, `*Y un chat opcional en Telegram*`, `*lo que ya usas*`, `*Bastante menos*`, etc.) que diluían el efecto editorial. Ahora cada bloque tiene exactamente un punto focal en color: `Sprintia`, `Telegram`, `usas`, `menos`, `nada`, `citas`, `humanas`, `voz`, `guapi`, `llamamos`, `Gracias`, `Literalmente`, `reservas`, `18:30`, `11:15`, `17:00`, `90 €`.
+  - Puntuación final fuera del `<em>`: ahora `<em>Literalmente</em>.` en vez de `<em>Literalmente.</em>` (el punto en sans queda más limpio que en serif italic).
+  - Bug arreglado en el JS de sectores (`renderSector`): el viejo `replace(/$/, '</em>')` generaba `<em>` huérfano en sectores cuyo título no contenía " y " (Veterinarias, Pequeños restaurantes). Sustituido por una regex que enfatiza solo la última palabra del título, siempre.
+
+### Notas
+
+- Las clases `brand-*` de Tailwind (badges, focus rings, botones primarios) ya tenían el alias actualizado en commit anterior (`c22f1ee`) a la paleta Pulse, así que `bg-brand-600` y similares ya pintaban en electric blue. No se ha tocado nada de eso.
+- Las referencias `bg-emerald-*` / `text-emerald-*` se han mantenido intactas por ser **semánticas** ("Activo", "OK", deltas positivos, badge "Voz" en bookings). Cambiarlas a accent rompería el código de color universal verde=ok.
+- Cero cambios funcionales: backend, agente Ana, ElevenLabs, Calendar y rutas intactos.
+
+---
+
 ## 2026-05-04 (landing — retoque hero post-Pulse)
 
 ### Cambiado

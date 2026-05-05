@@ -6,6 +6,16 @@ const Icon = ({ d, cls='w-5 h-5' }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cls} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:d}} />
 );
 
+// Sprintia PulseMark — logo de marca para headers
+const PulseMark = ({ size=28 }) => (
+  <svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" width={size} height={size} aria-hidden="true">
+    <rect x="6.58"  y="10.08" width="3.64" height="11.2"  rx="1.82" fill="currentColor"/>
+    <rect x="12.18" y="5.6"   width="3.64" height="17.92" rx="1.82" fill="currentColor"/>
+    <rect x="17.78" y="11.76" width="3.64" height="8.4"   rx="1.82" fill="currentColor"/>
+    <circle cx="19.6" cy="6.16" r="2.38" fill="#2d4cff"/>
+  </svg>
+);
+
 const ICONS = {
   hoy:            '<path d="M3 12 12 3l9 9M5 10v10h4v-6h6v6h4V10"/>',
   llamadas:       '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92Z"/>',
@@ -133,13 +143,11 @@ function Shell({ active, setActive, user, children }) {
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-60 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col">
-        <div className="px-5 h-16 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
-          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
-            <Icon d={ICONS.reservas} cls="w-5 h-5"/>
-          </div>
+        <div className="px-5 h-16 flex items-center gap-2.5 border-b border-slate-200 dark:border-slate-800">
+          <span className="text-slate-900 dark:text-slate-100"><PulseMark size={26}/></span>
           <div>
-            <div className="font-semibold text-sm leading-tight">{NEGOCIO.nombre}</div>
-            <div className="text-[10px] uppercase tracking-wider text-slate-400">{NEGOCIO.sector}</div>
+            <div className="font-semibold text-sm leading-tight tracking-tight">{NEGOCIO.nombre}</div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">por Sprintia</div>
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">{NAV.map(navButton)}</nav>
@@ -160,11 +168,9 @@ function Shell({ active, setActive, user, children }) {
           <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMenuOpen(false)} />
           <aside className="relative w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col slide-in-right">
             <div className="px-5 h-16 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
-                  <Icon d={ICONS.reservas} cls="w-5 h-5"/>
-                </div>
-                <div className="font-semibold text-sm">{NEGOCIO.nombre}</div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-slate-900 dark:text-slate-100"><PulseMark size={24}/></span>
+                <div className="font-semibold text-sm tracking-tight">{NEGOCIO.nombre}</div>
               </div>
               <button onClick={()=>setMenuOpen(false)} className="p-1 text-slate-500"><Icon d={ICONS.close}/></button>
             </div>
@@ -208,4 +214,4 @@ function Shell({ active, setActive, user, children }) {
   );
 }
 
-Object.assign(window, { Icon, ICONS, NAV, Avatar, StatusDot, CanalBadge, Card, Kpi, Shell, initialsOf, eur, eurPreciso });
+Object.assign(window, { Icon, ICONS, NAV, PulseMark, Avatar, StatusDot, CanalBadge, Card, Kpi, Shell, initialsOf, eur, eurPreciso });

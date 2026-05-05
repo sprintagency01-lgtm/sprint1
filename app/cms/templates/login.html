@@ -1,18 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Iniciar sesión · ReservaBot{% endblock %}
+{% block title %}Iniciar sesión · Sprintia Admin{% endblock %}
 
 {% block body %}
-<div class="min-h-screen flex items-center justify-center p-4">
+<div class="min-h-screen flex items-center justify-center p-4" style="background:#f4efe6">
   <div class="w-full max-w-sm">
-    <div class="flex items-center gap-2 justify-center mb-8">
-      <div class="w-10 h-10 rounded-lg bg-brand-600 flex items-center justify-center text-white">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-4 4v-4Z"/></svg>
-      </div>
-      <div class="font-semibold text-xl">ReservaBot</div>
+    <div class="flex items-center gap-3 justify-center mb-8">
+      <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" class="w-9 h-9" aria-hidden="true">
+        <rect x="8.46"  y="12.96" width="4.68" height="14.4"  rx="2.34" fill="#15161a"/>
+        <rect x="15.66" y="7.2"   width="4.68" height="23.04" rx="2.34" fill="#15161a"/>
+        <rect x="22.86" y="15.12" width="4.68" height="10.8"  rx="2.34"  fill="#15161a"/>
+        <circle cx="25.2" cy="7.92" r="3.06" fill="#2d4cff"/>
+      </svg>
+      <div class="font-semibold text-xl tracking-tight" style="letter-spacing:-0.035em">Sprintia</div>
     </div>
 
     <div class="bg-white rounded-xl border border-slate-200 p-6">
-      <h1 class="text-lg font-semibold mb-1">Iniciar sesión</h1>
+      <h1 class="mb-1" style="font-family:'Instrument Serif',serif;font-style:italic;font-size:30px;letter-spacing:-0.02em">Iniciar sesión</h1>
       <p class="text-sm text-slate-500 mb-6">Panel de administración interno</p>
 
       {% if error %}
@@ -36,7 +39,7 @@
       </form>
     </div>
 
-    <p class="text-xs text-slate-400 text-center mt-6">ReservaBot · Panel interno</p>
+    <p class="text-xs text-slate-400 text-center mt-6">Sprintia · Panel interno</p>
   </div>
 </div>
 {% endblock %}
