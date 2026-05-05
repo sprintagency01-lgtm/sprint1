@@ -1161,7 +1161,11 @@
     transition: transform .3s cubic-bezier(.2,.7,.3,1);
   }
   .demo-modal.open .demo-modal-card{ transform: translateY(0); }
+  /* Iframe absoluto para forzar dimensiones y que no dependa del cálculo
+     "100% del parent" — algunos navegadores fallan al propagar altura cuando
+     el padre tiene height fijo + max-height. */
   .demo-modal-card iframe{
+    position:absolute; inset:0;
     width:100%; height:100%;
     border:none;
     background:var(--ink);
@@ -2451,7 +2455,9 @@
   const $openDemo   = document.getElementById('open-demo');
 
   function openDemo(){
-    if (!$demoIframe.src) $demoIframe.src = '/gemini-demo?embed=1';
+    // Cache busting con timestamp: garantiza que cada apertura del modal
+    // trae la última versión del demo, sin que el browser sirva una vieja.
+    $demoIframe.src = '/gemini-demo?embed=1&t=' + Date.now();
     $demoModal.classList.add('open');
     $demoModal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('demo-open');

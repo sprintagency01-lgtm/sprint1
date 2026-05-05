@@ -363,12 +363,15 @@
          hace que el contenido se renderice más alto que el iframe y quede
          fuera de la zona visible → modal negro. Con 100% nos atenemos a la
          altura real del iframe. */
-  body.embed{ overflow: hidden; height: 100%; }
+  body.embed,
+  body.embed html{ overflow: hidden; height: 100%; min-height: 100%; }
   body.embed .wrap{
-    height: 100%;
+    position: absolute; inset: 0;
+    height: auto;
     min-height: 0;
     max-height: none;
     padding: 18px 22px 24px;
+    display: flex; flex-direction: column;
   }
   body.embed .topbar{ display: none; }
   body.embed .splash{ padding: 20px; }

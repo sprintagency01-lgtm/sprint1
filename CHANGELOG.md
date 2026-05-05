@@ -6,6 +6,21 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-05 (gemini-demo · iframe absoluto + cache busting — segundo round del modal)
+
+Pese al fix del `100dvh`, el modal seguía saliendo completamente negro. Tras refrescar producción se confirma que la causa probable era doble: cache del browser sirviendo una versión vieja del demo, y la altura del wrap dependiendo de cálculos en cadena (`html 100%` → `body 100%` → `.wrap 100%`) que algún navegador no resuelve bien dentro de iframe con padre que tiene `height` + `max-height`.
+
+### Corregido
+
+- `app/templates/landing.html`:
+  - Iframe del modal ahora con `position: absolute; inset: 0` además de `width/height: 100%`. Con esto el iframe se ata al rectángulo de la card sin depender de la propagación de altura del CSS layout.
+  - Cache busting: `openDemo()` añade `?t=<timestamp>` a la URL del iframe, así cada apertura trae la última versión del demo y nunca se sirve un cache viejo.
+- `app/templates/gemini_demo.html`:
+  - `body.embed { height: 100%; min-height: 100% }` aplicado también a `html` por seguridad.
+  - `.wrap` en modo embed pasa de `height: 100%` a **`position: absolute; inset: 0`**. Igual que el iframe, ya no depende del cálculo de altura en cadena — se ata al viewport del documento del iframe directamente.
+
+---
+
 ## 2026-05-05 (gemini-demo · fix de altura en iframe — modal ya no sale negro)
 
 Bugfix del modal de "Llamada de prueba" en la landing: el contenido del demo aparecía completamente negro porque el `.wrap` usaba `height: 100dvh`, y dentro de iframe Chrome/Safari resuelven `100dvh` a la altura del viewport del browser top-level (no del iframe). Con un viewport de ~900px y un modal de ~760px, el splash quedaba renderizado pero fuera del área visible del iframe → modal negro.
