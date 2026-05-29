@@ -16,6 +16,7 @@ from .config import settings
 log = logging.getLogger(__name__)
 
 _CONTACTS_URL = "https://api.brevo.com/v3/contacts"
+_SMTP_EMAIL_URL = "https://api.brevo.com/v3/smtp/email"
 _TIMEOUT = httpx.Timeout(10.0, connect=4.0)
 
 
@@ -27,6 +28,7 @@ class BrevoLead:
     email: str = ""
     company: str = ""
     sector: str = ""
+    country: str = ""
 
 
 def sync_lead_contact(lead: BrevoLead) -> None:
@@ -52,18 +54,59 @@ def sync_lead_contact(lead: BrevoLead) -> None:
         log.exception("No se pudo sincronizar lead id=%s con Brevo", lead.lead_id)
 
 
+def send_transactional_email(
+    *,
+    to_email: str,
+    to_name: str = "",
+    subject: str,
+    text: str,
+    html_body: str,
+    tag: str = "lead",
+) -> bool:
+    """Envía un email transaccional vía Brevo si hay sender configurado."""
+    api_key = settings.brevo_api_key.strip()
+    sender_email = settings.brevo_sender_email.strip()
+    if not api_key or not sender_email:
+        return False
+
+    payload: dict = {
+        "sender": {
+            "name": settings.brevo_sender_name.strip() or "Sprintia",
+            "email": sender_email,
+        },
+        "to": [{"email": to_email, "name": to_name or to_email}],
+        "subject": subject,
+        "htmlContent": html_body,
+        "textContent": text,
+        "tags": [tag],
+    }
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json",
+    }
+    try:
+        r = httpx.post(_SMTP_EMAIL_URL, json=payload, headers=headers, timeout=_TIMEOUT)
+        r.raise_for_status()
+        return True
+    except Exception:
+        log.exception("No se pudo enviar email transaccional Brevo a %s", to_email)
+        return False
+
+
 def _contact_payload(lead: BrevoLead) -> dict:
     attributes: dict[str, str] = {}
     first_name, last_name = _split_name(lead.name)
     if first_name:
-        attributes["FNAME"] = first_name
+        attributes["FIRSTNAME"] = first_name
     if last_name:
-        attributes["LNAME"] = last_name
+        attributes["LASTNAME"] = last_name
     phone = _normalize_phone(lead.phone)
     if phone:
         attributes["SMS"] = phone
     _set_optional_attribute(attributes, settings.brevo_company_attribute, lead.company, 200)
     _set_optional_attribute(attributes, settings.brevo_sector_attribute, lead.sector, 80)
+    _set_optional_attribute(attributes, settings.brevo_country_attribute, lead.country, 80)
     _set_optional_attribute(attributes, settings.brevo_lead_id_attribute, str(lead.lead_id), 40)
 
     payload: dict = {

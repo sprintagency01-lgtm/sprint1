@@ -123,7 +123,11 @@ BREVO_UPDATE_ENABLED=true
 # Opcional si creas estos atributos personalizados en Brevo.
 BREVO_COMPANY_ATTRIBUTE=COMPANY
 BREVO_SECTOR_ATTRIBUTE=SECTOR
+BREVO_COUNTRY_ATTRIBUTE=COUNTRY
 BREVO_LEAD_ID_ATTRIBUTE=LEAD_ID
+# Sender verificado en Brevo para emails transaccionales/autorespuesta.
+BREVO_SENDER_EMAIL=sprintagency01@gmail.com
+BREVO_SENDER_NAME=Sprintia
 ```
 
 ### SESSION_SECRET generado para ti

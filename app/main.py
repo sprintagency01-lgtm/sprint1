@@ -221,6 +221,7 @@ async def create_lead(
     email: str = Form(""),
     company: str = Form(""),
     sector: str = Form(""),
+    country: str = Form(""),
     message: str = Form(""),
     consent: str = Form(""),
     source: str = Form(""),
@@ -235,6 +236,7 @@ async def create_lead(
     phone = phone.strip()
     email = email.strip()
     company = company.strip()
+    country = country.strip()
 
     if not name or len(name) < 2:
         return JSONResponse({"error": "Dinos tu nombre."}, status_code=400)
@@ -251,7 +253,7 @@ async def create_lead(
     try:
         lead_id = db.save_lead(
             name=name, phone=phone, email=email, company=company,
-            sector=sector, message=message.strip(),
+            sector=sector, country=country, message=message.strip(),
             source=source or "landing",
             utm_source=utm_source, utm_medium=utm_medium,
             utm_campaign=utm_campaign, utm_term=utm_term, utm_content=utm_content,
@@ -284,6 +286,7 @@ async def create_lead(
             email=email,
             company=company,
             sector=sector,
+            country=country,
             message=message.strip(),
             source=source or "landing",
             utm_source=utm_source,

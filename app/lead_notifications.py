@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from .brevo import BrevoLead, sync_lead_contact
+from .brevo import BrevoLead, send_transactional_email, sync_lead_contact
 from .config import settings
 
 log = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ class LeadNotification:
     email: str = ""
     company: str = ""
     sector: str = ""
+    country: str = ""
     message: str = ""
     source: str = ""
     utm_source: str = ""
@@ -53,6 +54,7 @@ def _sync_brevo(lead: LeadNotification) -> None:
             email=lead.email,
             company=lead.company,
             sector=lead.sector,
+            country=lead.country,
         )
     )
 
@@ -71,6 +73,7 @@ def _post_webhook(lead: LeadNotification) -> None:
             "email": lead.email,
             "company": lead.company,
             "sector": lead.sector,
+            "country": lead.country,
             "source": lead.source,
             "utm_source": lead.utm_source,
             "utm_medium": lead.utm_medium,
@@ -137,6 +140,15 @@ def _send_autoreply(lead: LeadNotification) -> None:
 
 
 def _send_email(*, to: str, subject: str, text: str, html_body: str, log_label: str) -> None:
+    if send_transactional_email(
+        to_email=to,
+        subject=subject,
+        text=text,
+        html_body=html_body,
+        tag="lead",
+    ):
+        return
+
     api_key = settings.resend_api_key.strip()
     sender = settings.lead_email_from.strip()
     if not api_key or not sender:
@@ -169,6 +181,8 @@ def _internal_text(lead: LeadNotification) -> str:
         lines.append(f"Empresa: {lead.company}")
     if lead.sector:
         lines.append(f"Sector: {lead.sector}")
+    if lead.country:
+        lines.append(f"País: {lead.country}")
     if lead.source:
         lines.append(f"Origen: {lead.source}")
     utm = " / ".join(x for x in (lead.utm_source, lead.utm_medium, lead.utm_campaign) if x)

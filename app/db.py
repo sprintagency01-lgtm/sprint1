@@ -435,6 +435,7 @@ class Lead(Base):
     email: Mapped[str] = mapped_column(String(200), default="")
     company: Mapped[str] = mapped_column(String(200), default="")
     sector: Mapped[str] = mapped_column(String(80), default="")
+    country: Mapped[str] = mapped_column(String(80), default="")
     message: Mapped[str] = mapped_column(Text, default="")
     # Origen del lead (landing_final_cta, hero, nav, etc.) y UTMs
     source: Mapped[str] = mapped_column(String(80), default="")
@@ -511,6 +512,7 @@ def save_lead(
     email: str = "",
     company: str = "",
     sector: str = "",
+    country: str = "",
     message: str = "",
     source: str = "",
     utm_source: str = "",
@@ -526,6 +528,7 @@ def save_lead(
         lead = Lead(
             name=name[:200], phone=phone[:40], email=email[:200],
             company=company[:200], sector=sector[:80], message=message[:2000],
+            country=country[:80],
             source=source[:80],
             utm_source=utm_source[:120], utm_medium=utm_medium[:120],
             utm_campaign=utm_campaign[:120], utm_term=utm_term[:120],
@@ -1371,6 +1374,9 @@ def _auto_migrate_sqlite() -> None:
          "ALTER TABLE equipo ADD COLUMN turnos_json TEXT DEFAULT '[[\"10:00\",\"20:00\"]]'"),
         ("equipo", "vacaciones_json",
          "ALTER TABLE equipo ADD COLUMN vacaciones_json TEXT DEFAULT '[]'"),
+        # --- Leads landing: país capturado en el formulario público ---
+        ("leads", "country",
+         "ALTER TABLE leads ADD COLUMN country VARCHAR(80) DEFAULT ''"),
     ]
 
     try:

@@ -87,11 +87,15 @@ class Settings:
     brevo_update_enabled: bool = os.getenv("BREVO_UPDATE_ENABLED", "true").strip().lower() in {
         "1", "true", "yes", "on", "si", "sí",
     }
-    # Opcionales. Si creas atributos personalizados en Brevo, pon aquí sus
-    # nombres exactos (en mayúsculas), p.ej. BREVO_COMPANY_ATTRIBUTE=COMPANY.
-    brevo_company_attribute: str = os.getenv("BREVO_COMPANY_ATTRIBUTE", "")
-    brevo_sector_attribute: str = os.getenv("BREVO_SECTOR_ATTRIBUTE", "")
-    brevo_lead_id_attribute: str = os.getenv("BREVO_LEAD_ID_ATTRIBUTE", "")
+    # Atributos creados en Brevo para enriquecer los contactos de la landing.
+    brevo_company_attribute: str = os.getenv("BREVO_COMPANY_ATTRIBUTE", "COMPANY")
+    brevo_sector_attribute: str = os.getenv("BREVO_SECTOR_ATTRIBUTE", "SECTOR")
+    brevo_country_attribute: str = os.getenv("BREVO_COUNTRY_ATTRIBUTE", "COUNTRY")
+    brevo_lead_id_attribute: str = os.getenv("BREVO_LEAD_ID_ATTRIBUTE", "LEAD_ID")
+    # Sender transaccional verificado en Brevo. Si está configurado, las
+    # alertas/autorespuestas salen por Brevo; si no, se conserva fallback Resend.
+    brevo_sender_email: str = os.getenv("BREVO_SENDER_EMAIL", "")
+    brevo_sender_name: str = os.getenv("BREVO_SENDER_NAME", "Sprintia")
 
 
 settings = Settings()

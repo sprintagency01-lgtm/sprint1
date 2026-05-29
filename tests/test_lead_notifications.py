@@ -27,6 +27,7 @@ def _settings(**overrides):
         "brevo_update_enabled": True,
         "brevo_company_attribute": "",
         "brevo_sector_attribute": "",
+        "brevo_country_attribute": "",
         "brevo_lead_id_attribute": "",
     }
     base.update(overrides)
@@ -89,6 +90,7 @@ def test_create_lead_schedules_notification(monkeypatch):
             "phone": "+34622222222",
             "email": "marta@example.com",
             "company": "Salon Marta",
+            "country": "España",
             "consent": "on",
             "source": "hero",
         },
@@ -99,6 +101,7 @@ def test_create_lead_schedules_notification(monkeypatch):
     assert sent
     assert sent[0].email == "marta@example.com"
     assert sent[0].source == "hero"
+    assert sent[0].country == "España"
 
 
 def test_brevo_contact_payload():
@@ -106,6 +109,7 @@ def test_brevo_contact_payload():
         brevo_list_ids="12, 18",
         brevo_update_enabled=True,
         brevo_company_attribute="COMPANY",
+        brevo_country_attribute="COUNTRY",
         brevo_lead_id_attribute="LEAD_ID",
     )
     original = brevo.settings
@@ -118,6 +122,7 @@ def test_brevo_contact_payload():
                 phone="+34 600 111 222",
                 email="marta@example.com",
                 company="Salon Marta",
+                country="España",
             )
         )
     finally:
@@ -127,9 +132,10 @@ def test_brevo_contact_payload():
     assert payload["listIds"] == [12, 18]
     assert payload["updateEnabled"] is True
     assert payload["attributes"]["SMS"] == "+34600111222"
-    assert payload["attributes"]["FNAME"] == "Marta"
-    assert payload["attributes"]["LNAME"] == "López Ruiz"
+    assert payload["attributes"]["FIRSTNAME"] == "Marta"
+    assert payload["attributes"]["LASTNAME"] == "López Ruiz"
     assert payload["attributes"]["COMPANY"] == "Salon Marta"
+    assert payload["attributes"]["COUNTRY"] == "España"
     assert payload["attributes"]["LEAD_ID"] == "9"
 
 

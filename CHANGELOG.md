@@ -6,6 +6,21 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-29 (leads · Brevo CRM y autorespuesta)
+
+### Añadido
+
+- Integración de leads con Brevo: cada envío de `/api/leads` crea/actualiza el contacto en Brevo, lo añade a la lista `Leads web Sprintia` y guarda atributos de empresa, sector, país e id interno del lead.
+- Campo `País` en el modal de leads de la landing, con `España` como valor por defecto, persistido en BD y enviado a Brevo.
+- Emails automáticos vía Brevo transaccional: autorespuesta al lead y aviso interno si las variables de Railway están configuradas.
+
+### Env / despliegue
+
+- Nuevas variables Railway para producción: `BREVO_API_KEY`, `BREVO_LIST_IDS`, `BREVO_UPDATE_ENABLED`, `BREVO_*_ATTRIBUTE`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`, `LEAD_AUTOREPLY_ENABLED`, `LEAD_AUTOREPLY_SUBJECT`, `LEAD_NOTIFY_EMAIL_TO`.
+- En Brevo se creó la carpeta `Sprintia`, la lista `Leads web Sprintia` (id `4`) y los atributos `COUNTRY`, `COMPANY`, `SECTOR`, `LEAD_ID`.
+
+---
+
 ## 2026-05-05 (demo + landing · colgar cierra modal + nuevo copy del final CTA)
 
 ### Añadido
