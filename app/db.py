@@ -436,6 +436,7 @@ class Lead(Base):
     company: Mapped[str] = mapped_column(String(200), default="")
     sector: Mapped[str] = mapped_column(String(80), default="")
     country: Mapped[str] = mapped_column(String(80), default="")
+    landing_language: Mapped[str] = mapped_column(String(16), default="es")
     message: Mapped[str] = mapped_column(Text, default="")
     # Origen del lead (landing_final_cta, hero, nav, etc.) y UTMs
     source: Mapped[str] = mapped_column(String(80), default="")
@@ -513,6 +514,7 @@ def save_lead(
     company: str = "",
     sector: str = "",
     country: str = "",
+    landing_language: str = "es",
     message: str = "",
     source: str = "",
     utm_source: str = "",
@@ -529,6 +531,7 @@ def save_lead(
             name=name[:200], phone=phone[:40], email=email[:200],
             company=company[:200], sector=sector[:80], message=message[:2000],
             country=country[:80],
+            landing_language=(landing_language or "es")[:16],
             source=source[:80],
             utm_source=utm_source[:120], utm_medium=utm_medium[:120],
             utm_campaign=utm_campaign[:120], utm_term=utm_term[:120],
@@ -1377,6 +1380,8 @@ def _auto_migrate_sqlite() -> None:
         # --- Leads landing: país capturado en el formulario público ---
         ("leads", "country",
          "ALTER TABLE leads ADD COLUMN country VARCHAR(80) DEFAULT ''"),
+        ("leads", "landing_language",
+         "ALTER TABLE leads ADD COLUMN landing_language VARCHAR(16) DEFAULT 'es'"),
     ]
 
     try:

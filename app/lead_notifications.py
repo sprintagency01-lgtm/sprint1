@@ -30,6 +30,7 @@ class LeadNotification:
     company: str = ""
     sector: str = ""
     country: str = ""
+    landing_language: str = "es"
     message: str = ""
     source: str = ""
     utm_source: str = ""
@@ -112,27 +113,10 @@ def _send_internal_email(lead: LeadNotification) -> None:
 def _send_autoreply(lead: LeadNotification) -> None:
     if not settings.lead_autoreply_enabled or not lead.email:
         return
-    name = lead.name.split()[0] if lead.name else "ahí"
-    text = (
-        f"Hola {name},\n\n"
-        "Gracias por contactar con Sprintia. Hemos recibido tu solicitud y "
-        "te responderemos lo antes posible para entender tu caso y ver cómo "
-        "podemos ayudarte con el asistente de reservas por voz.\n\n"
-        "Si necesitas añadir algo, puedes responder directamente a este email.\n\n"
-        "Un saludo,\n"
-        "Equipo Sprintia"
-    )
-    html_body = (
-        f"<p>Hola {html.escape(name)},</p>"
-        "<p>Gracias por contactar con Sprintia. Hemos recibido tu solicitud y "
-        "te responderemos lo antes posible para entender tu caso y ver cómo "
-        "podemos ayudarte con el asistente de reservas por voz.</p>"
-        "<p>Si necesitas añadir algo, puedes responder directamente a este email.</p>"
-        "<p>Un saludo,<br>Equipo Sprintia</p>"
-    )
+    subject, text, html_body = _autoreply_content(lead)
     _send_email(
         to=lead.email,
-        subject=settings.lead_autoreply_subject,
+        subject=subject,
         text=text,
         html_body=html_body,
         log_label=f"autorespuesta lead id={lead.lead_id}",
@@ -140,13 +124,21 @@ def _send_autoreply(lead: LeadNotification) -> None:
 
 
 def _send_email(*, to: str, subject: str, text: str, html_body: str, log_label: str) -> None:
-    if send_transactional_email(
-        to_email=to,
-        subject=subject,
-        text=text,
-        html_body=html_body,
-        tag="lead",
-    ):
+    recipients = _split_recipients(to)
+    if not recipients:
+        return
+
+    remaining: list[str] = []
+    for recipient in recipients:
+        if not send_transactional_email(
+            to_email=recipient,
+            subject=subject,
+            text=text,
+            html_body=html_body,
+            tag="lead",
+        ):
+            remaining.append(recipient)
+    if not remaining:
         return
 
     api_key = settings.resend_api_key.strip()
@@ -156,7 +148,7 @@ def _send_email(*, to: str, subject: str, text: str, html_body: str, log_label: 
         return
     payload = {
         "from": sender,
-        "to": [to],
+        "to": remaining,
         "subject": subject,
         "text": text,
         "html": html_body,
@@ -183,6 +175,8 @@ def _internal_text(lead: LeadNotification) -> str:
         lines.append(f"Sector: {lead.sector}")
     if lead.country:
         lines.append(f"País: {lead.country}")
+    if lead.landing_language:
+        lines.append(f"Idioma landing: {lead.landing_language}")
     if lead.source:
         lines.append(f"Origen: {lead.source}")
     utm = " / ".join(x for x in (lead.utm_source, lead.utm_medium, lead.utm_campaign) if x)
@@ -199,3 +193,67 @@ def _internal_text(lead: LeadNotification) -> str:
 def _internal_html(lead: LeadNotification) -> str:
     text = html.escape(_internal_text(lead)).replace("\n", "<br>")
     return f"<p>{text}</p>"
+
+
+def _split_recipients(raw: str) -> list[str]:
+    return [p.strip() for p in (raw or "").replace(";", ",").split(",") if p.strip()]
+
+
+def _language_family(raw: str) -> str:
+    lang = (raw or "es").strip().lower().replace("_", "-")
+    return (lang.split("-", 1)[0] or "es")[:2]
+
+
+def _autoreply_content(lead: LeadNotification) -> tuple[str, str, str]:
+    name = lead.name.split()[0] if lead.name else ""
+    family = _language_family(lead.landing_language)
+
+    if family == "en":
+        greeting = f"Hi {name}," if name else "Hi,"
+        subject = "We received your request at Sprintia"
+        body = (
+            "Thanks for contacting Sprintia. We have received your request and "
+            "will get back to you as soon as possible to understand your case "
+            "and see how we can help with your voice booking assistant."
+        )
+        extra = "If you need to add anything, you can reply directly to this email."
+        signoff = "Best,\nSprintia Team"
+    elif family == "pt":
+        greeting = f"Olá {name}," if name else "Olá,"
+        subject = "Recebemos o seu pedido na Sprintia"
+        body = (
+            "Obrigado por contactar a Sprintia. Recebemos o seu pedido e "
+            "responderemos o mais breve possível para entender o seu caso e ver "
+            "como podemos ajudar com o assistente de reservas por voz."
+        )
+        extra = "Se precisar de acrescentar algo, pode responder diretamente a este email."
+        signoff = "Cumprimentos,\nEquipa Sprintia"
+    elif family == "fr":
+        greeting = f"Bonjour {name}," if name else "Bonjour,"
+        subject = "Nous avons bien reçu votre demande chez Sprintia"
+        body = (
+            "Merci d’avoir contacté Sprintia. Nous avons bien reçu votre demande "
+            "et nous vous répondrons dès que possible afin de comprendre votre "
+            "besoin et voir comment notre assistant vocal de réservation peut vous aider."
+        )
+        extra = "Si vous souhaitez ajouter une précision, vous pouvez répondre directement à cet email."
+        signoff = "Cordialement,\nL’équipe Sprintia"
+    else:
+        greeting = f"Hola {name}," if name else "Hola,"
+        subject = settings.lead_autoreply_subject or "Hemos recibido tu solicitud en Sprintia"
+        body = (
+            "Gracias por contactar con Sprintia. Hemos recibido tu solicitud y "
+            "te responderemos lo antes posible para entender tu caso y ver cómo "
+            "podemos ayudarte con el asistente de reservas por voz."
+        )
+        extra = "Si necesitas añadir algo, puedes responder directamente a este email."
+        signoff = "Un saludo,\nEquipo Sprintia"
+
+    text = f"{greeting}\n\n{body}\n\n{extra}\n\n{signoff}"
+    html_body = (
+        f"<p>{html.escape(greeting)}</p>"
+        f"<p>{html.escape(body)}</p>"
+        f"<p>{html.escape(extra)}</p>"
+        f"<p>{html.escape(signoff).replace(chr(10), '<br>')}</p>"
+    )
+    return subject, text, html_body

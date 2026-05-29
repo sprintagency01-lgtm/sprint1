@@ -29,6 +29,8 @@ def _settings(**overrides):
         "brevo_sector_attribute": "",
         "brevo_country_attribute": "",
         "brevo_lead_id_attribute": "",
+        "brevo_sender_email": "",
+        "brevo_sender_name": "Sprintia",
     }
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -91,6 +93,7 @@ def test_create_lead_schedules_notification(monkeypatch):
             "email": "marta@example.com",
             "company": "Salon Marta",
             "country": "España",
+            "landing_language": "en-US",
             "consent": "on",
             "source": "hero",
         },
@@ -102,6 +105,23 @@ def test_create_lead_schedules_notification(monkeypatch):
     assert sent[0].email == "marta@example.com"
     assert sent[0].source == "hero"
     assert sent[0].country == "España"
+    assert sent[0].landing_language == "en-us"
+
+
+def test_autoreply_uses_landing_language():
+    subject, text, html_body = ln._autoreply_content(
+        LeadNotification(
+            lead_id=11,
+            name="Laura",
+            phone="+34611111111",
+            email="laura@example.com",
+            landing_language="en-US",
+        )
+    )
+
+    assert subject == "We received your request at Sprintia"
+    assert "Thanks for contacting Sprintia" in text
+    assert "Hi Laura" in html_body
 
 
 def test_brevo_contact_payload():

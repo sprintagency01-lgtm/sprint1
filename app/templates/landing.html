@@ -2011,6 +2011,7 @@
           </select>
         </div>
         <input type="hidden" name="consent" value="1">
+        <input type="hidden" id="lead-language" name="landing_language" value="es">
         <button type="submit" class="btn btn-accent">Enviar <span class="arrow" aria-hidden="true">→</span></button>
       </form>
       <div class="modal-foot">Al enviar aceptas que te contactemos por teléfono. No compartimos tus datos.</div>
@@ -2421,7 +2422,14 @@
   const ctxLabel = document.getElementById('lead-ctx-label');
   const phoneInput = document.getElementById('lead-phone');
   const nameInput = document.getElementById('lead-name');
+  const languageInput = document.getElementById('lead-language');
   const errNode = document.getElementById('lead-err');
+
+  function landingLanguage(){
+    const htmlLang = document.documentElement.getAttribute('lang');
+    const bodyLang = document.body && document.body.getAttribute('lang');
+    return (htmlLang || bodyLang || navigator.language || 'es').trim();
+  }
 
   function openModal(ctx){
     ctxLabel.textContent = ctx || 'Contacto';
@@ -2518,6 +2526,8 @@
     // Construir form-data con todos los campos + source + UTMs
     const fd = new FormData(modalForm);
     fd.set('source', ctxLabel.textContent || 'modal');
+    fd.set('landing_language', landingLanguage());
+    if (languageInput) languageInput.value = landingLanguage();
     const params = new URLSearchParams(location.search);
     ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(k => {
       if (params.get(k)) fd.set(k, params.get(k));

@@ -56,8 +56,8 @@ Variables mínimas (ver `.env.example`):
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD` — bootstrap del primer usuario del CMS.
 - `SESSION_SECRET` — firma las cookies de sesión (CMS y portal).
 - `LEAD_NOTIFY_WEBHOOK_URL` o `LEAD_NOTIFY_EMAIL_TO` — alerta interna cuando
-  entra un lead por la landing. El email requiere `RESEND_API_KEY` y
-  `LEAD_EMAIL_FROM`.
+  entra un lead por la landing. `LEAD_NOTIFY_EMAIL_TO` acepta varios emails
+  separados por comas; si `BREVO_SENDER_EMAIL` está configurado, sale por Brevo.
 - `LEAD_AUTOREPLY_ENABLED=true` — envía autorespuesta al lead si dejó email
   (requiere también `RESEND_API_KEY` y `LEAD_EMAIL_FROM`).
 - `BREVO_API_KEY`, `BREVO_LIST_IDS` — sincroniza cada lead como contacto en

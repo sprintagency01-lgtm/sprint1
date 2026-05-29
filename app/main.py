@@ -222,6 +222,7 @@ async def create_lead(
     company: str = Form(""),
     sector: str = Form(""),
     country: str = Form(""),
+    landing_language: str = Form("es"),
     message: str = Form(""),
     consent: str = Form(""),
     source: str = Form(""),
@@ -237,6 +238,7 @@ async def create_lead(
     email = email.strip()
     company = company.strip()
     country = country.strip()
+    landing_language = _normalize_landing_language(landing_language or request.headers.get("accept-language", "es"))
 
     if not name or len(name) < 2:
         return JSONResponse({"error": "Dinos tu nombre."}, status_code=400)
@@ -253,7 +255,8 @@ async def create_lead(
     try:
         lead_id = db.save_lead(
             name=name, phone=phone, email=email, company=company,
-            sector=sector, country=country, message=message.strip(),
+            sector=sector, country=country, landing_language=landing_language,
+            message=message.strip(),
             source=source or "landing",
             utm_source=utm_source, utm_medium=utm_medium,
             utm_campaign=utm_campaign, utm_term=utm_term, utm_content=utm_content,
@@ -287,6 +290,7 @@ async def create_lead(
             company=company,
             sector=sector,
             country=country,
+            landing_language=landing_language,
             message=message.strip(),
             source=source or "landing",
             utm_source=utm_source,
@@ -296,6 +300,18 @@ async def create_lead(
     )
 
     return {"ok": True, "id": lead_id}
+
+
+def _normalize_landing_language(raw: str) -> str:
+    lang = (raw or "es").strip().lower().replace("_", "-")
+    if "," in lang:
+        lang = lang.split(",", 1)[0].strip()
+    if not lang:
+        return "es"
+    # `en-US;q=0.9` no debería llegar desde el hidden input, pero puede venir
+    # del header Accept-Language como fallback.
+    lang = lang.split(";", 1)[0].strip()
+    return lang[:16] or "es"
 
 
 # ---------- Telegram webhook ----------
