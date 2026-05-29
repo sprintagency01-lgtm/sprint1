@@ -96,6 +96,7 @@ class Settings:
     # alertas/autorespuestas salen por Brevo; si no, se conserva fallback Resend.
     brevo_sender_email: str = os.getenv("BREVO_SENDER_EMAIL", "")
     brevo_sender_name: str = os.getenv("BREVO_SENDER_NAME", "Sprintia")
+    brevo_autoreply_template_id: str = os.getenv("BREVO_AUTOREPLY_TEMPLATE_ID", "")
 
 
 settings = Settings()

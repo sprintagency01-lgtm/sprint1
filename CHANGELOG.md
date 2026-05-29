@@ -15,11 +15,17 @@ Entrada más reciente arriba.
 - Emails automáticos vía Brevo transaccional: autorespuesta al lead y aviso interno si las variables de Railway están configuradas.
 - Idioma de la landing capturado en el formulario (`landing_language`) para enviar la autorespuesta en el idioma declarado por la página (`es`, `en`, `pt`, `fr`; fallback español).
 - `LEAD_NOTIFY_EMAIL_TO` acepta varios destinatarios separados por comas para avisar a más de una persona del equipo.
+- Autorespuesta migrada a plantilla transaccional de Brevo (`BREVO_AUTOREPLY_TEMPLATE_ID`) con variables `SUBJECT`, `GREETING`, `BODY`, `EXTRA`, `SIGNOFF_*`.
 
 ### Env / despliegue
 
 - Nuevas variables Railway para producción: `BREVO_API_KEY`, `BREVO_LIST_IDS`, `BREVO_UPDATE_ENABLED`, `BREVO_*_ATTRIBUTE`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`, `LEAD_AUTOREPLY_ENABLED`, `LEAD_AUTOREPLY_SUBJECT`, `LEAD_NOTIFY_EMAIL_TO`.
+- Nueva variable `BREVO_AUTOREPLY_TEMPLATE_ID=1`; plantilla creada en Brevo como `Sprintia - Autorespuesta lead`.
 - En Brevo se creó la carpeta `Sprintia`, la lista `Leads web Sprintia` (id `4`) y los atributos `COUNTRY`, `COMPANY`, `SECTOR`, `LEAD_ID`.
+
+### Corregido
+
+- CTAs `Probar Sprintia` de nav, hero y cierre vuelven a abrir el formulario de lead. Sólo el botón `Llamada de prueba` abre el modal con `/gemini-demo`.
 
 ---
 

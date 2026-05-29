@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from .brevo import BrevoLead, send_transactional_email, sync_lead_contact
+from .brevo import BrevoLead, send_template_email, send_transactional_email, sync_lead_contact
 from .config import settings
 
 log = logging.getLogger(__name__)
@@ -114,6 +114,15 @@ def _send_autoreply(lead: LeadNotification) -> None:
     if not settings.lead_autoreply_enabled or not lead.email:
         return
     subject, text, html_body = _autoreply_content(lead)
+    template_id = _int_or_none(settings.brevo_autoreply_template_id)
+    if template_id and send_template_email(
+        to_email=lead.email,
+        to_name=lead.name or lead.email,
+        template_id=template_id,
+        params=_autoreply_params(lead),
+        tag="lead-autoreply",
+    ):
+        return
     _send_email(
         to=lead.email,
         subject=subject,
@@ -204,7 +213,49 @@ def _language_family(raw: str) -> str:
     return (lang.split("-", 1)[0] or "es")[:2]
 
 
+def _int_or_none(raw: str) -> int | None:
+    try:
+        return int(str(raw or "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _autoreply_params(lead: LeadNotification) -> dict[str, str]:
+    subject, text, html_body = _autoreply_content(lead)
+    _, greeting, body, extra, signoff = _autoreply_parts(lead)
+    signoff_lines = signoff.split("\n", 1)
+    first_name = lead.name.split()[0] if lead.name else ""
+    return {
+        "FIRSTNAME": first_name,
+        "NAME": lead.name or "",
+        "COMPANY": lead.company or "",
+        "COUNTRY": lead.country or "",
+        "LANGUAGE": lead.landing_language or "es",
+        "SUBJECT": subject,
+        "GREETING": greeting,
+        "BODY": body,
+        "EXTRA": extra,
+        "SIGNOFF_LINE1": signoff_lines[0],
+        "SIGNOFF_LINE2": signoff_lines[1] if len(signoff_lines) > 1 else "",
+        "TEXT": text,
+        "HTML": html_body,
+    }
+
+
 def _autoreply_content(lead: LeadNotification) -> tuple[str, str, str]:
+    subject, greeting, body, extra, signoff = _autoreply_parts(lead)
+
+    text = f"{greeting}\n\n{body}\n\n{extra}\n\n{signoff}"
+    html_body = (
+        f"<p>{html.escape(greeting)}</p>"
+        f"<p>{html.escape(body)}</p>"
+        f"<p>{html.escape(extra)}</p>"
+        f"<p>{html.escape(signoff).replace(chr(10), '<br>')}</p>"
+    )
+    return subject, text, html_body
+
+
+def _autoreply_parts(lead: LeadNotification) -> tuple[str, str, str, str, str]:
     name = lead.name.split()[0] if lead.name else ""
     family = _language_family(lead.landing_language)
 
@@ -249,11 +300,4 @@ def _autoreply_content(lead: LeadNotification) -> tuple[str, str, str]:
         extra = "Si necesitas añadir algo, puedes responder directamente a este email."
         signoff = "Un saludo,\nEquipo Sprintia"
 
-    text = f"{greeting}\n\n{body}\n\n{extra}\n\n{signoff}"
-    html_body = (
-        f"<p>{html.escape(greeting)}</p>"
-        f"<p>{html.escape(body)}</p>"
-        f"<p>{html.escape(extra)}</p>"
-        f"<p>{html.escape(signoff).replace(chr(10), '<br>')}</p>"
-    )
-    return subject, text, html_body
+    return subject, greeting, body, extra, signoff

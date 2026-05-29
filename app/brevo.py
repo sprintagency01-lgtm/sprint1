@@ -94,6 +94,39 @@ def send_transactional_email(
         return False
 
 
+def send_template_email(
+    *,
+    to_email: str,
+    to_name: str = "",
+    template_id: int,
+    params: dict,
+    tag: str = "lead",
+) -> bool:
+    """Envía un email transaccional usando una plantilla Brevo."""
+    api_key = settings.brevo_api_key.strip()
+    if not api_key or not template_id:
+        return False
+
+    payload: dict = {
+        "to": [{"email": to_email, "name": to_name or to_email}],
+        "templateId": template_id,
+        "params": params,
+        "tags": [tag],
+    }
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json",
+    }
+    try:
+        r = httpx.post(_SMTP_EMAIL_URL, json=payload, headers=headers, timeout=_TIMEOUT)
+        r.raise_for_status()
+        return True
+    except Exception:
+        log.exception("No se pudo enviar plantilla Brevo id=%s a %s", template_id, to_email)
+        return False
+
+
 def _contact_payload(lead: BrevoLead) -> dict:
     attributes: dict[str, str] = {}
     first_name, last_name = _split_name(lead.name)

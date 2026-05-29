@@ -124,6 +124,23 @@ def test_autoreply_uses_landing_language():
     assert "Hi Laura" in html_body
 
 
+def test_autoreply_params_for_brevo_template():
+    params = ln._autoreply_params(
+        LeadNotification(
+            lead_id=12,
+            name="Laura",
+            phone="+34611111111",
+            email="laura@example.com",
+            landing_language="es",
+        )
+    )
+
+    assert params["SUBJECT"] == "Auto subject"
+    assert params["GREETING"] == "Hola Laura,"
+    assert "Gracias por contactar" in params["BODY"]
+    assert params["SIGNOFF_LINE1"] == "Un saludo,"
+
+
 def test_brevo_contact_payload():
     monkeypatch_settings = _settings(
         brevo_list_ids="12, 18",

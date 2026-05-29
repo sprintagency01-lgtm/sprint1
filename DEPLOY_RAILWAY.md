@@ -128,6 +128,7 @@ BREVO_LEAD_ID_ATTRIBUTE=LEAD_ID
 # Sender verificado en Brevo para emails transaccionales/autorespuesta.
 BREVO_SENDER_EMAIL=sprintagency01@gmail.com
 BREVO_SENDER_NAME=Sprintia
+BREVO_AUTOREPLY_TEMPLATE_ID=<id_template_autorespuesta>
 ```
 
 ### SESSION_SECRET generado para ti
