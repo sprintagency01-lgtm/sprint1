@@ -17,7 +17,7 @@ import re
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Header, Request, Form
+from fastapi import BackgroundTasks, FastAPI, Header, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from .config import settings
@@ -28,6 +28,7 @@ from . import diag
 from . import sheets_sync
 from . import telegram as tg_module
 from . import gemini_live_bridge
+from .lead_notifications import LeadNotification, notify_new_lead
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
 from .portal import router as portal_router
@@ -214,6 +215,7 @@ _PHONE_RE = re.compile(r"^\+?[0-9\s\-\(\)\.]{6,25}$")
 @app.post("/api/leads")
 async def create_lead(
     request: Request,
+    background_tasks: BackgroundTasks,
     name: str = Form(...),
     phone: str = Form(...),
     email: str = Form(""),
@@ -272,6 +274,23 @@ async def create_lead(
     except Exception:
         # No rompemos la respuesta al usuario si esto falla
         log.exception("Error creando tenant desde lead")
+
+    background_tasks.add_task(
+        notify_new_lead,
+        LeadNotification(
+            lead_id=lead_id,
+            name=name,
+            phone=phone,
+            email=email,
+            company=company,
+            sector=sector,
+            message=message.strip(),
+            source=source or "landing",
+            utm_source=utm_source,
+            utm_medium=utm_medium,
+            utm_campaign=utm_campaign,
+        ),
+    )
 
     return {"ok": True, "id": lead_id}
 

@@ -106,6 +106,24 @@ LOG_LEVEL=INFO
 ADMIN_EMAIL=<tu_email@dominio.com>
 ADMIN_PASSWORD=<pon_una_contraseña_fuerte_aquí>
 SESSION_SECRET=<pega_el_secreto_generado_abajo>
+
+# === Leads landing (opcional, recomendado) ===
+# Alerta interna: usa Slack Incoming Webhook, Make/Zapier, o email.
+LEAD_NOTIFY_WEBHOOK_URL=<https://hooks.slack.com/services/...>
+LEAD_NOTIFY_EMAIL_TO=ventas@sprintiasolutions.com
+# Email transaccional vía Resend para alerta interna y/o autorespuesta.
+RESEND_API_KEY=<re_...>
+LEAD_EMAIL_FROM=Sprintia <hola@sprintiasolutions.com>
+LEAD_AUTOREPLY_ENABLED=true
+LEAD_AUTOREPLY_SUBJECT=Hemos recibido tu solicitud en Sprintia
+# CRM/email marketing con Brevo: Contacts > Lists para sacar el id de lista.
+BREVO_API_KEY=<xkeysib-...>
+BREVO_LIST_IDS=<id_lista_leads_web>
+BREVO_UPDATE_ENABLED=true
+# Opcional si creas estos atributos personalizados en Brevo.
+BREVO_COMPANY_ATTRIBUTE=COMPANY
+BREVO_SECTOR_ATTRIBUTE=SECTOR
+BREVO_LEAD_ID_ATTRIBUTE=LEAD_ID
 ```
 
 ### SESSION_SECRET generado para ti

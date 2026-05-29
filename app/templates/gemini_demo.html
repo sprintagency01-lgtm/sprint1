@@ -899,6 +899,11 @@
     $mic.classList.remove('muted', 'speaking');
     stopTimer();
     stopWave();
+    // Si el demo vive dentro del modal de la landing, avisar al parent para
+    // que cierre el modal. Si está en standalone, el postMessage no hace nada.
+    if (EMBED && window.parent && window.parent !== window){
+      try { window.parent.postMessage({type: 'sprintia-demo:close'}, '*'); } catch{}
+    }
     try { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type: 'stop'})); } catch{}
     try { if (ws) ws.close(); } catch{}
     cleanup();

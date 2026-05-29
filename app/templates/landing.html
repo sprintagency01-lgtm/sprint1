@@ -1881,9 +1881,9 @@
 
 <!-- FINAL CTA -->
 <section class="final-cta" id="final">
-  <div class="final-bg-word">sprint.</div>
+  <div class="final-bg-word">sprintia.</div>
   <div class="container">
-    <h2>Ahora toca no hacer <em>nada</em>.<br>De eso nos encargamos.</h2>
+    <h2>Ahora toca hacer lo que te <em>gusta</em>.<br>De las llamadas nos encargamos nosotros.</h2>
     <p>Cuéntanos tu negocio en una llamada de 20 minutos. Si encaja, en 48 horas tienes a Sprintia contestando por ti.</p>
     <a href="/gemini-demo" class="btn btn-primary" id="final-cta" data-lead="Final CTA">Probar Sprintia <span class="arrow">→</span></a>
   </div>
@@ -2474,6 +2474,13 @@
   $demoModal.addEventListener('click', (e) => { if (e.target === $demoModal) closeDemo(); });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && $demoModal.classList.contains('open')) closeDemo();
+  });
+  // El demo dentro del iframe puede pedirle al parent que cierre el modal
+  // cuando el usuario pulsa "colgar" — postMessage 'sprintia-demo:close'.
+  window.addEventListener('message', (e) => {
+    if (e && e.data && e.data.type === 'sprintia-demo:close'){
+      if ($demoModal.classList.contains('open')) closeDemo();
+    }
   });
 
   function validPhone(s){ return /^\+?[0-9\s\-\(\)\.]{6,25}$/.test(s); }

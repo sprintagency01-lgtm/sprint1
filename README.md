@@ -55,6 +55,13 @@ Variables mínimas (ver `.env.example`):
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — OAuth web de Google Calendar.
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD` — bootstrap del primer usuario del CMS.
 - `SESSION_SECRET` — firma las cookies de sesión (CMS y portal).
+- `LEAD_NOTIFY_WEBHOOK_URL` o `LEAD_NOTIFY_EMAIL_TO` — alerta interna cuando
+  entra un lead por la landing. El email requiere `RESEND_API_KEY` y
+  `LEAD_EMAIL_FROM`.
+- `LEAD_AUTOREPLY_ENABLED=true` — envía autorespuesta al lead si dejó email
+  (requiere también `RESEND_API_KEY` y `LEAD_EMAIL_FROM`).
+- `BREVO_API_KEY`, `BREVO_LIST_IDS` — sincroniza cada lead como contacto en
+  Brevo y lo añade a las listas indicadas.
 
 ## Añadir un tenant nuevo
 

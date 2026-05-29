@@ -6,6 +6,21 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-05 (demo + landing · colgar cierra modal + nuevo copy del final CTA)
+
+### Añadido
+
+- **postMessage iframe → parent al colgar**: cuando el demo se ejecuta embebido (`body.embed`), `stop()` ahora hace `window.parent.postMessage({type: 'sprintia-demo:close'}, '*')` antes de limpiar recursos. La landing escucha ese mensaje y cierra el modal automáticamente. Antes el botón rojo de colgar dejaba al usuario en la pantalla del splash dentro del modal, sin pista visual de que ya había terminado.
+
+### Cambiado
+
+- `app/templates/gemini_demo.html`: en `stop()` se añade el postMessage si `EMBED && window.parent !== window`. Standalone (sin iframe) no se ve afectado.
+- `app/templates/landing.html`:
+  - Nuevo listener `window.addEventListener('message')` que filtra por `type === 'sprintia-demo:close'` y llama a `closeDemo()` si el modal está abierto.
+  - **Final CTA**: h2 cambia de `Ahora toca no hacer nada. De eso nos encargamos.` a `Ahora toca hacer lo que te gusta. De las llamadas nos encargamos nosotros.`. La palabra en serif italic accent pasa a ser `gusta` (más positivo y específico que el `nada` anterior). La frase background `sprint.` se actualiza a `sprintia.` para coherencia con el rebrand.
+
+---
+
 ## 2026-05-05 (landing · bloque "Llamada de prueba" al segundo lugar)
 
 ### Cambiado

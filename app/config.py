@@ -61,5 +61,37 @@ class Settings:
     # primer tenant contracted+active como fallback (ver app/telegram.py).
     telegram_default_tenant_id: str = os.getenv("TELEGRAM_DEFAULT_TENANT_ID", "")
 
+    # ---- Leads landing: alertas internas y autorespuesta --------------------
+    # Webhook genérico tipo Slack/Make/Zapier. Si está configurado, cada lead
+    # nuevo dispara un POST best-effort con un resumen legible.
+    lead_notify_webhook_url: str = os.getenv("LEAD_NOTIFY_WEBHOOK_URL", "")
+    # Email interno para avisar de leads nuevos. Requiere RESEND_API_KEY y
+    # LEAD_EMAIL_FROM.
+    lead_notify_email_to: str = os.getenv("LEAD_NOTIFY_EMAIL_TO", "")
+    # Proveedor de email transaccional. Usamos HTTP para evitar SMTP stateful.
+    resend_api_key: str = os.getenv("RESEND_API_KEY", "")
+    lead_email_from: str = os.getenv("LEAD_EMAIL_FROM", "")
+    # Autorespuesta al lead: desactivada por defecto hasta validar copy/dominio.
+    lead_autoreply_enabled: bool = os.getenv("LEAD_AUTOREPLY_ENABLED", "").strip().lower() in {
+        "1", "true", "yes", "on", "si", "sí",
+    }
+    lead_autoreply_subject: str = os.getenv(
+        "LEAD_AUTOREPLY_SUBJECT",
+        "Hemos recibido tu solicitud en Sprintia",
+    )
+    # ---- Brevo CRM / email marketing ----------------------------------------
+    # Si BREVO_API_KEY está definido, cada lead se sincroniza como contacto.
+    # BREVO_LIST_IDS acepta una lista separada por comas, p.ej. "12,18".
+    brevo_api_key: str = os.getenv("BREVO_API_KEY", "")
+    brevo_list_ids: str = os.getenv("BREVO_LIST_IDS", "")
+    brevo_update_enabled: bool = os.getenv("BREVO_UPDATE_ENABLED", "true").strip().lower() in {
+        "1", "true", "yes", "on", "si", "sí",
+    }
+    # Opcionales. Si creas atributos personalizados en Brevo, pon aquí sus
+    # nombres exactos (en mayúsculas), p.ej. BREVO_COMPANY_ATTRIBUTE=COMPANY.
+    brevo_company_attribute: str = os.getenv("BREVO_COMPANY_ATTRIBUTE", "")
+    brevo_sector_attribute: str = os.getenv("BREVO_SECTOR_ATTRIBUTE", "")
+    brevo_lead_id_attribute: str = os.getenv("BREVO_LEAD_ID_ATTRIBUTE", "")
+
 
 settings = Settings()
