@@ -150,6 +150,7 @@ def test_brevo_contact_payload():
         brevo_company_attribute="COMPANY",
         brevo_country_attribute="COUNTRY",
         brevo_lead_id_attribute="LEAD_ID",
+        brevo_language_attribute="LANGUAGE",
     )
     original = brevo.settings
     brevo.settings = monkeypatch_settings
@@ -162,6 +163,7 @@ def test_brevo_contact_payload():
                 email="marta@example.com",
                 company="Salon Marta",
                 country="España",
+                landing_language="en-US",
                 marketing_consent=True,
             )
         )
@@ -177,6 +179,7 @@ def test_brevo_contact_payload():
     assert payload["attributes"]["COMPANY"] == "Salon Marta"
     assert payload["attributes"]["COUNTRY"] == "España"
     assert payload["attributes"]["LEAD_ID"] == "9"
+    assert payload["attributes"]["LANGUAGE"] == "en"
     assert payload["attributes"]["OPT_IN"] is True
 
 

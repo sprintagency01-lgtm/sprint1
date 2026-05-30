@@ -57,6 +57,7 @@ def _sync_brevo(lead: LeadNotification) -> None:
             company=lead.company,
             sector=lead.sector,
             country=lead.country,
+            landing_language=lead.landing_language,
             marketing_consent=lead.marketing_consent,
         )
     )
@@ -77,6 +78,7 @@ def _post_webhook(lead: LeadNotification) -> None:
             "company": lead.company,
             "sector": lead.sector,
             "country": lead.country,
+            "landing_language": lead.landing_language,
             "marketing_consent": lead.marketing_consent,
             "source": lead.source,
             "utm_source": lead.utm_source,

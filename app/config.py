@@ -92,6 +92,7 @@ class Settings:
     brevo_sector_attribute: str = os.getenv("BREVO_SECTOR_ATTRIBUTE", "SECTOR")
     brevo_country_attribute: str = os.getenv("BREVO_COUNTRY_ATTRIBUTE", "COUNTRY")
     brevo_lead_id_attribute: str = os.getenv("BREVO_LEAD_ID_ATTRIBUTE", "LEAD_ID")
+    brevo_language_attribute: str = os.getenv("BREVO_LANGUAGE_ATTRIBUTE", "LANGUAGE")
     # Sender transaccional verificado en Brevo. Si está configurado, las
     # alertas/autorespuestas salen por Brevo; si no, se conserva fallback Resend.
     brevo_sender_email: str = os.getenv("BREVO_SENDER_EMAIL", "")

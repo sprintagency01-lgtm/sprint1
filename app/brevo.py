@@ -29,6 +29,7 @@ class BrevoLead:
     company: str = ""
     sector: str = ""
     country: str = ""
+    landing_language: str = "es"
     marketing_consent: bool = False
 
 
@@ -148,6 +149,7 @@ def _contact_payload(lead: BrevoLead) -> dict:
     _set_optional_attribute(attributes, settings.brevo_sector_attribute, lead.sector, 80)
     _set_optional_attribute(attributes, settings.brevo_country_attribute, lead.country, 80)
     _set_optional_attribute(attributes, settings.brevo_lead_id_attribute, str(lead.lead_id), 40)
+    _set_optional_attribute(attributes, settings.brevo_language_attribute, _language_family(lead.landing_language), 16)
 
     payload: dict = {
         "attributes": attributes,
@@ -206,3 +208,11 @@ def _normalize_phone(phone: str) -> str:
     if len(digits) < 6:
         return ""
     return f"{prefix}{digits}"
+
+
+def _language_family(raw: str) -> str:
+    lang = (raw or "es").strip().lower().replace("_", "-")
+    if "," in lang:
+        lang = lang.split(",", 1)[0].strip()
+    lang = lang.split(";", 1)[0].strip()
+    return (lang.split("-", 1)[0] or "es")[:2]
