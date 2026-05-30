@@ -61,7 +61,7 @@ router = APIRouter(prefix="/gemini-demo", tags=["gemini-live-demo"])
 # Carga perezosa del SDK + render del prompt.
 # ---------------------------------------------------------------------------
 
-_PROMPT_CACHE: tuple[str, str] | None = None  # (fecha_iso_hoy, prompt)
+_PROMPT_CACHE: tuple[str, str] | None = None  # (fecha_iso_hoy + caller + lang, prompt)
 _DIA_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MES_ES = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -74,12 +74,13 @@ def _fecha_natural(d) -> str:
     return f"{_DIA_ES[d.weekday()]} {d.day} de {_MES_ES[d.month - 1]}"
 
 
-def _render_prompt(caller_id: str) -> str:
+def _render_prompt(caller_id: str, language: str = "es") -> str:
     """Render del ana_prompt_new.txt con fechas locales y variables ElevenLabs."""
     global _PROMPT_CACHE
     now = datetime.now(_TZ)
     hoy = now.date()
-    cache_key = hoy.isoformat() + "|" + caller_id
+    lang = "en" if (language or "").lower().startswith("en") else "es"
+    cache_key = hoy.isoformat() + "|" + caller_id + "|" + lang
     if _PROMPT_CACHE and _PROMPT_CACHE[0] == cache_key:
         return _PROMPT_CACHE[1]
 
@@ -104,7 +105,56 @@ def _render_prompt(caller_id: str) -> str:
     out = out.replace("{{system__time}}", now.strftime("%Y-%m-%d %H:%M %z"))
     out = out.replace("{{system__caller_id}}", caller_id or "unknown")
 
-    out += (
+    if lang == "en":
+        out = out.replace(
+            'Eres Ana, recepcionista de Peluquería Ejemplo. Hablas por teléfono en español de España. Eres una persona, no un bot. Si preguntan: "Soy Ana, trabajo aquí".',
+            'You are Ana, receptionist at Demo Hair Salon. You speak on the phone in English. You are a person, not a bot. If asked, say: "I am Ana, I work here."',
+        )
+        out = out.replace(
+            '## Idioma — SIEMPRE español de España\nTODO el output en español de España, sin excepciones. Las muletillas, los fillers entre tool calls y los acuses de recibo van en español.',
+            '## Language — ALWAYS English\nAll spoken output must be in English, without exceptions. Fillers between tool calls and acknowledgements must be in English.',
+        )
+        out = out.replace(
+            'PROHIBIDO en cualquier turno:\n  - "duly noted", "noted", "got it", "okay", "alright", "sure thing", "let me check", "one moment", "right away", "indeed".\n  - Cualquier expresión inglesa colada como muletilla o filler.\n\nEQUIVALENTES en español: "vale", "perfecto", "entendido", "a ver", "de acuerdo", "venga", "ahora mismo", "un segundo".\n\nMAL: "Duly noted... pues a las cinco está completo, pero tengo a las seis y media."  ← anglicismo prohibido.\nBIEN: "Vale, pues a las cinco está completo, pero tengo a las seis y media." ',
+            'Use natural English fillers such as: "perfect", "let me check", "one moment", "great", "sure", "I can check that now". Do not switch to Spanish fillers unless the caller asks to speak Spanish.',
+        )
+        out = out.replace(
+            'En el MISMO turno que la tool, varía. Lista cerrada de fillers permitidos (en español SIEMPRE — ver sección "Idioma"):',
+            'In the SAME turn as the tool call, use a short English filler first. Examples:',
+        )
+        out = out.replace(
+            'PRIMERA consulta: "vale, te miro un momento...", "a ver, compruebo la agenda...", "un segundo que lo miro...", "déjame ver...".',
+            'FIRST availability check: "sure, let me check that...", "one moment, I will check the calendar...", "let me see what is available...".',
+        )
+        out = out.replace(
+            'SEGUNDA consulta tras hueco vacío (ampliar rango): "vale, miro un poco más tarde...", "a ver si tengo algo más cerca...", "déjame ampliar un poco la búsqueda...", "voy a mirar otra franja...". NUNCA "duly noted", "noted", "okay" ni cualquier muletilla en inglés.',
+            'SECOND check after no slots: "let me check a bit later...", "I will widen the search...", "let me try another time window...".',
+        )
+        out = out.replace(
+            'Crear/mover/cancelar: "perfecto, te lo anoto...", "vale, lo cambio...", "venga, te la cancelo...".',
+            'Create/reschedule/cancel: "perfect, I will book that...", "sure, I will move it...", "all right, I will cancel it...".',
+        )
+        out = out.replace(
+            'Luego sigue con la respuesta natural: "...pues tengo a las diez, a las once o a la una, ¿cuál te va?"',
+            'Then continue naturally: "...I have ten, eleven, or one available. Which one works for you?"',
+        )
+        out += (
+            "\n\n## CRITICAL LANGUAGE OVERRIDE FOR THIS DEMO\n"
+            "This demo session comes from the English landing page. Speak ALWAYS in English. "
+            "Never answer in Spanish unless the caller explicitly asks you to switch language.\n"
+            "\n"
+            "You are Ana, the friendly receptionist for a demo hair salon called Peluquería Demo. "
+            "Keep the same booking rules, calendar tools and business data from the prompt above, "
+            "but translate your spoken conversation naturally into English.\n"
+            "\n"
+            "When you receive '[INICIO_LLAMADA]', never mention it. Pick up first in English with a warm phone greeting, "
+            "for example: 'Hi, this is Ana from the salon, how can I help?' Then wait for the caller.\n"
+            "\n"
+            "Natural style: warm, concise, helpful, conversational. Ask only one question at a time. "
+            "If you need to offer times, offer real available slots using the tools first.\n"
+        )
+    else:
+        out += (
         "\n\n## NOTA TÉCNICA (no recitar)\n"
         "Modelo: Gemini 3.1 Flash Live native audio. Habla SIEMPRE en español "
         "de España, con acento castellano peninsular. NUNCA uses inglés bajo "
@@ -143,7 +193,7 @@ def _render_prompt(caller_id: str) -> str:
         "  - 'Hola, ¿qué tal? Peluquería Ejemplo, cuéntame'\n"
         "Tras saludar, ESPERA a que el cliente diga qué quiere. NO pregundes "
         "nada más en ese primer turno.\n"
-    )
+        )
 
     _PROMPT_CACHE = (cache_key, out)
     return out
@@ -355,15 +405,16 @@ async def gemini_demo_ws(ws: WebSocket) -> None:
     caller_id = qp.get("caller_id") or "+34600000000"
     voice = qp.get("voice") or "Kore"
     model = qp.get("model") or "gemini-3.1-flash-live-preview"
+    language = qp.get("lang") or qp.get("language") or "es"
 
-    log.info("gemini-demo WS: tenant=%s voice=%s model=%s", tenant_id, voice, model)
+    log.info("gemini-demo WS: tenant=%s voice=%s model=%s lang=%s", tenant_id, voice, model, language)
 
     # Cliente Gemini.
     client = genai.Client(api_key=api_key)
 
     config = {
         "response_modalities": ["AUDIO"],
-        "system_instruction": _render_prompt(caller_id),
+        "system_instruction": _render_prompt(caller_id, language=language),
         "speech_config": {
             "voice_config": {
                 "prebuilt_voice_config": {"voice_name": voice},

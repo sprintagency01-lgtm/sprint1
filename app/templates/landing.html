@@ -2489,7 +2489,12 @@
   function openDemo(){
     // Cache busting con timestamp: garantiza que cada apertura del modal
     // trae la última versión del demo, sin que el browser sirva una vieja.
-    $demoIframe.src = '/gemini-demo?embed=1&t=' + Date.now();
+    const demoParams = new URLSearchParams({
+      embed: '1',
+      lang: landingLanguage().slice(0, 2).toLowerCase() || 'es',
+      t: String(Date.now())
+    });
+    $demoIframe.src = '/gemini-demo?' + demoParams.toString();
     $demoModal.classList.add('open');
     $demoModal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('demo-open');

@@ -12,6 +12,7 @@ Entrada más reciente arriba.
 
 - Ruta pública `/en` para servir la landing en inglés con `lang="en"`, canonical propio, alternates `hreflang`, copy visible, mensajes del formulario, `landing_language=en` y cadenas dinámicas de sectores/hero traducidas.
 - Enlace de cambio de idioma: la landing española muestra `EN` y la inglesa muestra `ES`.
+- El modal de llamada de prueba hereda el idioma de la landing (`/gemini-demo?lang=en` en la versión inglesa), traduce toda la interfaz del popup y fuerza el prompt de voz del demo a responder en inglés.
 
 ---
 

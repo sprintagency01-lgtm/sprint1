@@ -519,18 +519,89 @@
   // Configuración (vía query params, defaults sensatos para marketing)
   // ──────────────────────────────────────────────────────────────────────
   const qs = new URLSearchParams(location.search);
+  const LANG   = (qs.get('lang') || document.documentElement.lang || navigator.language || 'es').toLowerCase().startsWith('en') ? 'en' : 'es';
   const VOICE  = qs.get('voice')  || 'Aoede'; // femenina cálida, mejor para recepción
   const TENANT = qs.get('tenant') || 'pelu_demo';
   const CALLER = qs.get('caller') || '+34600000000';
   const MODEL  = qs.get('model')  || 'gemini-3.1-flash-live-preview';
   const DEBUG  = qs.has('debug');
   const EMBED  = qs.has('embed') || window !== window.parent; // dentro de iframe
+  const COPY = {
+    es: {
+      title: 'Habla con Ana · Demo · Sprintia',
+      brandAria: 'Sprintia · volver a la home',
+      backAria: 'Volver a la web',
+      back: 'Volver a la web',
+      eyebrow: 'Demo en vivo · Habla con Ana',
+      headline: 'Probador de <em>llamada</em>.',
+      intro: 'Ana es la recepcionista de una peluquería de demo. Pídele una cita para mañana, muévela a otro día, pregúntale por horarios o precios. Te responde con voz natural en español.',
+      start: 'Iniciar llamada',
+      micAccess: 'Pide acceso al micrófono',
+      headphones: 'Funciona mejor con auriculares',
+      inCall: 'En llamada · ',
+      waiting: 'Esperando a Ana<span class="dotty">…</span>',
+      agentName: 'Ana · agente',
+      agentSub: 'contestando por Peluquería Demo',
+      ready: 'Lista para hablar',
+      micOpen: 'Tu micrófono está abierto · Ana te oye',
+      muteAria: 'Silenciar micrófono',
+      endAria: 'Colgar',
+      connecting: 'Conectando',
+      noMic: 'No has dado permiso al micrófono.',
+      noWorklet: 'Tu navegador no soporta AudioWorklet. Prueba en Chrome o Firefox.',
+      listening: 'Te escucho',
+      speaking: 'Ana está hablando',
+      disconnected: 'Se cortó la conexión. Vuelve a intentarlo.',
+      serverError: 'Error de conexión con el servidor.',
+      micMuted: 'Micrófono silenciado · toca para reactivar',
+      muted: 'Micro silenciado',
+      calendar: 'Consultando agenda',
+      sessionError: 'Error en la sesión',
+      error: 'Error',
+      dialing: 'Marcando el número<span class="dotty">…</span>',
+    },
+    en: {
+      title: 'Talk to Ana · Demo · Sprintia',
+      brandAria: 'Sprintia · back to home',
+      backAria: 'Back to website',
+      back: 'Back to website',
+      eyebrow: 'Live demo · Talk to Ana',
+      headline: 'Call <em>tester</em>.',
+      intro: 'Ana is the receptionist for a demo hair salon. Ask her to book an appointment for tomorrow, move it to another day, or ask about opening hours and prices. She answers with a natural English voice.',
+      start: 'Start call',
+      micAccess: 'Requires microphone access',
+      headphones: 'Works best with headphones',
+      inCall: 'On call · ',
+      waiting: 'Waiting for Ana<span class="dotty">…</span>',
+      agentName: 'Ana · agent',
+      agentSub: 'answering for Demo Hair Salon',
+      ready: 'Ready to talk',
+      micOpen: 'Your microphone is open · Ana can hear you',
+      muteAria: 'Mute microphone',
+      endAria: 'Hang up',
+      connecting: 'Connecting',
+      noMic: 'Microphone permission was not granted.',
+      noWorklet: 'Your browser does not support AudioWorklet. Try Chrome or Firefox.',
+      listening: 'Listening',
+      speaking: 'Ana is speaking',
+      disconnected: 'The connection dropped. Please try again.',
+      serverError: 'Connection error with the server.',
+      micMuted: 'Microphone muted · tap to reactivate',
+      muted: 'Mic muted',
+      calendar: 'Checking calendar',
+      sessionError: 'Session error',
+      error: 'Error',
+      dialing: 'Dialing the number<span class="dotty">…</span>',
+    }
+  }[LANG];
 
   // Aplica modo embed (oculta topbar, ajusta padding) si la página vive dentro
   // del modal de la landing. También si está abierta en iframe sin el flag,
   // por seguridad — así si alguien la embebe con un iframe estándar, ya queda
   // bien sin tener que pasar el ?embed=1 explícito.
   if (EMBED) document.body.classList.add('embed');
+  document.documentElement.lang = LANG;
+  document.title = COPY.title;
 
   // ──────────────────────────────────────────────────────────────────────
   // DOM
@@ -553,6 +624,28 @@
   const $pttHint   = document.getElementById('ptt-hint');
   const $end       = document.getElementById('btn-end');
   const $err       = document.getElementById('err-banner');
+
+  function applyCopy(){
+    document.querySelector('.brand').setAttribute('aria-label', COPY.brandAria);
+    document.querySelector('.back-link').setAttribute('aria-label', COPY.backAria);
+    document.querySelector('.back-link').lastChild.textContent = ` ${COPY.back}`;
+    document.querySelector('.splash-eyebrow').innerHTML = `<span class="dot"></span>${COPY.eyebrow}`;
+    document.querySelector('.splash h1').innerHTML = COPY.headline;
+    document.querySelector('.splash p').textContent = COPY.intro;
+    $start.childNodes[0].textContent = `${COPY.start} `;
+    const meta = document.querySelectorAll('.splash-meta span');
+    if (meta[0]) meta[0].lastChild.textContent = ` ${COPY.micAccess}`;
+    if (meta[1]) meta[1].lastChild.textContent = ` ${COPY.headphones}`;
+    document.querySelector('#call-eyebrow span:nth-child(2)').textContent = COPY.inCall;
+    $quote.innerHTML = COPY.waiting;
+    document.querySelector('.agent-name').textContent = COPY.agentName;
+    $agentSub.textContent = COPY.agentSub;
+    $stateText.textContent = COPY.ready;
+    $pttHint.textContent = COPY.micOpen;
+    $mic.setAttribute('aria-label', COPY.muteAria);
+    $end.setAttribute('aria-label', COPY.endAria);
+  }
+  applyCopy();
 
   // ──────────────────────────────────────────────────────────────────────
   // Estado
@@ -610,8 +703,8 @@
 
   // Mini frase rotativa mientras Ana aún no ha dicho nada
   const WAITING_QUOTES = [
-    'Marcando el número<span class="dotty">…</span>',
-    'Esperando a Ana<span class="dotty">…</span>',
+    COPY.dialing,
+    COPY.waiting,
   ];
   let waitingIdx = 0;
 
@@ -745,7 +838,7 @@
       });
     } catch (e){
       isRunning = false; $start.disabled = false;
-      showErr('No has dado permiso al micrófono.');
+      showErr(COPY.noMic);
       return;
     }
 
@@ -758,7 +851,7 @@
       await loadWorklet(inputCtx);
     } catch (e){
       cleanup();
-      showErr('Tu navegador no soporta AudioWorklet. Prueba en Chrome o Firefox.');
+      showErr(COPY.noWorklet);
       return;
     }
 
@@ -783,7 +876,7 @@
     $state.hidden = false;
     $wave.hidden = false;
     $bottom.hidden = false;
-    setState('connecting', 'Conectando');
+    setState('connecting', COPY.connecting);
     setQuote(WAITING_QUOTES[0]);
     animateWave('idle');
     startTimer();
@@ -794,14 +887,15 @@
                 `?voice=${encodeURIComponent(VOICE)}` +
                 `&tenant_id=${encodeURIComponent(TENANT)}` +
                 `&caller_id=${encodeURIComponent(CALLER)}` +
-                `&model=${encodeURIComponent(MODEL)}`;
+                `&model=${encodeURIComponent(MODEL)}` +
+                `&lang=${encodeURIComponent(LANG)}`;
     if (DEBUG) console.log('[demo] connecting to', url);
     ws = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
 
     ws.onopen = () => {
-      setState('listening', 'Te escucho');
-      $pttHint.textContent = 'Tu micrófono está abierto · Ana te oye';
+      setState('listening', COPY.listening);
+      $pttHint.textContent = COPY.micOpen;
       // Worklet → WS: enviamos cada chunk PCM16 16kHz que produce el
       // worklet. Sin gating manual; el VAD nativo de Gemini decide cuándo
       // es start/end-of-speech.
@@ -824,20 +918,20 @@
       playPCM24k(ev.data);
       chunksIn++;
       if ($state.className.indexOf('speaking') < 0){
-        setState('speaking', 'Ana está hablando');
+        setState('speaking', COPY.speaking);
         animateWave('speaking');
       }
     };
 
     ws.onclose = () => {
       if (isRunning){
-        showErr('Se cortó la conexión. Vuelve a intentarlo.');
+        showErr(COPY.disconnected);
         stop();
       }
     };
     ws.onerror = () => {
       if (DEBUG) console.warn('[demo] ws error');
-      showErr('Error de conexión con el servidor.');
+      showErr(COPY.serverError);
     };
   }
 
@@ -845,7 +939,7 @@
     if (DEBUG) console.log('[demo] event', msg);
     switch (msg.type){
       case 'ready':
-        $agentSub.textContent = `contestando por Peluquería Demo`;
+        $agentSub.textContent = COPY.agentSub;
         break;
       case 'assistant_transcript':
         currentAnaTurn += msg.text;
@@ -860,7 +954,7 @@
         currentUsrTurn += msg.text;
         $mic.classList.add('speaking');
         if (isRunning && !isMuted){
-          setState('listening', 'Te escucho');
+          setState('listening', COPY.listening);
           animateWave('listening');
         }
         break;
@@ -870,24 +964,24 @@
         currentUsrTurn = '';
         $mic.classList.remove('speaking');
         if (isRunning){
-          setState('listening', isMuted ? 'Micro silenciado' : 'Te escucho');
+          setState('listening', isMuted ? COPY.muted : COPY.listening);
           animateWave(isMuted ? 'idle' : 'listening');
         }
         break;
       case 'interrupted':
         stopPlayback();
-        if (isRunning) setState('listening', isMuted ? 'Micro silenciado' : 'Te escucho');
+        if (isRunning) setState('listening', isMuted ? COPY.muted : COPY.listening);
         break;
       case 'tool_start':
-        setState('connecting', 'Consultando agenda');
+        setState('connecting', COPY.calendar);
         $mic.classList.remove('speaking');
         break;
       case 'tool_end':
         // Volvemos a 'speaking' o 'listening' según contexto
         break;
       case 'error':
-        showErr(msg.message || 'Error en la sesión');
-        setState('error', 'Error');
+        showErr(msg.message || COPY.sessionError);
+        setState('error', COPY.error);
         break;
     }
   }
@@ -950,13 +1044,13 @@
     $micOnIco.style.display  = isMuted ? 'none' : '';
     $micOffIco.style.display = isMuted ? '' : 'none';
     $pttHint.textContent = isMuted
-      ? 'Micrófono silenciado · toca para reactivar'
-      : 'Tu micrófono está abierto · Ana te oye';
+      ? COPY.micMuted
+      : COPY.micOpen;
     if (isMuted){
-      setState('idle', 'Micro silenciado');
+      setState('idle', COPY.muted);
       animateWave('idle');
     } else {
-      setState('listening', 'Te escucho');
+      setState('listening', COPY.listening);
       animateWave('listening');
     }
   }

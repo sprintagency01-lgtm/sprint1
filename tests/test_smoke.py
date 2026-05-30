@@ -30,3 +30,14 @@ def test_english_landing_ok():
     assert 'Your <em>bookings</em>' in r.text
     assert 'name="landing_language" value="en"' in r.text
     assert "Try Sprintia" in r.text
+    assert "lang: landingLanguage().slice(0, 2).toLowerCase()" in r.text
+
+
+def test_english_demo_copy_ok():
+    client = TestClient(app)
+    r = client.get("/gemini-demo?embed=1&lang=en")
+    assert r.status_code == 200
+    assert "Live demo · Talk to Ana" in r.text
+    assert "Start call" in r.text
+    assert "She answers with a natural English voice." in r.text
+    assert "&lang=${encodeURIComponent(LANG)}" in r.text
