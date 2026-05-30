@@ -437,6 +437,7 @@ class Lead(Base):
     sector: Mapped[str] = mapped_column(String(80), default="")
     country: Mapped[str] = mapped_column(String(80), default="")
     landing_language: Mapped[str] = mapped_column(String(16), default="es")
+    marketing_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     message: Mapped[str] = mapped_column(Text, default="")
     # Origen del lead (landing_final_cta, hero, nav, etc.) y UTMs
     source: Mapped[str] = mapped_column(String(80), default="")
@@ -515,6 +516,7 @@ def save_lead(
     sector: str = "",
     country: str = "",
     landing_language: str = "es",
+    marketing_consent: bool = False,
     message: str = "",
     source: str = "",
     utm_source: str = "",
@@ -532,6 +534,7 @@ def save_lead(
             company=company[:200], sector=sector[:80], message=message[:2000],
             country=country[:80],
             landing_language=(landing_language or "es")[:16],
+            marketing_consent=bool(marketing_consent),
             source=source[:80],
             utm_source=utm_source[:120], utm_medium=utm_medium[:120],
             utm_campaign=utm_campaign[:120], utm_term=utm_term[:120],
@@ -1382,6 +1385,8 @@ def _auto_migrate_sqlite() -> None:
          "ALTER TABLE leads ADD COLUMN country VARCHAR(80) DEFAULT ''"),
         ("leads", "landing_language",
          "ALTER TABLE leads ADD COLUMN landing_language VARCHAR(16) DEFAULT 'es'"),
+        ("leads", "marketing_consent",
+         "ALTER TABLE leads ADD COLUMN marketing_consent BOOLEAN DEFAULT 0"),
     ]
 
     try:

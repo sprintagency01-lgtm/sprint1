@@ -12,6 +12,8 @@ Entrada más reciente arriba.
 
 - Integración de leads con Brevo: cada envío de `/api/leads` crea/actualiza el contacto en Brevo, lo añade a la lista `Leads web Sprintia` y guarda atributos de empresa, sector, país e id interno del lead.
 - Campo `País` en el modal de leads de la landing, con `España` como valor por defecto, persistido en BD y enviado a Brevo.
+- Email obligatorio en el formulario comercial para poder crear contacto en Brevo y usarlo en campañas.
+- Checkbox visible de consentimiento de marketing; se envía a Brevo como `OPT_IN` para segmentar campañas sólo a contactos que aceptaron comunicaciones.
 - Emails automáticos vía Brevo transaccional: autorespuesta al lead y aviso interno si las variables de Railway están configuradas.
 - Idioma de la landing capturado en el formulario (`landing_language`) para enviar la autorespuesta en el idioma declarado por la página (`es`, `en`, `pt`, `fr`; fallback español).
 - `LEAD_NOTIFY_EMAIL_TO` acepta varios destinatarios separados por comas para avisar a más de una persona del equipo.
@@ -26,6 +28,7 @@ Entrada más reciente arriba.
 ### Corregido
 
 - CTAs `Probar Sprintia` de nav, hero y cierre vuelven a abrir el formulario de lead. Sólo el botón `Llamada de prueba` abre el modal con `/gemini-demo`.
+- Brevo devolvía `400 Bad Request` cuando el lead entraba sin email; ahora el backend exige email antes de aceptar el formulario y loguea el cuerpo de error de Brevo si vuelve a fallar.
 
 ---
 

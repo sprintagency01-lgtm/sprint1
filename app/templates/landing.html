@@ -1357,6 +1357,12 @@
   }
   .field input:focus, .field textarea:focus, .field select:focus{ outline:none; border-color:var(--accent); }
   .field .err{ color:#C4452C; font-size:12px; font-family:var(--mono); min-height:14px; }
+  .check-field{
+    display:flex; gap:10px; align-items:flex-start;
+    font-size:12.5px; line-height:1.35; color:var(--ink-2);
+    margin: 4px 0 12px;
+  }
+  .check-field input{ margin-top:2px; accent-color:var(--accent); flex:0 0 auto; }
   .modal .btn-accent{ width:100%; justify-content:center; padding:15px 20px; font-size:15px; margin-top:6px; }
   .modal-foot{
     margin-top:16px; font-size:12px; color:var(--muted); text-align:center;
@@ -1978,8 +1984,8 @@
           <input type="text" id="lead-name" name="name" required placeholder="Cómo te llamamos" autocomplete="name">
         </div>
         <div class="field">
-          <label for="lead-email">Email (opcional)</label>
-          <input type="email" id="lead-email" name="email" placeholder="tu@empresa.com" autocomplete="email" inputmode="email" spellcheck="false">
+          <label for="lead-email">Email</label>
+          <input type="email" id="lead-email" name="email" required placeholder="tu@empresa.com" autocomplete="email" inputmode="email" spellcheck="false">
         </div>
         <div class="field">
           <label for="lead-biz">Tu negocio (opcional)</label>
@@ -2010,6 +2016,10 @@
             <option value="otro">Otro</option>
           </select>
         </div>
+        <label class="check-field" for="lead-marketing">
+          <input type="checkbox" id="lead-marketing" name="marketing_consent" value="1">
+          <span>Acepto recibir emails de Sprintia con novedades, casos de uso y contenidos comerciales. Podré darme de baja cuando quiera.</span>
+        </label>
         <input type="hidden" name="consent" value="1">
         <input type="hidden" id="lead-language" name="landing_language" value="es">
         <button type="submit" class="btn btn-accent">Enviar <span class="arrow" aria-hidden="true">→</span></button>
@@ -2422,6 +2432,7 @@
   const ctxLabel = document.getElementById('lead-ctx-label');
   const phoneInput = document.getElementById('lead-phone');
   const nameInput = document.getElementById('lead-name');
+  const emailInput = document.getElementById('lead-email');
   const languageInput = document.getElementById('lead-language');
   const errNode = document.getElementById('lead-err');
 
@@ -2519,6 +2530,12 @@
     if (!validPhone(phone)){
       errNode.textContent = 'Introduce un teléfono válido (ej. +34 600 000 000)';
       phoneInput.focus();
+      return;
+    }
+    const email = emailInput.value.trim();
+    if (!email || !email.includes('@')){
+      errNode.textContent = 'Introduce un email válido';
+      emailInput.focus();
       return;
     }
     errNode.textContent = '';

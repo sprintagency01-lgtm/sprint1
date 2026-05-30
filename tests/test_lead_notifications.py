@@ -94,6 +94,7 @@ def test_create_lead_schedules_notification(monkeypatch):
             "company": "Salon Marta",
             "country": "España",
             "landing_language": "en-US",
+            "marketing_consent": "1",
             "consent": "on",
             "source": "hero",
         },
@@ -106,6 +107,7 @@ def test_create_lead_schedules_notification(monkeypatch):
     assert sent[0].source == "hero"
     assert sent[0].country == "España"
     assert sent[0].landing_language == "en-us"
+    assert sent[0].marketing_consent is True
 
 
 def test_autoreply_uses_landing_language():
@@ -160,6 +162,7 @@ def test_brevo_contact_payload():
                 email="marta@example.com",
                 company="Salon Marta",
                 country="España",
+                marketing_consent=True,
             )
         )
     finally:
@@ -174,6 +177,7 @@ def test_brevo_contact_payload():
     assert payload["attributes"]["COMPANY"] == "Salon Marta"
     assert payload["attributes"]["COUNTRY"] == "España"
     assert payload["attributes"]["LEAD_ID"] == "9"
+    assert payload["attributes"]["OPT_IN"] is True
 
 
 def test_brevo_sync_posts_contact(monkeypatch):

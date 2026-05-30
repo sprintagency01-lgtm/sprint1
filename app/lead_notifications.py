@@ -31,6 +31,7 @@ class LeadNotification:
     sector: str = ""
     country: str = ""
     landing_language: str = "es"
+    marketing_consent: bool = False
     message: str = ""
     source: str = ""
     utm_source: str = ""
@@ -56,6 +57,7 @@ def _sync_brevo(lead: LeadNotification) -> None:
             company=lead.company,
             sector=lead.sector,
             country=lead.country,
+            marketing_consent=lead.marketing_consent,
         )
     )
 
@@ -75,6 +77,7 @@ def _post_webhook(lead: LeadNotification) -> None:
             "company": lead.company,
             "sector": lead.sector,
             "country": lead.country,
+            "marketing_consent": lead.marketing_consent,
             "source": lead.source,
             "utm_source": lead.utm_source,
             "utm_medium": lead.utm_medium,
@@ -186,6 +189,7 @@ def _internal_text(lead: LeadNotification) -> str:
         lines.append(f"País: {lead.country}")
     if lead.landing_language:
         lines.append(f"Idioma landing: {lead.landing_language}")
+    lines.append(f"Consentimiento marketing: {'sí' if lead.marketing_consent else 'no'}")
     if lead.source:
         lines.append(f"Origen: {lead.source}")
     utm = " / ".join(x for x in (lead.utm_source, lead.utm_medium, lead.utm_campaign) if x)

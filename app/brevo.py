@@ -29,6 +29,7 @@ class BrevoLead:
     company: str = ""
     sector: str = ""
     country: str = ""
+    marketing_consent: bool = False
 
 
 def sync_lead_contact(lead: BrevoLead) -> None:
@@ -37,10 +38,10 @@ def sync_lead_contact(lead: BrevoLead) -> None:
     if not api_key:
         return
 
-    payload = _contact_payload(lead)
-    if not payload.get("email") and not payload.get("attributes", {}).get("SMS"):
-        log.warning("Lead id=%s no sincronizado con Brevo: falta email o teléfono", lead.lead_id)
+    if not lead.email:
+        log.warning("Lead id=%s no sincronizado con Brevo: falta email", lead.lead_id)
         return
+    payload = _contact_payload(lead)
 
     headers = {
         "accept": "application/json",
@@ -50,6 +51,11 @@ def sync_lead_contact(lead: BrevoLead) -> None:
     try:
         r = httpx.post(_CONTACTS_URL, json=payload, headers=headers, timeout=_TIMEOUT)
         r.raise_for_status()
+    except httpx.HTTPStatusError:
+        log.exception(
+            "No se pudo sincronizar lead id=%s con Brevo: status=%s body=%s",
+            lead.lead_id, r.status_code, r.text[:500],
+        )
     except Exception:
         log.exception("No se pudo sincronizar lead id=%s con Brevo", lead.lead_id)
 
@@ -137,6 +143,7 @@ def _contact_payload(lead: BrevoLead) -> dict:
     phone = _normalize_phone(lead.phone)
     if phone:
         attributes["SMS"] = phone
+    attributes["OPT_IN"] = bool(lead.marketing_consent)
     _set_optional_attribute(attributes, settings.brevo_company_attribute, lead.company, 200)
     _set_optional_attribute(attributes, settings.brevo_sector_attribute, lead.sector, 80)
     _set_optional_attribute(attributes, settings.brevo_country_attribute, lead.country, 80)

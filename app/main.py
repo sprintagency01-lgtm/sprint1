@@ -223,6 +223,7 @@ async def create_lead(
     sector: str = Form(""),
     country: str = Form(""),
     landing_language: str = Form("es"),
+    marketing_consent: str = Form(""),
     message: str = Form(""),
     consent: str = Form(""),
     source: str = Form(""),
@@ -246,7 +247,9 @@ async def create_lead(
         return JSONResponse({"error": "El teléfono no parece válido."}, status_code=400)
     if not consent:
         return JSONResponse({"error": "Tienes que aceptar que te contactemos."}, status_code=400)
-    if email and "@" not in email:
+    if not email:
+        return JSONResponse({"error": "Dinos tu email."}, status_code=400)
+    if "@" not in email:
         return JSONResponse({"error": "El email no parece válido."}, status_code=400)
 
     ip = (request.client.host if request.client else "") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
@@ -256,6 +259,7 @@ async def create_lead(
         lead_id = db.save_lead(
             name=name, phone=phone, email=email, company=company,
             sector=sector, country=country, landing_language=landing_language,
+            marketing_consent=bool(marketing_consent),
             message=message.strip(),
             source=source or "landing",
             utm_source=utm_source, utm_medium=utm_medium,
@@ -291,6 +295,7 @@ async def create_lead(
             sector=sector,
             country=country,
             landing_language=landing_language,
+            marketing_consent=bool(marketing_consent),
             message=message.strip(),
             source=source or "landing",
             utm_source=utm_source,
