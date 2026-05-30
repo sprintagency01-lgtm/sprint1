@@ -28,6 +28,7 @@ from . import diag
 from . import sheets_sync
 from . import telegram as tg_module
 from . import gemini_live_bridge
+from .landing_i18n import render_landing_variant
 from .lead_notifications import LeadNotification, notify_new_lead
 from .cms import router as cms_router
 from .cms.auth import ensure_admin_user
@@ -178,6 +179,7 @@ app.include_router(gemini_live_bridge.router)
 
 _LANDING_PATH = pathlib.Path(__file__).parent / "templates" / "landing.html"
 _LANDING_CACHE: str | None = None
+_LANDING_VARIANT_CACHE: dict[str, str] = {}
 
 
 def _landing_html() -> str:
@@ -195,9 +197,21 @@ def _landing_html() -> str:
     return _LANDING_CACHE
 
 
+def _localized_landing_html(lang: str = "es") -> str:
+    key = (lang or "es").lower()
+    if key not in _LANDING_VARIANT_CACHE:
+        _LANDING_VARIANT_CACHE[key] = render_landing_variant(_landing_html(), key)
+    return _LANDING_VARIANT_CACHE[key]
+
+
 @app.get("/", response_class=HTMLResponse)
 async def landing() -> HTMLResponse:
-    return HTMLResponse(_landing_html())
+    return HTMLResponse(_localized_landing_html("es"))
+
+
+@app.get("/en", response_class=HTMLResponse)
+async def landing_en() -> HTMLResponse:
+    return HTMLResponse(_localized_landing_html("en"))
 
 
 @app.get("/health")

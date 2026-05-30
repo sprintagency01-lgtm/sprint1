@@ -6,6 +6,15 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-05-30 (landing · versión inglesa)
+
+### Añadido
+
+- Ruta pública `/en` para servir la landing en inglés con `lang="en"`, canonical propio, alternates `hreflang`, copy visible, mensajes del formulario, `landing_language=en` y cadenas dinámicas de sectores/hero traducidas.
+- Enlace de cambio de idioma: la landing española muestra `EN` y la inglesa muestra `ES`.
+
+---
+
 ## 2026-05-29 (leads · Brevo CRM y autorespuesta)
 
 ### Añadido
