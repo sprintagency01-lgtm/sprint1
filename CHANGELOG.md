@@ -6,6 +6,14 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-06-02 (cita Sprintia · email de confirmación + tipo de negocio)
+
+### Añadido
+
+- **Email de confirmación al agendar.** Al crear la cita, si el cliente dejó email, se le manda un correo de confirmación vía Brevo (`brevo.send_transactional_email`) con la fecha/hora de la llamada. Best-effort: nunca rompe la reserva. La respuesta de `crear_reserva` incluye `email_enviado`.
+- **Tipo de negocio reflejado en la cita.** `crear_reserva` acepta `negocio_cliente` y `email_cliente`. El negocio se añade al **título** del evento (`… · <negocio>`) y, junto al email, a la **descripción**, para que el equipo sepa de qué negocio se trata de un vistazo. Fallback: si el agente no manda los campos (caso del agente de voz, cuyo schema remoto aún no los expone), el backend extrae el email de `notas` y el negocio viaja igualmente en `notas` → descripción del evento.
+- Tool `crear_reserva` del demo Gemini (`gemini_live_bridge`) y prompt de Ana actualizados para pasar `email_cliente` y `negocio_cliente`.
+
 ## 2026-06-02 (pivote demo · Ana pasa a agente comercial de Sprintia)
 
 ### Cambiado

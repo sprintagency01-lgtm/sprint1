@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 import time
 import traceback
 from datetime import datetime, timedelta
@@ -28,6 +29,7 @@ from pydantic import BaseModel, Field
 from .config import settings
 from . import calendar_service as cal
 from . import tenants as tn
+from . import brevo
 
 log = logging.getLogger(__name__)
 
@@ -183,6 +185,14 @@ class CrearReq(BaseModel):
     telefono_cliente: str | None = None
     peluquero: str = "sin preferencia"
     notas: str = ""
+    # Email del cliente: si llega, se le manda una confirmación por correo y
+    # se guarda en la descripción del evento. Si no llega como campo, el
+    # backend intenta extraerlo de `notas` (fallback para el agente de voz,
+    # cuyo schema de tool aún no expone este campo).
+    email_cliente: str | None = None
+    # Tipo/nombre del negocio del cliente: se refleja en el título y la
+    # descripción del evento para que el equipo sepa de qué negocio se trata.
+    negocio_cliente: str | None = None
 
 
 class BuscarReq(BaseModel):
@@ -475,6 +485,63 @@ def _descartar_slots_pasados(slots):
     return [s for s in slots if _to_aware(s.start) >= cutoff]
 
 
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+_DIAS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+_MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+             "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+def _email_valido(raw: str | None) -> str:
+    """Devuelve el email si parece válido, o "" si no."""
+    if not raw:
+        return ""
+    m = _EMAIL_RE.search(raw.strip())
+    return m.group(0) if m else ""
+
+
+def _fecha_hora_natural(dt: datetime) -> str:
+    """'miércoles 3 de junio a las 10:00' en Europe/Madrid."""
+    d = _to_aware(dt).astimezone(ZoneInfo(settings.default_timezone))
+    return f"{_DIAS_ES[d.weekday()]} {d.day} de {_MESES_ES[d.month - 1]} a las {d:%H:%M}"
+
+
+def _nombre_de_titulo(titulo: str) -> str:
+    """Extrae el nombre del cliente del título 'Nombre — Llamada Sprintia (...)'."""
+    return (titulo.split("—", 1)[0]).strip() or "hola"
+
+
+def _enviar_confirmacion_cita(email: str, titulo: str, inicio_dt: datetime,
+                              negocio: str, tenant: dict) -> bool:
+    """Manda al cliente un email de confirmación de la llamada. Best-effort."""
+    nombre = _nombre_de_titulo(titulo)
+    cuando = _fecha_hora_natural(inicio_dt)
+    subject = f"Tu llamada con Sprintia — {cuando}"
+    saludo = f"Hola {nombre}," if nombre and nombre != "hola" else "Hola,"
+    cuerpo = (
+        f"Te confirmamos tu llamada con el equipo de Sprintia el {cuando}. "
+        "Te llamaremos a esa hora para enseñarte cómo implementar el asistente "
+        "de voz en tu negocio."
+    )
+    extra = "Si necesitas cambiarla o cancelarla, responde a este correo."
+    firma = "Un saludo,\nEquipo Sprintia"
+    text = f"{saludo}\n\n{cuerpo}\n\n{extra}\n\n{firma}"
+    import html as _html
+    html_body = (
+        f"<p>{_html.escape(saludo)}</p>"
+        f"<p>{_html.escape(cuerpo)}</p>"
+        f"<p>{_html.escape(extra)}</p>"
+        f"<p>{_html.escape(firma).replace(chr(10), '<br>')}</p>"
+    )
+    try:
+        return brevo.send_transactional_email(
+            to_email=email, to_name=nombre if nombre != "hola" else email,
+            subject=subject, text=text, html_body=html_body, tag="cita-sprintia",
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("No se pudo enviar email de confirmación de cita a %s", email)
+        return False
+
+
 @router.post("/crear_reserva")
 def crear_reserva(
     req: CrearReq,
@@ -628,13 +695,33 @@ def crear_reserva(
     # original. La cita queda creada (con el peluquero asignado en el título);
     # `buscar_reserva_cliente` recorre todos los calendarios del tenant + el
     # principal, así se sigue encontrando.
+    # ----- Negocio del cliente y email: visibles para el equipo -----
+    # El negocio se refleja en el título (visible de un vistazo en el
+    # calendario) y en la descripción. El email se manda como campo propio o,
+    # si el agente de voz no lo expone, se extrae de las notas.
+    negocio = (req.negocio_cliente or "").strip()
+    email_final = _email_valido(req.email_cliente) or _email_valido(req.notas)
+
+    titulo_final = req.titulo
+    if negocio and negocio.lower() not in req.titulo.lower():
+        titulo_final = f"{req.titulo} · {negocio}"
+
+    desc_lines: list[str] = []
+    if negocio:
+        desc_lines.append(f"Tipo de negocio: {negocio}")
+    if email_final:
+        desc_lines.append(f"Email: {email_final}")
+    if req.notas and req.notas.strip():
+        desc_lines.append(req.notas.strip())
+    descripcion_final = "\n".join(desc_lines)
+
     def _do_insert(cal_id: str) -> dict:
         return _retry_google(
             lambda: cal.crear_evento(
-                titulo=req.titulo,
+                titulo=titulo_final,
                 inicio=inicio_dt,
                 fin=fin_dt,
-                descripcion=req.notas,
+                descripcion=descripcion_final,
                 telefono_cliente=tel,
                 calendar_id=cal_id,
                 tenant_id=tenant.get("id", "default"),
@@ -683,10 +770,21 @@ def crear_reserva(
         }
     peluquero_resp = peluquero_asignado or "sin preferencia"
     log.info("Reserva creada por voz: %s (%s)", ev.get("id"), peluquero_resp)
+
+    # Email de confirmación al cliente (best-effort, nunca rompe la reserva).
+    email_enviado = False
+    if email_final:
+        email_enviado = _enviar_confirmacion_cita(
+            email_final, titulo_final, inicio_dt, negocio, tenant,
+        )
+        log.info("Email confirmación cita %s a %s: %s",
+                 ev.get("id"), email_final, "OK" if email_enviado else "no enviado")
+
     return {
         "ok": True,
         "event_id": ev.get("id"),
         "peluquero": peluquero_resp,
+        "email_enviado": email_enviado,
     }
 
 

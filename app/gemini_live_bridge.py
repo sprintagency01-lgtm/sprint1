@@ -228,18 +228,20 @@ TOOL_DECLARATIONS: list[dict[str, Any]] = [
     },
     {
         "name": "crear_reserva",
-        "description": "Crea una cita tras confirmar hora con el cliente.",
+        "description": "Crea la cita (llamada con el equipo) tras confirmar hora, nombre y email con el cliente.",
         "parameters": {
             "type": "object",
             "properties": {
-                "titulo": {"type": "string", "description": "'Nombre — Servicio (Peluquero|sin preferencia)'"},
+                "titulo": {"type": "string", "description": "'Nombre — Llamada Sprintia (sin preferencia)'"},
                 "inicio_iso": {"type": "string"},
                 "fin_iso": {"type": "string"},
                 "telefono_cliente": {"type": "string"},
                 "peluquero": {"type": "string", "description": "Nombre o 'sin preferencia'."},
-                "notas": {"type": "string"},
+                "email_cliente": {"type": "string", "description": "Email del cliente para mandarle la confirmación."},
+                "negocio_cliente": {"type": "string", "description": "Tipo/nombre del negocio del cliente (ej: 'peluquería', 'clínica dental Pérez')."},
+                "notas": {"type": "string", "description": "Cualquier detalle extra."},
             },
-            "required": ["titulo", "inicio_iso", "fin_iso", "peluquero"],
+            "required": ["titulo", "inicio_iso", "fin_iso", "peluquero", "email_cliente", "negocio_cliente"],
         },
     },
     {
