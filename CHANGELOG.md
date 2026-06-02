@@ -18,7 +18,12 @@ Entrada más reciente arriba.
 
 ### Añadido
 
-- Ruta `GET /ana-demo`: página mínima que embebe el widget Convai de ElevenLabs (la Ana real por voz en el navegador), servida dentro del iframe del modal de llamada de prueba.
+- Ruta `GET /ana-demo`: página mínima que embebe el widget Convai de ElevenLabs. **Nota:** finalmente NO se usa en el modal de la landing (ver "Corregido"); queda como entrada alternativa por si se quiere la Ana de ElevenLabs en navegador.
+
+### Corregido
+
+- El modal de "llamada de prueba" de la landing vuelve a apuntar a `/gemini-demo` (diseño original con ondas/transcripción). El widget Convai pelado de `/ana-demo` cambiaba el diseño del popup.
+- Eliminado el texto residual de peluquería en la UI del demo (`gemini_demo.html`): intro, `agentSub` y variantes ES/EN pasan a "asistente de voz de Sprintia" / "del equipo de Sprintia". Ya no aparece "Ana de la peluquería" en el popup.
 
 ### Env / despliegue
 
