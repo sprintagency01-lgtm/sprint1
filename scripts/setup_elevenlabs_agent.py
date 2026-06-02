@@ -292,7 +292,7 @@ def main() -> None:
                         },
                     },
                 },
-                "first_message": "Hola, soy Ana de la peluquería. ¿En qué te puedo ayudar?",
+                "first_message": "Sprintia Soluciones, dígame.",
                 "language": "es",
                 "dynamic_variables": {
                     "dynamic_variable_placeholders": dynamic_placeholders,

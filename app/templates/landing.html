@@ -1418,7 +1418,7 @@
     </div>
     <div class="nav-cta">
       <a href="#final" class="btn btn-sm btn-ghost" data-lead="Entrar">Entrar</a>
-      <a href="#final" class="btn btn-sm btn-primary" data-lead="Nav CTA">Probar Sprintia <span class="arrow">→</span></a>
+      <a href="#probar" class="btn btn-sm btn-primary" data-lead="Nav CTA" data-call="1">Probar Sprintia <span class="arrow">→</span></a>
     </div>
   </div>
 </nav>
@@ -1444,7 +1444,7 @@
         agenda impecable — mientras tú haces el trabajo que sí importa.
       </p>
       <div class="hero-actions">
-        <a href="#final" class="btn btn-primary" id="cta" data-lead="Hero">
+        <a href="#probar" class="btn btn-primary" id="cta" data-lead="Hero" data-call="1">
           Probar Sprintia <span class="arrow">→</span>
         </a>
         <a href="#como" class="btn btn-ghost">Ver cómo funciona</a>
@@ -1535,9 +1535,9 @@
         <div class="sec-kicker">DEMO EN VIVO</div>
         <h2>Habla con Ana <em>ahora</em>.</h2>
         <p>
-          Ana es la recepcionista de una peluquería de prueba. Pídele cita
-          para mañana, muévela a otro día, pregúntale por horarios o precios.
-          Sin registro, sin enviar tus datos.
+          Ana es nuestra propia asistente de voz. Cuéntale a qué se dedica tu
+          negocio y te agenda una llamada con el equipo para enseñarte cómo
+          implementarla en el tuyo. Sin registro, sin enviar tus datos.
         </p>
         <button class="btn btn-try" id="open-demo" type="button">
           Llamada de prueba <span class="arrow">→</span>
@@ -1891,7 +1891,7 @@
   <div class="container">
     <h2>Ahora toca hacer lo que te <em>gusta</em>.<br>De las llamadas nos encargamos nosotros.</h2>
     <p>Cuéntanos tu negocio en una llamada de 20 minutos. Si encaja, en 48 horas tienes a Sprintia contestando por ti.</p>
-    <a href="#final" class="btn btn-primary" id="final-cta" data-lead="Final CTA">Probar Sprintia <span class="arrow">→</span></a>
+    <a href="#probar" class="btn btn-primary" id="final-cta" data-lead="Final CTA" data-call="1">Probar Sprintia <span class="arrow">→</span></a>
   </div>
 </section>
 
@@ -2468,6 +2468,9 @@
       const navigatesAway = href && !href.startsWith('#') && href !== '';
       if (navigatesAway) return; // dejar pasar al navigate (demo, /admin, etc.)
       e.preventDefault();
+      // CTAs "Probar Sprintia" (data-call) abren la llamada con Ana, no el
+      // formulario de leads.
+      if (el.hasAttribute('data-call')) { openDemo(); return; }
       openModal(el.getAttribute('data-lead'));
     });
   });
@@ -2494,7 +2497,7 @@
       lang: landingLanguage().slice(0, 2).toLowerCase() || 'es',
       t: String(Date.now())
     });
-    $demoIframe.src = '/gemini-demo?' + demoParams.toString();
+    $demoIframe.src = '/ana-demo?' + demoParams.toString();
     $demoModal.classList.add('open');
     $demoModal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('demo-open');

@@ -275,48 +275,52 @@ SCENARIOS = [
     Scenario(
         name="reserva_sin_peluquero",
         user_prompt=(
-            "Eres Marcos, cliente de la peluquería, llamando por teléfono. "
-            "Quieres CORTE DE HOMBRE para MAÑANA por la tarde. Sin peluquero "
-            "preferido (te da igual). Acepta la primera hora que te ofrezcan. "
-            "Si te preguntan el nombre responde 'Marcos'. Confirma con 'sí' "
+            "Eres Marcos, dueño de un restaurante, llamando a Sprintia "
+            "porque te interesa el asistente de voz. Quieres AGENDAR UNA "
+            "LLAMADA con el equipo para MAÑANA por la tarde. Sin preferencia "
+            "de persona (te da igual Mario o Marcos). Acepta la primera hora "
+            "que te ofrezcan. Si te preguntan el nombre responde 'Marcos'; si "
+            "te piden el email responde 'marcos@example.com'. Confirma con 'sí' "
             "cuando te pidan. Despídete con 'gracias, hasta luego'. NO eres IA, "
             "eres cliente real. Frases cortas, UNA respuesta por turno."
         ),
-        first_message="Hola, quería cita para mañana por la tarde, corte de hombre",
+        first_message="Hola, me interesa lo del bot que coge el teléfono, ¿me podéis explicar?",
         expected_tools=("consultar_disponibilidad", "crear_reserva"),
         user_mentioned_lower="",
     ),
     Scenario(
         name="reserva_con_peluquero",
         user_prompt=(
-            "Eres Ana, clienta. Quieres CORTE MUJER con MARIO el VIERNES "
-            "por la mañana. Si no hay hueco con Mario, acepta otro horario "
-            "del viernes. Nombre: Ana. Acepta primera hora. Confirma 'sí'. "
+            "Eres Ana, tienes una clínica dental. Quieres AGENDAR una llamada "
+            "con MARIO del equipo de Sprintia el VIERNES por la mañana. Si no "
+            "hay hueco con Mario, acepta otro horario del viernes. Nombre: Ana. "
+            "Email: ana@example.com. Acepta primera hora. Confirma 'sí'. "
             "Cliente real, no IA. Una respuesta por turno."
         ),
-        first_message="Hola, quería cita con Mario el viernes por la mañana",
+        first_message="Hola, quería agendar una llamada con Mario para el viernes por la mañana",
         expected_tools=("consultar_disponibilidad", "crear_reserva"),
         user_mentioned_lower="mario",
     ),
     Scenario(
         name="mover_cita",
         user_prompt=(
-            "Eres Marta. Tienes cita reservada y quieres MOVERLA al jueves "
-            "por la tarde. Acepta primera hora ofrecida. Confirma con 'sí'. "
-            "Cliente real. Frases breves."
+            "Eres Marta. Tienes una llamada agendada con el equipo de Sprintia "
+            "y quieres MOVERLA al jueves por la tarde. Acepta primera hora "
+            "ofrecida. Confirma con 'sí'. Cliente real. Frases breves."
         ),
-        first_message="Hola, llamaba para cambiar mi cita",
+        first_message="Hola, llamaba para cambiar la llamada que tengo agendada",
         expected_tools=("buscar_reserva_cliente", "consultar_disponibilidad", "mover_reserva"),
         user_mentioned_lower="",
     ),
     Scenario(
         name="cancelar_cita",
         user_prompt=(
-            "Eres Luis. Quieres CANCELAR tu cita de mañana. Cuando te lean "
-            "la cita, confirma que es la tuya. Cuando pregunten si cancelar, "
+            "Eres Luis. Quieres CANCELAR la llamada que tienes agendada "
+            "mañana con el equipo de Sprintia. Cuando te lean la cita, "
+            "confirma que es la tuya. Cuando pregunten si cancelar, "
             "di 'sí, cancélala'. Cliente real, tono breve."
         ),
-        first_message="Hola, necesito cancelar mi cita",
+        first_message="Hola, necesito cancelar la llamada que tengo agendada",
         expected_tools=("buscar_reserva_cliente", "cancelar_reserva"),
         user_mentioned_lower="",
     ),

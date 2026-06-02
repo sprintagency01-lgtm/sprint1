@@ -6,6 +6,26 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-06-02 (pivote demo · Ana pasa a agente comercial de Sprintia)
+
+### Cambiado
+
+- **Ana deja de ser recepcionista de peluquería**: ahora es la asistente de voz de Sprintia Soluciones. Su objetivo es cualificar brevemente el negocio de quien llama y agendar una llamada de implementación (~30 min) con el equipo (Mario/Marcos). Reescrito `ana_prompt_new.txt` conservando las reglas load-bearing (bloque de fechas, una pregunta por turno, nombre al final, fillers en español, orden de tools, máx 3 huecos). Se reutilizan las tools de reserva existentes sin cambiar su schema: el email/negocio van en `notas` y el título pasa a `Nombre — Llamada Sprintia (...)`.
+- **Saludo**: `first_message` pasa de "Hola, soy Ana de la peluquería..." a "Sprintia Soluciones, dígame." en `elevenlabs_agent_config.json`, `scripts/setup_elevenlabs_agent.py`, `app/elevenlabs_client.py` y `ELEVENLABS.md`. Nombre del agente → "Ana · Sprintia Soluciones".
+- **Landing**: los CTA "Probar Sprintia" (nav, hero, final) ahora abren la llamada con Ana en vez del formulario de leads (`data-call`). El copy de la sección demo deja de mencionar la "peluquería de prueba".
+- **Demo de navegador** (`app/gemini_live_bridge.py`): saludos y personalidad reescritos a Sprintia para que no contradiga la nueva identidad.
+- `scripts/test_dialog.py`: escenarios adaptados a "agendar/mover/cancelar llamada con el equipo de Sprintia".
+
+### Añadido
+
+- Ruta `GET /ana-demo`: página mínima que embebe el widget Convai de ElevenLabs (la Ana real por voz en el navegador), servida dentro del iframe del modal de llamada de prueba.
+
+### Env / despliegue
+
+- El widget de `/ana-demo` usa `ELEVENLABS_AGENT_ID`. Requiere que en el panel de ElevenLabs el agente permita el dominio `sprintiasolutions.com` (allowlist) o esté como público; si es privado sin allowlist, la llamada web no arrancará. Alternativa pendiente: endpoint signed-url.
+
+---
+
 ## 2026-05-30 (landing · versión inglesa)
 
 ### Añadido

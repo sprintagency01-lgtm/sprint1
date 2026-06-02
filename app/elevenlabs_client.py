@@ -285,7 +285,7 @@ def create_agent_for_tenant(
                         },
                     },
                 },
-                "first_message": f"Hola, soy Ana de {tenant.get('name') or 'la peluquería'}. ¿En qué te puedo ayudar?",
+                "first_message": "Sprintia Soluciones, dígame.",
                 "language": "es",
                 "dynamic_variables": {
                     "dynamic_variable_placeholders": dynamic_placeholders,

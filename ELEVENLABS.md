@@ -51,7 +51,7 @@ Tools:
 - `tool_call_sound`: `typing` en las 5 tools. Suena tecleo mientras Ana consulta Google Calendar, enmascara latencia del tool audiblemente.
 
 Primer saludo seguro:
-- `first_message`: `Hola, soy Ana de la peluquería. ¿En qué te puedo ayudar?`
+- `first_message`: `Sprintia Soluciones, dígame.`
 - Política: evitar signos de exclamación, tacos o variaciones creativas en el arranque. Si hace falta personalizarlo, hacerlo desde código / prompt, no manualmente en UI.
 
 Tools asociadas (`tool_ids` en el agente):

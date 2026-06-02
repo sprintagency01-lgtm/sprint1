@@ -214,6 +214,44 @@ async def landing_en() -> HTMLResponse:
     return HTMLResponse(_localized_landing_html("en"))
 
 
+@app.get("/ana-demo", response_class=HTMLResponse)
+async def ana_demo() -> HTMLResponse:
+    """Página mínima que embebe el widget Convai de ElevenLabs (la Ana real).
+
+    Se sirve dentro del iframe del modal "Llamada de prueba" de la landing.
+    Al cerrar el modal, la landing vacía el `src` del iframe, esta página se
+    descarga y la llamada termina (libera micrófono).
+
+    Requisito de configuración (panel ElevenLabs → el agente → Widget /
+    Security): permitir el dominio `sprintiasolutions.com` (allowlist) o
+    poner el agente como público. Si el agente es privado sin allowlist, el
+    widget no podrá iniciar la llamada desde el navegador.
+    """
+    agent_id = (settings.elevenlabs_agent_id or "").strip()
+    if not agent_id:
+        return HTMLResponse(
+            "<p style='font-family:sans-serif;padding:24px'>"
+            "Falta ELEVENLABS_AGENT_ID en la configuración.</p>",
+            status_code=500,
+        )
+    html = (
+        "<!doctype html><html lang='es'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        "<title>Llamada con Ana — Sprintia</title>"
+        "<style>"
+        "html,body{margin:0;height:100%;background:transparent;"
+        "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}"
+        ".wrap{height:100%;display:flex;align-items:center;justify-content:center;}"
+        "</style></head><body><div class='wrap'>"
+        f"<elevenlabs-convai agent-id='{agent_id}'></elevenlabs-convai>"
+        "</div>"
+        "<script src='https://unpkg.com/@elevenlabs/convai-widget-embed' "
+        "async type='text/javascript'></script>"
+        "</body></html>"
+    )
+    return HTMLResponse(html)
+
+
 @app.get("/health")
 async def health() -> dict:
     """Endpoint de healthcheck para Railway (ligero, no renderiza la landing)."""
