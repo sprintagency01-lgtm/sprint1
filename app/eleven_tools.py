@@ -30,6 +30,7 @@ from .config import settings
 from . import calendar_service as cal
 from . import tenants as tn
 from . import brevo
+from . import db
 
 log = logging.getLogger(__name__)
 
@@ -542,6 +543,46 @@ def _enviar_confirmacion_cita(email: str, titulo: str, inicio_dt: datetime,
         return False
 
 
+def _crear_lead_crm(titulo: str, telefono: str, email: str, negocio: str,
+                    inicio_dt: datetime) -> int | None:
+    """Da de alta al cliente como lead en la BD + Brevo (CRM) al agendar.
+
+    Best-effort: nunca rompe la reserva. NO usa notify_new_lead a propósito,
+    para no dispararle al cliente el autoreply genérico de lead (ya recibe el
+    email de confirmación de la cita).
+    """
+    nombre = _nombre_de_titulo(titulo)
+    nombre = "" if nombre == "hola" else nombre
+    cuando = _fecha_hora_natural(inicio_dt)
+    try:
+        lead_id = db.save_lead(
+            name=nombre,
+            phone=telefono or "",
+            email=email or "",
+            company=negocio or "",
+            sector=negocio or "",
+            source="cita_demo_voz",
+            message=f"Llamada agendada con el equipo: {cuando}.",
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("No se pudo guardar el lead de la cita")
+        return None
+    try:
+        brevo.sync_lead_contact(
+            brevo.BrevoLead(
+                lead_id=lead_id,
+                name=nombre,
+                phone=telefono or "",
+                email=email or "",
+                company=negocio or "",
+                sector=negocio or "",
+            )
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("No se pudo sincronizar el lead de la cita con Brevo")
+    return lead_id
+
+
 @router.post("/crear_reserva")
 def crear_reserva(
     req: CrearReq,
@@ -780,11 +821,17 @@ def crear_reserva(
         log.info("Email confirmación cita %s a %s: %s",
                  ev.get("id"), email_final, "OK" if email_enviado else "no enviado")
 
+    # Alta del cliente como lead en el CRM (BD + Brevo). Best-effort.
+    lead_id = _crear_lead_crm(titulo_final, tel, email_final, negocio, inicio_dt)
+    if lead_id:
+        log.info("Lead de cita %s creado: lead_id=%s", ev.get("id"), lead_id)
+
     return {
         "ok": True,
         "event_id": ev.get("id"),
         "peluquero": peluquero_resp,
         "email_enviado": email_enviado,
+        "lead_id": lead_id,
     }
 
 
