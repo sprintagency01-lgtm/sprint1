@@ -443,6 +443,49 @@ def calendars_test(
         return {"ok": False, "detail": str(e)[:300]}
 
 
+class SetCalendarReq(BaseModel):
+    calendar_id: str
+    clear_team: bool = False
+
+
+@router.post("/tenant/set_calendar")
+def tenant_set_calendar(
+    req: SetCalendarReq,
+    x_tool_secret: str | None = Header(None),
+    tenant_id: str | None = Query(None),
+) -> dict[str, Any]:
+    """Apunta el tenant a un `calendar_id` y, opcionalmente, borra su equipo.
+
+    Sin equipo, `consultar_disponibilidad` y `crear_reserva` operan en modo
+    calendario único contra `tenant.calendar_id` (sin asignar "peluquero").
+    Pensado para el tenant del demo de Sprintia, que agenda llamadas con el
+    equipo en un único calendario propio.
+    """
+    _check_secret(x_tool_secret)
+    tid = _resolve_tenant_id(tenant_id)
+    deleted = 0
+    with Session(db_module.engine) as s:
+        row = s.get(db_module.Tenant, tid)
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Tenant {tid} no existe")
+        row.calendar_id = (req.calendar_id or "").strip()
+        if req.clear_team:
+            members = s.query(db_module.MiembroEquipo).filter_by(tenant_id=tid).all()
+            deleted = len(members)
+            for m in members:
+                s.delete(m)
+        s.commit()
+    tn.invalidate_tenant_cache(tid)
+    t = tn.get_tenant(tid) or {}
+    return {
+        "ok": True,
+        "tenant_id": tid,
+        "calendar_id": t.get("calendar_id"),
+        "n_peluqueros": len(t.get("peluqueros") or []),
+        "deleted_team_members": deleted,
+    }
+
+
 class TestAgentReq(BaseModel):
     text: str
     phone: str = "+34600000099"

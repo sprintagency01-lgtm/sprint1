@@ -14,6 +14,7 @@ Entrada más reciente arriba.
 - **Tipo de negocio reflejado en la cita.** `crear_reserva` acepta `negocio_cliente` y `email_cliente`. El negocio se añade al **título** del evento (`… · <negocio>`) y, junto al email, a la **descripción**, para que el equipo sepa de qué negocio se trata de un vistazo. Fallback: si el agente no manda los campos (caso del agente de voz, cuyo schema remoto aún no los expone), el backend extrae el email de `notas` y el negocio viaja igualmente en `notas` → descripción del evento.
 - Tool `crear_reserva` del demo Gemini (`gemini_live_bridge`) y prompt de Ana actualizados para pasar `email_cliente` y `negocio_cliente`.
 - **Lead al CRM al agendar.** Cuando se crea una cita, el cliente entra como lead en la BD (`db.save_lead`, `source=cita_demo_voz`) y se sincroniza con Brevo (`sync_lead_contact`). No dispara el autoreply genérico de lead para no duplicar el email de confirmación de la cita. La respuesta de `crear_reserva` incluye `lead_id`.
+- Endpoint de mantenimiento `POST /_diag/tenant/set_calendar` (`{calendar_id, clear_team}`): apunta un tenant a un calendario y, opcionalmente, borra su equipo para operar en modo calendario único. Usado para dejar el tenant del demo agendando en un calendario propio de Sprintia (sin "peluqueros").
 
 ## 2026-06-02 (pivote demo · Ana pasa a agente comercial de Sprintia)
 
