@@ -13,7 +13,7 @@ Entrada más reciente arriba.
 - **Ana deja de ser recepcionista de peluquería**: ahora es la asistente de voz de Sprintia Soluciones. Su objetivo es cualificar brevemente el negocio de quien llama y agendar una llamada de implementación (~30 min) con el equipo (Mario/Marcos). Reescrito `ana_prompt_new.txt` conservando las reglas load-bearing (bloque de fechas, una pregunta por turno, nombre al final, fillers en español, orden de tools, máx 3 huecos). Se reutilizan las tools de reserva existentes sin cambiar su schema: el email/negocio van en `notas` y el título pasa a `Nombre — Llamada Sprintia (...)`.
 - **Saludo**: `first_message` pasa de "Hola, soy Ana de la peluquería..." a "Sprintia Soluciones, dígame." en `elevenlabs_agent_config.json`, `scripts/setup_elevenlabs_agent.py`, `app/elevenlabs_client.py` y `ELEVENLABS.md`. Nombre del agente → "Ana · Sprintia Soluciones".
 - **Landing**: los CTA "Probar Sprintia" (nav, hero, final) ahora abren la llamada con Ana en vez del formulario de leads (`data-call`). El copy de la sección demo deja de mencionar la "peluquería de prueba".
-- **Demo de navegador** (`app/gemini_live_bridge.py`): saludos y personalidad reescritos a Sprintia para que no contradiga la nueva identidad.
+- **Demo de navegador** (`app/gemini_live_bridge.py`): saludos y personalidad reescritos a Sprintia para que no contradiga la nueva identidad. Voz de Gemini ajustada a **acento andaluz neutro** (natural y culto, no caricatura).
 - `scripts/test_dialog.py`: escenarios adaptados a "agendar/mover/cancelar llamada con el equipo de Sprintia".
 
 ### Añadido
@@ -22,6 +22,7 @@ Entrada más reciente arriba.
 
 ### Corregido
 
+- **Sincronizado el agente de ElevenLabs correcto.** El cambio de prompt/saludo se había aplicado a `agent_4201…` (config versionada), pero producción usa `agent_3901…` (`ELEVENLABS_AGENT_ID` en Railway). Ahora `agent_3901` tiene el prompt comercial de Sprintia, `first_message` "Sprintia Soluciones, dígame." y nombre "Ana · Sprintia Soluciones". Snapshot previo en `docs/`.
 - El modal de "llamada de prueba" de la landing vuelve a apuntar a `/gemini-demo` (diseño original con ondas/transcripción). El widget Convai pelado de `/ana-demo` cambiaba el diseño del popup.
 - Eliminado el texto residual de peluquería en la UI del demo (`gemini_demo.html`): intro, `agentSub` y variantes ES/EN pasan a "asistente de voz de Sprintia" / "del equipo de Sprintia". Ya no aparece "Ana de la peluquería" en el popup.
 
