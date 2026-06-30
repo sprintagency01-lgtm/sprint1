@@ -18,7 +18,7 @@ import time
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, FastAPI, Header, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 
 from .config import settings
 from . import db
@@ -256,6 +256,55 @@ async def ana_demo() -> HTMLResponse:
 async def health() -> dict:
     """Endpoint de healthcheck para Railway (ligero, no renderiza la landing)."""
     return {"ok": True, "service": "bot_reservas", "version": "0.4.0"}
+
+
+# ---------- SEO: verificación Search Console, sitemap y robots ----------
+
+# Archivo de verificación de Google Search Console (propiedad de prefijo de URL
+# https://sprintiasolutions.com/, cuenta mariocalvocst@gmail.com). El nombre del
+# fichero ES el token; el cuerpo es el formato estándar que Google espera.
+@app.get("/google0cb951fdbc2232d7.html", include_in_schema=False)
+async def gsc_verification() -> PlainTextResponse:
+    return PlainTextResponse(
+        "google-site-verification: google0cb951fdbc2232d7.html"
+    )
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap() -> Response:
+    """Sitemap mínimo con las páginas públicas indexables de la landing."""
+    base = "https://sprintiasolutions.com"
+    urls = [
+        (f"{base}/", "1.0"),
+        (f"{base}/en", "0.8"),
+    ]
+    items = "".join(
+        f"<url><loc>{loc}</loc><changefreq>weekly</changefreq>"
+        f"<priority>{prio}</priority></url>"
+        for loc, prio in urls
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{items}</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots() -> PlainTextResponse:
+    body = (
+        "User-agent: *\n"
+        "Disallow: /app\n"
+        "Disallow: /admin\n"
+        "Disallow: /api\n"
+        "Disallow: /tools\n"
+        "Disallow: /telegram\n"
+        "Disallow: /ana-demo\n"
+        "\n"
+        "Sitemap: https://sprintiasolutions.com/sitemap.xml\n"
+    )
+    return PlainTextResponse(body)
 
 
 # ---------- Captura de leads desde la landing ----------

@@ -54,6 +54,13 @@ Entrada más reciente arriba.
 ### Env / despliegue
 
 - Nuevo campo opcional de tenant `meet_en_citas` (bool). Activado en el tenant `pelu_demo` del `tenants.yaml` de ejemplo. No requiere variables de entorno nuevas.
+## 2026-06-30 (SEO · verificación Search Console + sitemap)
+
+### Añadido
+
+- **Verificación de Google Search Console.** Ruta `GET /google0cb951fdbc2232d7.html` que sirve el archivo de verificación (método "archivo HTML") para la propiedad de prefijo de URL `https://sprintiasolutions.com/` (cuenta `mariocalvocst@gmail.com`).
+- **`GET /sitemap.xml`.** Sitemap mínimo con las páginas públicas indexables (`/` y `/en`).
+- **`GET /robots.txt`.** Permite el rastreo de la landing y bloquea las zonas privadas (`/app`, `/admin`, `/api`, `/tools`, `/telegram`, `/ana-demo`). Apunta al sitemap.
 
 ## 2026-06-02 (cita Sprintia · email de confirmación + tipo de negocio)
 
