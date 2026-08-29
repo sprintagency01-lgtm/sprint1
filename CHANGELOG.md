@@ -6,6 +6,13 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-08-29 (landing · sección "Otros servicios")
+
+### Añadido
+
+- **Sección `#servicios` en la landing** entre Precios y el CTA final: cuatro tarjetas (automatización de procesos, gestión de leads, CRM y base de clientes, consultoría e implantación IA) con CTA "Cuéntanos tu caso" que abre el modal de leads con contexto "Otros servicios" (los interesados entran como leads etiquetados en el CMS/Brevo). Estilos con los tokens existentes; sin JS nuevo.
+- Traducciones EN de la sección en `landing_i18n.py`, insertadas al principio de `_EN_REPLACEMENTS` para ejecutarse antes de los pares parciales (p. ej. `'Cuéntanos' → 'Tell us'`) que romperían el match.
+
 ## 2026-08-29
 
 ### Añadido
