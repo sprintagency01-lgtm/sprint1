@@ -20,6 +20,7 @@ import logging
 import os
 import pathlib
 import sys
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, time
 from typing import Iterable
@@ -500,6 +501,10 @@ def crear_evento(
     service_id: str | int | None = None,
     member_id: str | int | None = None,
     channel: str = "bot",
+    # Si True, Google genera una sala de Meet para el evento; la URL queda en
+    # `hangoutLink` del evento devuelto. Solo tiene sentido en tenants cuyas
+    # citas son videollamadas (flag `meet_en_citas`).
+    crear_meet: bool = False,
 ) -> dict:
     svc = _service(tenant_id)
     cal = calendar_id or settings.default_calendar_id
@@ -538,7 +543,24 @@ def crear_evento(
         "end": {"dateTime": fin.isoformat(), "timeZone": settings.default_timezone},
         "extendedProperties": {"private": private},
     }
-    res = svc.events().insert(calendarId=cal, body=event).execute()
+    if crear_meet:
+        # requestId debe ser único por intento; si Google ve uno repetido
+        # devuelve la misma conferencia en lugar de crear otra.
+        event["conferenceData"] = {
+            "createRequest": {
+                "requestId": f"meet-{uuid.uuid4().hex}",
+                "conferenceSolutionKey": {"type": "hangoutsMeet"},
+            }
+        }
+    res = (
+        svc.events()
+        .insert(
+            calendarId=cal,
+            body=event,
+            conferenceDataVersion=1 if crear_meet else 0,
+        )
+        .execute()
+    )
     _invalidate_freebusy_cache(tenant_id)
     return res
 

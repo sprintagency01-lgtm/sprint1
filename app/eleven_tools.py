@@ -512,24 +512,48 @@ def _nombre_de_titulo(titulo: str) -> str:
 
 
 def _enviar_confirmacion_cita(email: str, titulo: str, inicio_dt: datetime,
-                              negocio: str, tenant: dict) -> bool:
-    """Manda al cliente un email de confirmación de la llamada. Best-effort."""
+                              negocio: str, tenant: dict,
+                              meet_url: str = "") -> bool:
+    """Manda al cliente un email de confirmación de la llamada. Best-effort.
+
+    Si `meet_url` viene relleno (tenant con `meet_en_citas`), la cita es una
+    videollamada: el cuerpo cambia y se incluye el enlace de Google Meet.
+    """
     nombre = _nombre_de_titulo(titulo)
     cuando = _fecha_hora_natural(inicio_dt)
     subject = f"Tu llamada con Sprintia — {cuando}"
     saludo = f"Hola {nombre}," if nombre and nombre != "hola" else "Hola,"
-    cuerpo = (
-        f"Te confirmamos tu llamada con el equipo de Sprintia el {cuando}. "
-        "Te llamaremos a esa hora para enseñarte cómo implementar el asistente "
-        "de voz en tu negocio."
-    )
+    if meet_url:
+        cuerpo = (
+            f"Te confirmamos tu llamada con el equipo de Sprintia el {cuando}. "
+            "Únete a esa hora con el enlace de Google Meet de abajo y te "
+            "enseñaremos cómo implementar el asistente de voz en tu negocio."
+        )
+    else:
+        cuerpo = (
+            f"Te confirmamos tu llamada con el equipo de Sprintia el {cuando}. "
+            "Te llamaremos a esa hora para enseñarte cómo implementar el asistente "
+            "de voz en tu negocio."
+        )
     extra = "Si necesitas cambiarla o cancelarla, responde a este correo."
     firma = "Un saludo,\nEquipo Sprintia"
-    text = f"{saludo}\n\n{cuerpo}\n\n{extra}\n\n{firma}"
+    partes_text = [saludo, cuerpo]
+    if meet_url:
+        partes_text.append(f"Enlace de la videollamada (Google Meet):\n{meet_url}")
+    partes_text += [extra, firma]
+    text = "\n\n".join(partes_text)
     import html as _html
+    meet_html = ""
+    if meet_url:
+        url_attr = _html.escape(meet_url, quote=True)
+        meet_html = (
+            f'<p><a href="{url_attr}">Unirse a la videollamada (Google Meet)</a>'
+            f"<br>{_html.escape(meet_url)}</p>"
+        )
     html_body = (
         f"<p>{_html.escape(saludo)}</p>"
         f"<p>{_html.escape(cuerpo)}</p>"
+        f"{meet_html}"
         f"<p>{_html.escape(extra)}</p>"
         f"<p>{_html.escape(firma).replace(chr(10), '<br>')}</p>"
     )
@@ -756,6 +780,10 @@ def crear_reserva(
         desc_lines.append(req.notas.strip())
     descripcion_final = "\n".join(desc_lines)
 
+    # Tenants cuyas citas son videollamadas (flag `meet_en_citas`): el evento
+    # se crea con sala de Google Meet y el enlace viaja en el email.
+    quiere_meet = bool(tenant.get("meet_en_citas"))
+
     def _do_insert(cal_id: str) -> dict:
         return _retry_google(
             lambda: cal.crear_evento(
@@ -766,6 +794,7 @@ def crear_reserva(
                 telefono_cliente=tel,
                 calendar_id=cal_id,
                 tenant_id=tenant.get("id", "default"),
+                crear_meet=quiere_meet,
             ),
             "crear_evento",
         )
@@ -812,11 +841,24 @@ def crear_reserva(
     peluquero_resp = peluquero_asignado or "sin preferencia"
     log.info("Reserva creada por voz: %s (%s)", ev.get("id"), peluquero_resp)
 
+    # URL de Meet del evento recién creado (solo tenants con `meet_en_citas`).
+    # `hangoutLink` es el campo directo; entryPoints es el fallback formal.
+    meet_url = (ev.get("hangoutLink") or "").strip()
+    if quiere_meet and not meet_url:
+        for ep in (ev.get("conferenceData", {}).get("entryPoints") or []):
+            if ep.get("entryPointType") == "video" and ep.get("uri"):
+                meet_url = ep["uri"]
+                break
+    if quiere_meet and not meet_url:
+        log.warning("Reserva %s pedía Meet pero el evento no trae hangoutLink",
+                    ev.get("id"))
+
     # Email de confirmación al cliente (best-effort, nunca rompe la reserva).
     email_enviado = False
     if email_final:
         email_enviado = _enviar_confirmacion_cita(
             email_final, titulo_final, inicio_dt, negocio, tenant,
+            meet_url=meet_url,
         )
         log.info("Email confirmación cita %s a %s: %s",
                  ev.get("id"), email_final, "OK" if email_enviado else "no enviado")

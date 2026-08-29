@@ -4,6 +4,7 @@ tenants:
     name: Peluquería Ejemplo
     phone_number_id: "123456789012345"   # el ID del número de WhatsApp asignado
     calendar_id: "primary"               # calendario principal de sprintagency01 (dueño del OAuth)
+    meet_en_citas: true                  # las citas son videollamadas: crear Meet y mandarlo en el email
     business_hours:
       open: "09:30"
       close: "20:30"
