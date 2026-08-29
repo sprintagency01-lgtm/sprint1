@@ -1885,6 +1885,52 @@
   </div>
 </section>
 
+<!-- OTROS SERVICIOS -->
+<style>
+  .services .svc-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:8px;
+  }
+  @media(max-width:1020px){ .services .svc-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:560px){ .services .svc-grid{ grid-template-columns:1fr; } }
+  .services .svc-card{
+    background:var(--bg-card); border:1px solid var(--line);
+    border-radius:var(--radius-lg); padding:26px 24px;
+  }
+  .services .svc-title{ font-weight:700; margin-bottom:8px; }
+  .services .svc-card p{ color:var(--muted); font-size:15px; line-height:1.55; margin:0; }
+  .services .svc-cta{ margin-top:28px; text-align:center; }
+</style>
+<section class="services" id="servicios">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-kicker">07 · Más allá de las llamadas</div>
+      <h2>¿Necesitas más que <em>llamadas</em>?</h2>
+      <p>La recepcionista es la puerta de entrada. También ayudamos a pequeños negocios a poner la IA a trabajar en el resto.</p>
+    </div>
+    <div class="svc-grid">
+      <div class="svc-card">
+        <div class="svc-title">Automatización de procesos</div>
+        <p>Recordatorios de cita, facturación, informes y tareas repetitivas que se hacen solas con IA.</p>
+      </div>
+      <div class="svc-card">
+        <div class="svc-title">Gestión de leads</div>
+        <p>Captura, cualificación y seguimiento automático de cada interesado — que ninguno se enfríe.</p>
+      </div>
+      <div class="svc-card">
+        <div class="svc-title">CRM y base de clientes</div>
+        <p>Implantación, limpieza de datos y campañas de reactivación de clientes dormidos.</p>
+      </div>
+      <div class="svc-card">
+        <div class="svc-title">Consultoría e implantación IA</div>
+        <p>Soluciones a medida: te decimos qué automatizar, lo montamos y te enseñamos a usarlo.</p>
+      </div>
+    </div>
+    <div class="svc-cta">
+      <a href="#final" class="btn btn-ghost" data-lead="Otros servicios">Cuéntanos tu caso <span class="arrow">→</span></a>
+    </div>
+  </div>
+</section>
+
 <!-- FINAL CTA -->
 <section class="final-cta" id="final">
   <div class="final-bg-word">sprintia.</div>

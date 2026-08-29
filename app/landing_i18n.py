@@ -8,6 +8,41 @@ from __future__ import annotations
 
 
 _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
+    # --- Sección "Otros servicios" (#servicios) ---
+    # Van PRIMERO a propósito: pares posteriores hacen reemplazos parciales
+    # (p. ej. 'Cuéntanos' → 'Tell us') que romperían el match exacto de estas
+    # cadenas si se ejecutaran antes.
+    ("07 · Más allá de las llamadas", "07 · Beyond calls"),
+    ("¿Necesitas más que <em>llamadas</em>?", "Need more than <em>calls</em>?"),
+    (
+        "La recepcionista es la puerta de entrada. También ayudamos a pequeños negocios a poner la IA a trabajar en el resto.",
+        "The receptionist is the front door. We also help small businesses put AI to work on everything else.",
+    ),
+    ('<div class="svc-title">Automatización de procesos</div>', '<div class="svc-title">Process automation</div>'),
+    (
+        "Recordatorios de cita, facturación, informes y tareas repetitivas que se hacen solas con IA.",
+        "Appointment reminders, invoicing, reports and repetitive tasks that run themselves with AI.",
+    ),
+    ('<div class="svc-title">Gestión de leads</div>', '<div class="svc-title">Lead management</div>'),
+    (
+        "Captura, cualificación y seguimiento automático de cada interesado — que ninguno se enfríe.",
+        "Automatic capture, qualification and follow-up of every prospect — so none go cold.",
+    ),
+    ('<div class="svc-title">CRM y base de clientes</div>', '<div class="svc-title">CRM &amp; customer database</div>'),
+    (
+        "Implantación, limpieza de datos y campañas de reactivación de clientes dormidos.",
+        "Setup, data cleanup and win-back campaigns for dormant customers.",
+    ),
+    ('<div class="svc-title">Consultoría e implantación IA</div>', '<div class="svc-title">AI consulting &amp; implementation</div>'),
+    (
+        "Soluciones a medida: te decimos qué automatizar, lo montamos y te enseñamos a usarlo.",
+        "Tailor-made: we tell you what to automate, we build it and we teach you to use it.",
+    ),
+    (
+        'Cuéntanos tu caso <span class="arrow">→</span>',
+        'Tell us your case <span class="arrow">→</span>',
+    ),
+    # --- Fin sección "Otros servicios" ---
     ('<html lang="es">', '<html lang="en">'),
     (
         "Sprintia — IA que reserva por ti · agente 24/7 para tu negocio",
