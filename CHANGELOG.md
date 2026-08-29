@@ -6,6 +6,16 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-08-29
+
+### Añadido
+
+- **Enlace de Google Meet en las citas.** Los tenants con `meet_en_citas: true` en `tenants.yaml` (mergeado a la BD vía `_YAML_ONLY_FIELDS`) crean el evento de Calendar con sala de Meet (`conferenceData.createRequest` + `conferenceDataVersion=1`) y el email de confirmación incluye el enlace, con copy adaptado a videollamada. Sin el flag, el comportamiento no cambia (`crear_meet=False` por defecto en `crear_evento`).
+
+### Env / despliegue
+
+- Nuevo campo opcional de tenant `meet_en_citas` (bool). Activado en el tenant `pelu_demo` del `tenants.yaml` de ejemplo. No requiere variables de entorno nuevas.
+
 ## 2026-06-02 (cita Sprintia · email de confirmación + tipo de negocio)
 
 ### Añadido

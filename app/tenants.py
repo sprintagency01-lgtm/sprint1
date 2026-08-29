@@ -144,7 +144,12 @@ def _load_yaml_by_id() -> dict[str, dict[str, Any]]:
 # cuando comparten id. Los peluqueros vivían aquí hasta abril 2026; ahora están
 # en la tabla `peluqueros` de la BD (editable desde el CMS). El mecanismo se
 # mantiene por si vuelve a hacer falta para otros campos operativos.
-_YAML_ONLY_FIELDS: tuple[str, ...] = ()
+#
+# `meet_en_citas`: si truthy, las reservas del tenant se crean con enlace de
+# Google Meet y el email de confirmación lo incluye. Pensado para tenants cuyo
+# "servicio" es una videollamada (p. ej. el propio funnel de ventas de
+# Sprintia), no para negocios presenciales.
+_YAML_ONLY_FIELDS: tuple[str, ...] = ("meet_en_citas",)
 
 
 def _merge_yaml_into_db(db_tenant: dict[str, Any], yaml_tenant: dict[str, Any]) -> dict[str, Any]:
