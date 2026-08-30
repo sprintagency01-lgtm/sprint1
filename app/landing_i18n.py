@@ -43,6 +43,22 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
         'Tell us your case <span class="arrow">→</span>',
     ),
     # --- Fin sección "Otros servicios" ---
+    # --- Pricing (minutos incluidos + setup + precio fundador) ---
+    # También al principio: el par global ('/mes' → '/mo') de más abajo
+    # rompería el match exacto de estas cadenas si se ejecutara antes.
+    (
+        "Sin permanencia. Alta y configuración: 149€ — gratis para los 10 primeros clientes. Garantía de devolución si no te convence en los primeros días.",
+        "No lock-in. Onboarding & setup: €149 — free for the first 10 clients. Money-back guarantee if it is not a fit in the first few days.",
+    ),
+    ("250 min de llamada/mes (~100 llamadas)", "250 call minutes/month (~100 calls)"),
+    ("Precio fundador para los 10 primeros", "Founding price for the first 10"),
+    ("600 min de llamada/mes (~250 llamadas)", "600 call minutes/month (~250 calls)"),
+    ("2.000 min de llamada/mes, ampliable", "2,000 call minutes/month, expandable"),
+    (
+        "Una llamada típica dura ~2 minutos. Minuto adicional en cualquier plan: 0,25€.",
+        "A typical call lasts ~2 minutes. Extra minutes on any plan: €0.25/min.",
+    ),
+    # --- Fin pricing ---
     ('<html lang="es">', '<html lang="en">'),
     (
         "Sprintia — IA que reserva por ti · agente 24/7 para tu negocio",
@@ -76,9 +92,9 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ),
     ('"inLanguage": "es-ES"', '"inLanguage": "en-US"'),
     ('"url": "https://sprintiasolutions.com/"', '"url": "https://sprintiasolutions.com/en"'),
-    ('"description": "Hasta 150 llamadas/mes"', '"description": "Up to 150 calls/month"'),
-    ('"description": "Hasta 800 llamadas/mes + bot de Telegram"', '"description": "Up to 800 calls/month + Telegram bot"'),
-    ('"description": "Llamadas ilimitadas, multi-sede"', '"description": "Unlimited calls, multi-location"'),
+    ('"description": "250 minutos de llamada/mes incluidos"', '"description": "250 call minutes/month included"'),
+    ('"description": "600 minutos de llamada/mes incluidos + bot de Telegram"', '"description": "600 call minutes/month included + Telegram bot"'),
+    ('"description": "2.000 minutos de llamada/mes ampliables, multi-sede"', '"description": "2,000 call minutes/month expandable, multi-location"'),
     (
         '"description": "Sprintia es un agente de IA que atiende, conversa y reserva por ti. Concierge digital 24/7 para cualquier negocio que vive de citas.",',
         '"description": "Sprintia is an AI agent that answers, talks and books appointments for you. A 24/7 digital concierge for appointment-based businesses.",',
@@ -244,17 +260,14 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('telefonía', 'telephony'),
     ('06 · Precios', '06 · Pricing'),
     ('Menos que una llamada perdida. Bastante <em>menos</em>.', 'Less than one missed call. Much <em>less</em>.'),
-    ('Sin permanencia. Setup incluido. Garantía de devolución si no te convence en los primeros días.', 'No lock-in. Setup included. Money-back guarantee if it is not a fit in the first few days.'),
     ('Profesional independiente', 'Independent professional'),
     ('/mes', '/mo'),
-    ('Hasta 150 llamadas/mes', 'Up to 150 calls/month'),
     ('Asistente de voz 24/7', '24/7 voice assistant'),
     ('Recordatorios automáticos', 'Automated reminders'),
     ('Panel de llamadas y citas', 'Calls and bookings dashboard'),
     ('Empezar', 'Start'),
     ('Más elegido', 'Most chosen'),
     ('Pequeño equipo o local', 'Small team or venue'),
-    ('Hasta 800 llamadas/mes', 'Up to 800 calls/month'),
     ('Todo lo de Solo', 'Everything in Solo'),
     ('Chat automático en Telegram', 'Automated Telegram chat'),
     ('Varios profesionales / agendas', 'Multiple professionals / calendars'),
@@ -262,7 +275,6 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('Voz y personalidad a medida', 'Custom voice and personality'),
     ('Empezar ahora <span class="arrow">→</span>', 'Start now <span class="arrow">→</span>'),
     ('Varios locales o clínica', 'Multiple locations or clinic'),
-    ('Llamadas ilimitadas', 'Unlimited calls'),
     ('Todo lo de Estudio', 'Everything in Studio'),
     ('Múltiples sedes y números', 'Multiple locations and numbers'),
     ('CRM + integraciones avanzadas', 'CRM + advanced integrations'),
@@ -413,8 +425,6 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ("Mesa 3 pax", "Table 3"),
     ("Creamos tu asistente con tu tono, tus reglas y tu calendar. Ready in 48 hours.", "We create your assistant with your tone, rules and calendar. Ready in 48 hours."),
     ("Enlazamos tu teléfono, tu Google Calendar y, si lo activas, tu bot de Telegram. No number change ni tus herramientas.", "We connect your phone, Google Calendar and, if enabled, your Telegram bot. No number or tool changes."),
-    ("Hasta 150 llamadas/mo", "Up to 150 calls/month"),
-    ("Hasta 800 llamadas/mo", "Up to 800 calls/month"),
     ("Tell us tu negocio en una llamada de 20 minutos. Si encaja, en 48 horas tienes a Sprintia contestando por ti.", "Tell us about your business in a 20-minute call. If it fits, Sprintia can be answering for you in 48 hours."),
     ("<h4>Sectores</h4>", "<h4>Industries</h4>"),
 )
