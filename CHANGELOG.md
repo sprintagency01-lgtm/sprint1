@@ -6,6 +6,14 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-08-29 (landing · pricing en minutos + setup + precio fundador)
+
+### Cambiado
+
+- **Los planes pasan de "llamadas incluidas" a minutos incluidos** — el coste real (ElevenLabs + SIP) es por minuto, y los caps antiguos quedaban por debajo de coste a uso máximo: Solo 250 min (~100 llamadas), Estudio 600 min (~250), Equipo 2.000 min ampliable (antes "ilimitadas": nunca vender ilimitado con COGS por minuto). Nota bajo la parrilla: llamada típica ~2 min, minuto adicional 0,25€.
+- **Alta y configuración: 149€**, gratis para los 10 primeros clientes (antes "setup incluido"). El plan Solo queda etiquetado como "precio fundador para los 10 primeros".
+- JSON-LD de ofertas y pares EN actualizados; retirados los pares de traducción muertos de los textos antiguos (incluidos los dos fallback "llamadas/mo" que compensaban la cascada del par global `/mes → /mo`).
+
 ## 2026-08-29 (landing · sección "Otros servicios")
 
 ### Añadido
