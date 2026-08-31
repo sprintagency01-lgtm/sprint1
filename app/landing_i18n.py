@@ -47,8 +47,8 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     # También al principio: el par global ('/mes' → '/mo') de más abajo
     # rompería el match exacto de estas cadenas si se ejecutara antes.
     (
-        "Sin permanencia. Alta y configuración: 149€ — gratis para los 10 primeros clientes. Garantía de devolución si no te convence en los primeros días.",
-        "No lock-in. Onboarding & setup: €149 — free for the first 10 clients. Money-back guarantee if it is not a fit in the first few days.",
+        "Sin permanencia. Alta y configuración: 149€. Garantía de devolución si no te convence en los primeros días.",
+        "No lock-in. Onboarding & setup: €149. Money-back guarantee if it is not a fit in the first few days.",
     ),
     ("250 min de llamada/mes (~100 llamadas)", "250 call minutes/month (~100 calls)"),
     ("Precio fundador para los 10 primeros", "Founding price for the first 10"),
