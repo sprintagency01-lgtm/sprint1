@@ -6,6 +6,24 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-08-31 (landing · retirada la promesa de 48 h)
+
+### Cambiado
+
+- **Fuera el compromiso de "listo en 48 horas"** en las cinco apariciones: meta description, FAQ del JSON-LD, bullet del hero, paso 02 de "cómo funciona" y CTA final. Motivo operativo: la provisión de numeración española exige validación regulatoria del carrier (~72 h en Telnyx, hasta 10 días hábiles en Twilio), así que el plazo no es exigible mientras no haya números en stock.
+- Sustituciones: el bullet del hero pasa a "Sin permanencia"; el paso 02 a "…y lo pruebas antes de activarlo"; el CTA final a "lo dejamos funcionando en unos días"; la FAQ responde "Unos días desde la llamada inicial, según tu agenda y tu numeración".
+- Traducciones EN reubicadas a un bloque propio tras el de pricing: "Sin permanencia" debe traducirse DESPUÉS de la frase completa de precios (que empieza igual) y ANTES de los pares parciales ('Cuéntanos'→'Tell us', 'calendario'→'calendar'). Retirados dos pares de compensación que quedaban muertos.
+
+## 2026-08-31 (pricing · subida de planes tras análisis de mercado)
+
+### Cambiado
+
+- **Solo 39€ → 79€** (300 min, ~120 llamadas) y **Estudio 99€ → 149€** (800 min, ~320 llamadas). **Equipo** pasa a anunciarse como **"desde 299€"** (2.000 min ampliables) para abrir negociación en multi-sede.
+- Retirada la etiqueta "Precio fundador para los 10 primeros" del plan Solo: sin descuentos publicados; los acuerdos con clientes pioneros se negocian en privado.
+- Nota al pie corregida: la llamada típica pasa de "~2 minutos" a "~2,5 minutos", coherente con los ratios min/llamadas anunciados.
+- Motivo (datos de mercado, agosto 2026): el suelo del sector en España está en 55€/mes (Clinicbot) y el estándar en 99€ (recepcionista.com), con Vukia en 297€; una telesecretaría humana cobra 45-69€ por solo 40 llamadas en horario laboral. Los 39€ quedaban por debajo del competidor más barato.
+- JSON-LD de ofertas y pares de traducción EN actualizados, incluido el nuevo prefijo "desde/from" del plan Equipo.
+
 ## 2026-08-31 (landing · retirada la oferta de setup gratis)
 
 ### Cambiado
