@@ -6,6 +6,12 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-08-31 (landing · retirada la oferta de setup gratis)
+
+### Cambiado
+
+- **El alta y configuración se anuncia a 149€ sin excepciones.** Se retira "gratis para los 10 primeros clientes" del bloque de precios (ES y EN). Decisión comercial: no publicar descuentos en la web; los acuerdos con clientes pioneros se negocian en privado.
+
 ## 2026-08-29 (landing · pricing en minutos + setup + precio fundador)
 
 ### Cambiado
