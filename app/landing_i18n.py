@@ -50,23 +50,38 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
         "Sin permanencia. Alta y configuración: 149€. Garantía de devolución si no te convence en los primeros días.",
         "No lock-in. Onboarding & setup: €149. Money-back guarantee if it is not a fit in the first few days.",
     ),
-    ("250 min de llamada/mes (~100 llamadas)", "250 call minutes/month (~100 calls)"),
-    ("Precio fundador para los 10 primeros", "Founding price for the first 10"),
-    ("600 min de llamada/mes (~250 llamadas)", "600 call minutes/month (~250 calls)"),
-    ("2.000 min de llamada/mes, ampliable", "2,000 call minutes/month, expandable"),
+    ("300 min de llamada/mes (~120 llamadas)", "300 call minutes/month (~120 calls)"),
+    ("800 min de llamada/mes (~320 llamadas)", "800 call minutes/month (~320 calls)"),
+    ("2.000 min de llamada/mes (~800 llamadas), ampliable", "2,000 call minutes/month (~800 calls), expandable"),
+    ('<span class="per">desde&nbsp;</span>', '<span class="per">from&nbsp;</span>'),
     (
-        "Una llamada típica dura ~2 minutos. Minuto adicional en cualquier plan: 0,25€.",
-        "A typical call lasts ~2 minutes. Extra minutes on any plan: €0.25/min.",
+        "Una llamada típica dura ~2,5 minutos. Minuto adicional en cualquier plan: 0,25€.",
+        "A typical call lasts ~2.5 minutes. Extra minutes on any plan: €0.25/min.",
     ),
     # --- Fin pricing ---
+    # --- Puesta en marcha (sin promesa de 48 h) ---
+    # Van aquí, DESPUÉS del bloque de precios, porque su frase también
+    # empieza por "Sin permanencia"; y antes que los pares parciales de más
+    # abajo ('Cuéntanos'→'Tell us', 'calendario'→'calendar'), que romperían
+    # el match exacto de estas cadenas.
+    (
+        "Creamos tu asistente con tu tono, tus reglas y tu calendario, y lo pruebas antes de activarlo.",
+        "We build your assistant with your tone, your rules and your calendar, and you test it before going live.",
+    ),
+    (
+        "Cuéntanos tu negocio en una llamada de 20 minutos. Si encaja, lo dejamos funcionando en unos días.",
+        "Tell us about your business in a 20-minute call. If it fits, we get it running within days.",
+    ),
+    ("Sin permanencia", "No lock-in"),
+    # --- Fin puesta en marcha ---
     ('<html lang="es">', '<html lang="en">'),
     (
         "Sprintia — IA que reserva por ti · agente 24/7 para tu negocio",
         "Sprintia - AI that books for you · 24/7 agent for your business",
     ),
     (
-        'content="Sprintia es un agente de IA que atiende tus llamadas, conversa y reserva por ti — un concierge digital para cualquier negocio que vive de citas. Listo en 48 horas para peluquerías, clínicas, consultores y más."',
-        'content="Sprintia is an AI agent that answers your calls, talks to customers and books appointments for you. A digital concierge for appointment-based businesses, ready in 48 hours."',
+        'content="Sprintia es un agente de IA que atiende tus llamadas, conversa y reserva por ti — un concierge digital para cualquier negocio que vive de citas. Para peluquerías, clínicas, consultores y más."',
+        'content="Sprintia is an AI agent that answers your calls, talks to customers and books appointments for you. A digital concierge for appointment-based businesses: hair salons, clinics, consultants and more."',
     ),
     (
         'content="asistente IA llamadas, recepcionista virtual 24/7, agente IA reservas, agenda automatizada, atención telefónica IA, concierge digital, Sprintia"',
@@ -92,16 +107,16 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ),
     ('"inLanguage": "es-ES"', '"inLanguage": "en-US"'),
     ('"url": "https://sprintiasolutions.com/"', '"url": "https://sprintiasolutions.com/en"'),
-    ('"description": "250 minutos de llamada/mes incluidos"', '"description": "250 call minutes/month included"'),
-    ('"description": "600 minutos de llamada/mes incluidos + bot de Telegram"', '"description": "600 call minutes/month included + Telegram bot"'),
-    ('"description": "2.000 minutos de llamada/mes ampliables, multi-sede"', '"description": "2,000 call minutes/month expandable, multi-location"'),
+    ('"description": "300 minutos de llamada/mes incluidos"', '"description": "300 call minutes/month included"'),
+    ('"description": "800 minutos de llamada/mes incluidos + bot de Telegram"', '"description": "800 call minutes/month included + Telegram bot"'),
+    ('"description": "Desde 299€: 2.000 minutos de llamada/mes ampliables, multi-sede"', '"description": "From €299: 2,000 call minutes/month expandable, multi-location"'),
     (
         '"description": "Sprintia es un agente de IA que atiende, conversa y reserva por ti. Concierge digital 24/7 para cualquier negocio que vive de citas.",',
         '"description": "Sprintia is an AI agent that answers, talks and books appointments for you. A 24/7 digital concierge for appointment-based businesses.",',
     ),
     ('"areaServed": "ES"', '"areaServed": "US"'),
     ('"name": "¿Cuánto tarda en estar listo?"', '"name": "How long does setup take?"'),
-    ('"text": "48 horas desde la llamada inicial."', '"text": "48 hours after the initial call."'),
+    ('"text": "Unos días desde la llamada inicial, según tu agenda y tu numeración."', '"text": "A few days after the initial call, depending on your calendar and phone setup."'),
     ('"name": "¿Tengo que cambiar de número de teléfono?"', '"name": "Do I need to change my phone number?"'),
     (
         '"text": "No. Sprintia se conecta a tu número actual mediante desvío de llamadas o un número adicional dedicado."',
@@ -140,7 +155,6 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
         "Sprintia answers every call, confirms every appointment and keeps your\n        calendar tidy while you focus on the work that matters.",
     ),
     ('Ver cómo funciona', 'See how it works'),
-    ('Listo en 48 horas', 'Ready in 48 hours'),
     ('Sin cambiar tu número', 'No number change'),
     ('Con tu propia voz', 'With your own voice'),
     ('Sprintia atendiendo', 'Sprintia answering'),
@@ -203,7 +217,6 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('En una llamada de 30 min nos dices qué vendes, tus horarios, y cómo hablas a tus clientes.', 'In a 30-minute call, you tell us what you sell, your hours and how you speak to customers.'),
     ('PASO 02', 'STEP 02'),
     ('Entrenamos', 'We train it'),
-    ('Creamos tu asistente con tu tono, tus reglas y tu calendario. Listo en 48 horas.', 'We create your assistant with your tone, rules and calendar. Ready in 48 hours.'),
     ('PASO 03', 'STEP 03'),
     ('Conectamos', 'We connect it'),
     ('Enlazamos tu teléfono, tu Google Calendar y, si lo activas, tu bot de Telegram. Sin cambiar tu número ni tus herramientas.', 'We connect your phone, Google Calendar and, if enabled, your Telegram bot. No number or tool changes.'),
@@ -281,7 +294,6 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('Soporte prioritario', 'Priority support'),
     ('Habla con ventas', 'Talk to sales'),
     ('Ahora toca hacer lo que te <em>gusta</em>.<br>De las llamadas nos encargamos nosotros.', 'Now do the work you <em>love</em>.<br>We handle the calls.'),
-    ('Cuéntanos tu negocio en una llamada de 20 minutos. Si encaja, en 48 horas tienes a Sprintia contestando por ti.', 'Tell us about your business in a 20-minute call. If it fits, Sprintia can be answering for you in 48 hours.'),
     ('IA que reserva por ti — un concierge digital para cualquier negocio que vive de citas.', 'AI that books for you: a digital concierge for any appointment-based business.'),
     ('Producto', 'Product'),
     ('Empresa', 'Company'),
@@ -423,9 +435,7 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ("Mesa 2 · sin gluten", "Table 2 · gluten-free"),
     ("🟠 Lista espera · 4 pax", "🟠 Waitlist · 4"),
     ("Mesa 3 pax", "Table 3"),
-    ("Creamos tu asistente con tu tono, tus reglas y tu calendar. Ready in 48 hours.", "We create your assistant with your tone, rules and calendar. Ready in 48 hours."),
     ("Enlazamos tu teléfono, tu Google Calendar y, si lo activas, tu bot de Telegram. No number change ni tus herramientas.", "We connect your phone, Google Calendar and, if enabled, your Telegram bot. No number or tool changes."),
-    ("Tell us tu negocio en una llamada de 20 minutos. Si encaja, en 48 horas tienes a Sprintia contestando por ti.", "Tell us about your business in a 20-minute call. If it fits, Sprintia can be answering for you in 48 hours."),
     ("<h4>Sectores</h4>", "<h4>Industries</h4>"),
 )
 
