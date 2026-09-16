@@ -6,6 +6,18 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-09-16 (landing · mención del servicio de webs en hero, navegación y meta)
+
+### Añadido
+
+- **Línea bajo los botones del hero**: "¿Todavía sin web? También la hacemos, incluida en el plan desde 59€/mes", con enlace directo a `#planes-web`. Estilo nuevo `.hero-note`.
+
+### Cambiado
+
+- Navegación y pie: el enlace "Precios" pasa a **"Planes"** (EN: "Plans"), coherente con el nuevo nombre de la sección 06.
+- Intro de "Otros servicios": ahora dice "También hacemos tu web y ayudamos a pequeños negocios…".
+- Meta description y keywords: se añade "También diseñamos y mantenemos tu web" y "diseño web para negocios locales" (con sus equivalentes EN).
+
 ## 2026-09-16 (landing · planes de asistente de IA y planes web, con solicitud de contacto)
 
 ### Añadido

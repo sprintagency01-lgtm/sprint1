@@ -15,8 +15,8 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ("07 · Más allá de las llamadas", "07 · Beyond calls"),
     ("¿Necesitas más que <em>llamadas</em>?", "Need more than <em>calls</em>?"),
     (
-        "La recepcionista es la puerta de entrada. También ayudamos a pequeños negocios a poner la IA a trabajar en el resto.",
-        "The receptionist is the front door. We also help small businesses put AI to work on everything else.",
+        "La recepcionista es la puerta de entrada. También hacemos tu web y ayudamos a pequeños negocios a poner la IA a trabajar en el resto.",
+        "The receptionist is the front door. We also build your website and help small businesses put AI to work everywhere else.",
     ),
     ('<div class="svc-title">Automatización de procesos</div>', '<div class="svc-title">Process automation</div>'),
     (
@@ -48,6 +48,10 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     # 'Cuéntanos' → 'Tell us', 'Sin permanencia' → 'No lock-in') romperían
     # el match exacto de estas cadenas.
     ("06 · Planes", "06 · Plans"),
+    (
+        '¿Todavía sin web? <a href="#planes-web">También la hacemos</a>, incluida en el plan desde 59€/mes.',
+        'No website yet? <a href="#planes-web">We build it too</a>, included in the plan from €59/month.',
+    ),
     ("Asistente de IA o web. <em>O las dos cosas</em>.", "AI assistant or website. <em>Or both</em>."),
     (
         "Precio cerrado al mes, sin sorpresas. Cada plan se activa tras una llamada: nos cuentas tu negocio y lo dejamos configurado.",
@@ -136,12 +140,12 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
         "Sprintia - AI that books for you · 24/7 agent for your business",
     ),
     (
-        'content="Sprintia es un agente de IA que atiende tus llamadas, conversa y reserva por ti — un concierge digital para cualquier negocio que vive de citas. Para peluquerías, clínicas, consultores y más."',
-        'content="Sprintia is an AI agent that answers your calls, talks to customers and books appointments for you. A digital concierge for appointment-based businesses: hair salons, clinics, consultants and more."',
+        'content="Sprintia es un agente de IA que atiende tus llamadas, conversa y reserva por ti — un concierge digital para cualquier negocio que vive de citas. También diseñamos y mantenemos tu web. Para peluquerías, clínicas, consultores y más."',
+        'content="Sprintia is an AI agent that answers your calls, talks to customers and books appointments for you. A digital concierge for appointment-based businesses. We also design and maintain your website. Hair salons, clinics, consultants and more."',
     ),
     (
-        'content="asistente IA llamadas, recepcionista virtual 24/7, agente IA reservas, agenda automatizada, atención telefónica IA, concierge digital, Sprintia"',
-        'content="AI phone assistant, 24/7 virtual receptionist, AI booking agent, automated scheduling, AI call answering, digital concierge, Sprintia"',
+        'content="asistente IA llamadas, recepcionista virtual 24/7, agente IA reservas, agenda automatizada, atención telefónica IA, concierge digital, diseño web para negocios locales, Sprintia"',
+        'content="AI phone assistant, 24/7 virtual receptionist, AI booking agent, automated scheduling, AI call answering, digital concierge, web design for local businesses, Sprintia"',
     ),
     ('<link rel="canonical" href="https://sprintiasolutions.com/">', '<link rel="canonical" href="https://sprintiasolutions.com/en">'),
     ('<meta property="og:locale" content="es_ES">', '<meta property="og:locale" content="en_US">'),
@@ -203,7 +207,7 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('<a href="#como">Cómo funciona</a>', '<a href="#como">How it works</a>'),
     ('<a href="#sectores">Sectores</a>', '<a href="#sectores">Industries</a>'),
     ('<a href="#voz">Voz</a>', '<a href="#voz">Voice</a>'),
-    ('<a href="#precios">Precios</a>', '<a href="#precios">Pricing</a>'),
+    ('<a href="#precios">Planes</a>', '<a href="#precios">Plans</a>'),
     ('<a href="#integraciones">Integraciones</a>', '<a href="#integraciones">Integrations</a>'),
     ('<a href="#final" class="btn btn-sm btn-ghost" data-lead="Entrar">Entrar</a>', '<a href="/" class="btn btn-sm btn-ghost" hreflang="es">ES</a>'),
     ('Probar Sprintia <span class="arrow">→</span>', 'Try Sprintia <span class="arrow">→</span>'),
