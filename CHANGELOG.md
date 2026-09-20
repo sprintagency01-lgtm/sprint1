@@ -6,6 +6,30 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-09-20 (anti-spam de leads · plantilla de voz de tenants · repo desbloqueado)
+
+### Corregido
+
+- **Formulario público blindado contra bots.** Hoy entró el primer lead falso por la landing ("Ashley" / `madamtaisia@mail.ru`, en lista negra de CleanTalk con 5.667 webs atacadas y actividad el mismo día). Llegó con `source` vacío, cosa imposible desde el navegador porque el JS del modal siempre hace `fd.set('source', ...)`: fue un POST directo al endpoint. `/api/leads` lleva ahora un **honeypot** (`website`, oculto fuera de pantalla, `tabindex=-1` y bajo `aria-hidden`; si llega relleno se descarta en silencio con un 200 falso, que un error le diría al bot que le hemos calado) y un **rate limit por IP** (3 leads/hora). Solo consumen cuota los envíos aceptados y los bots cazados, así que un error de tecleo no deja fuera a ningún cliente. (commit `78b0532`)
+- **`leads.ip` guardaba la IP del proxy, no la del visitante.** `_client_ip` prioriza ahora `X-Forwarded-For`: detrás del proxy de Railway `request.client.host` es siempre la IP del edge, así que la columna venía siendo inútil para saber de dónde vino un lead. (commit `78b0532`)
+- **`render_voice_prompt` reventaba en todo el CMS.** El pivote de Ana a agente comercial (`2e7c81d`) reescribió `ana_prompt_new.txt` en sitio, pero el render de prompts por tenant seguía leyendo ese archivo y sus anchors apuntaban a líneas de la plantilla vieja de peluquería que ya no existían. Cualquier alta o edición de tenant (equipo, servicios, horarios) y `/diag` lanzaban RuntimeError. Las dos plantillas se separan: `ana_prompt_new.txt` es el agente comercial de Sprintia y **`ana_prompt_tenant.txt`** (nuevo, restaurado de `2e7c81d^`) es la recepcionista del negocio del cliente. (commit `5bbab95`)
+- **Suite de tests de vuelta en verde: de 20 fallos a 0.** 17 los arregla la separación de plantillas. Los otros 3 eran el helper `_settings()` de `test_lead_notifications`, construido a mano y sin seguir a `config.Settings` (le faltaba `brevo_language_attribute` desde `342af0e`); ahora se deriva de los campos reales del dataclass y no puede volver a desincronizarse. (commit `f51c6f1`)
+- **`pytest` no arrancaba en un entorno limpio.** `conftest.py` ponía `OPENAI_API_KEY=""` para no heredar llaves reales, pero `app/agent.py` instancia `OpenAI(...)` al importarse y el SDK (>=1.57) lanza `OpenAIError` con la key vacía: la suite ni llegaba a colectar. Un valor de pega no vacío cumple el mismo objetivo. (commit `05ee10d`)
+
+### Añadido
+
+- Tests de los cerrojos anti-spam en `tests/test_lead_antispam.py`: honeypot, rate limit por IP, que los errores de validación no gasten cuota y la precedencia de `X-Forwarded-For`. (commit `78b0532`)
+
+### Env / despliegue
+
+- `LEAD_RATE_LIMIT_MAX` (default 3) y `LEAD_RATE_LIMIT_WINDOW_S` (default 3600): opcionales, sin definirlas el comportamiento es el descrito. `LEAD_RATE_LIMIT_MAX=0` desactiva el rate limit.
+- **Archivo nuevo en la raíz del repo: `ana_prompt_tenant.txt`.** Va versionado, así que Railway lo despliega solo, pero si alguien copia el proyecto a mano tiene que ir con él o `render_voice_prompt` no arranca.
+- El rate limit vive en memoria del proceso web. Correcto con el uvicorn único del `Procfile`; si se escala a varias réplicas hay que moverlo a Redis o a la BD.
+
+### Nota
+
+- Sube también `feat(seo)` del 2026-06-30 (entrada más abajo), que llevaba tres meses sin publicarse: un `.git/HEAD.lock` huérfano de ese día, más dos refs corruptas (`refs/heads/main.lock.cleanup_2` apuntando a ceros y un `refs/.DS_Store`), dejaron el clon local bloqueado — no admitía commits y `git fetch` fallaba con "bad object". Eliminados los tres.
+
 ## 2026-08-31 (landing · retirada la promesa de 48 h)
 
 ### Cambiado
