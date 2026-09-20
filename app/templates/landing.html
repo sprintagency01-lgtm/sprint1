@@ -1363,6 +1363,10 @@
     margin: 4px 0 12px;
   }
   .check-field input{ margin-top:2px; accent-color:var(--accent); flex:0 0 auto; }
+  /* Honeypot anti-bots: fuera de pantalla, nunca visible ni tabulable.
+     Se oculta con posicionamiento y no con display:none porque los bots
+     que parsean el HTML descartan los campos con display:none. */
+  .hp-field{ position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden; }
   .modal .btn-accent{ width:100%; justify-content:center; padding:15px 20px; font-size:15px; margin-top:6px; }
   .modal-foot{
     margin-top:16px; font-size:12px; color:var(--muted); text-align:center;
@@ -2067,6 +2071,10 @@
           <input type="checkbox" id="lead-marketing" name="marketing_consent" value="1">
           <span>Acepto recibir emails de Sprintia con novedades, casos de uso y contenidos comerciales. Podré darme de baja cuando quiera.</span>
         </label>
+        <div class="hp-field" aria-hidden="true">
+          <label for="lead-website">No rellenes este campo</label>
+          <input type="text" id="lead-website" name="website" tabindex="-1" autocomplete="off">
+        </div>
         <input type="hidden" name="consent" value="1">
         <input type="hidden" id="lead-language" name="landing_language" value="es">
         <button type="submit" class="btn btn-accent">Enviar <span class="arrow" aria-hidden="true">→</span></button>

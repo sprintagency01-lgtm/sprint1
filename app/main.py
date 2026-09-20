@@ -312,6 +312,62 @@ async def robots() -> PlainTextResponse:
 # Valida el teléfono: admite +, espacios, guiones, paréntesis y dígitos.
 _PHONE_RE = re.compile(r"^\+?[0-9\s\-\(\)\.]{6,25}$")
 
+# Anti-spam del formulario público. `/api/leads` es el único endpoint sin
+# auth que escribe en BD, crea tenant, sincroniza contacto a Brevo y manda
+# emails, así que lleva dos cerrojos:
+#   1. Honeypot `website`: input oculto por CSS que un humano nunca ve ni
+#      tabula. Los bots que parsean el HTML y hacen POST directo lo rellenan.
+#   2. Rate limit por IP con ventana deslizante en memoria del proceso.
+#
+# El rate limit es in-process: vale mientras sirvamos con un único uvicorn
+# sin `--workers` (ver Procfile). Si algún día escalamos a varias réplicas
+# habrá que moverlo a Redis o a la BD.
+_LEAD_HITS: dict[str, list[float]] = {}
+# Cota de seguridad por si nos barren con IPs rotatorias: al superarla se
+# purgan las entradas ya caducadas para que el dict no crezca sin límite.
+_LEAD_HITS_MAX_IPS = 10_000
+
+
+def _client_ip(request: Request) -> str:
+    """IP real del cliente.
+
+    En Railway la app va detrás de un proxy y `request.client.host` es
+    siempre la IP del edge, así que `X-Forwarded-For` manda cuando existe.
+    """
+    xff = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    if xff:
+        return xff[:64]
+    return (request.client.host if request.client else "")[:64]
+
+
+def _lead_rate_limited(ip: str) -> bool:
+    """True si `ip` ya agotó su cuota de leads en la ventana actual.
+
+    Solo consulta: los intentos se contabilizan con `_record_lead_hit` para
+    que un humano que se equivoca al teclear el teléfono no gaste cuota.
+    """
+    max_hits = settings.lead_rate_limit_max
+    window = settings.lead_rate_limit_window_s
+    if max_hits <= 0 or window <= 0 or not ip:
+        return False
+    cutoff = time.monotonic() - window
+    return len([t for t in _LEAD_HITS.get(ip, []) if t > cutoff]) >= max_hits
+
+
+def _record_lead_hit(ip: str) -> None:
+    """Anota un envío aceptado (o un bot cazado) para la ventana de `ip`."""
+    window = settings.lead_rate_limit_window_s
+    if settings.lead_rate_limit_max <= 0 or window <= 0 or not ip:
+        return
+    now = time.monotonic()
+    cutoff = now - window
+
+    if len(_LEAD_HITS) > _LEAD_HITS_MAX_IPS:
+        for stale in [k for k, v in _LEAD_HITS.items() if not v or v[-1] <= cutoff]:
+            _LEAD_HITS.pop(stale, None)
+
+    _LEAD_HITS[ip] = [t for t in _LEAD_HITS.get(ip, []) if t > cutoff] + [now]
+
 
 @app.post("/api/leads")
 async def create_lead(
@@ -333,7 +389,27 @@ async def create_lead(
     utm_campaign: str = Form(""),
     utm_term: str = Form(""),
     utm_content: str = Form(""),
+    # Honeypot: oculto en la landing, debe llegar siempre vacío.
+    website: str = Form(""),
 ):
+    ip = _client_ip(request)
+    ua = request.headers.get("user-agent", "")[:400]
+
+    # Honeypot. Respondemos como si el envío hubiera ido bien: si le diéramos
+    # un error, el bot sabría que le hemos calado y ajustaría el ataque.
+    if website.strip():
+        log.warning("lead descartado por honeypot ip=%s ua=%s name=%r", ip, ua, name[:80])
+        _record_lead_hit(ip)
+        return {"ok": True, "id": 0}
+
+    if _lead_rate_limited(ip):
+        log.warning("lead descartado por rate limit ip=%s ua=%s", ip, ua)
+        return JSONResponse(
+            {"error": "Has enviado varias solicitudes seguidas. Prueba dentro de un rato "
+                      "o escríbenos a hola@sprintiasolutions.com."},
+            status_code=429,
+        )
+
     # Validaciones mínimas
     name = name.strip()
     phone = phone.strip()
@@ -353,9 +429,6 @@ async def create_lead(
     if "@" not in email:
         return JSONResponse({"error": "El email no parece válido."}, status_code=400)
 
-    ip = (request.client.host if request.client else "") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-    ua = request.headers.get("user-agent", "")[:400]
-
     try:
         lead_id = db.save_lead(
             name=name, phone=phone, email=email, company=company,
@@ -368,6 +441,7 @@ async def create_lead(
             ip=ip, user_agent=ua,
         )
         log.info("lead nuevo id=%s name=%s phone=%s sector=%s source=%s", lead_id, name, phone, sector, source)
+        _record_lead_hit(ip)
     except Exception:
         log.exception("Error guardando lead")
         return JSONResponse({"error": "Error interno. Inténtalo en un momento."}, status_code=500)

@@ -9,6 +9,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _int_env(name: str, default: int) -> int:
+    """Lee un entero de entorno tolerando valores vacíos o corruptos."""
+    try:
+        return int(os.getenv(name, "").strip() or default)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     # Provider del LLM del agente (CLI/diag): "openai" | "anthropic".
@@ -79,6 +87,13 @@ class Settings:
         "LEAD_AUTOREPLY_SUBJECT",
         "Hemos recibido tu solicitud en Sprintia",
     )
+    # ---- Anti-spam del formulario público ------------------------------------
+    # `/api/leads` es el único endpoint sin auth que escribe en BD, sincroniza
+    # contactos a Brevo y dispara emails, así que lleva rate limit por IP.
+    # LEAD_RATE_LIMIT_MAX=0 lo desactiva.
+    lead_rate_limit_max: int = _int_env("LEAD_RATE_LIMIT_MAX", 3)
+    lead_rate_limit_window_s: int = _int_env("LEAD_RATE_LIMIT_WINDOW_S", 3600)
+
     # ---- Brevo CRM / email marketing ----------------------------------------
     # Si BREVO_API_KEY está definido, cada lead se sincroniza como contacto.
     # BREVO_LIST_IDS acepta una lista separada por comas, p.ej. "12,18".
