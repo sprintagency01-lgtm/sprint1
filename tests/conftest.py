@@ -29,9 +29,13 @@ os.environ.setdefault("TENANTS_FILE", str(_TEST_DB_DIR / "tenants.yaml"))
 # run usa su propio directorio.
 os.environ.setdefault("TOKENS_DIR", str(_TEST_DB_DIR / ".tokens"))
 # No permitir fugas de llaves reales a los tests (aunque algún test los
-# llame por error, irían a una key vacía y fallarían antes de llegar a red).
+# llame por error, irían a una key de pega y fallarían antes de llegar a red).
+#
+# Ojo: tiene que ser un valor NO vacío. `app/agent.py` instancia `OpenAI(...)`
+# al importarse y el SDK (>=1.57) lanza OpenAIError si la key está vacía, así
+# que con "" la suite entera ni siquiera llegaba a la fase de colección.
 for _var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY"):
-    os.environ.setdefault(_var, "")
+    os.environ.setdefault(_var, "test-dummy-no-usar")
 
 # Asegura que el directorio de tokens existe (calendar_service.TOKENS_DIR
 # hace mkdir al import, pero más vale blindarlo).
