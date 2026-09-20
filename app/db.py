@@ -1097,10 +1097,25 @@ def _peluqueros_legible(peluqueros: list[dict]) -> str:
 # ---------------------------------------------------------------------
 #
 #  Decisión arquitectural (2026-04-28): la fuente de verdad del prompt de
-#  voz es `ana_prompt_new.txt` en la raíz del repo. Cualquier mejora a la
-#  jerarquía o a las reglas que se haga sobre ese archivo se propaga
-#  automáticamente a todos los tenants nuevos. NO mantenemos un prompt
-#  paralelo hardcodeado en este módulo.
+#  voz de los tenants es `ana_prompt_tenant.txt` en la raíz del repo.
+#  Cualquier mejora a la jerarquía o a las reglas que se haga sobre ese
+#  archivo se propaga automáticamente a todos los tenants nuevos. NO
+#  mantenemos un prompt paralelo hardcodeado en este módulo.
+#
+#  Corrección (2026-09-20): hasta hoy esta plantilla era `ana_prompt_new.txt`,
+#  pero el pivote de Ana a agente comercial (commit 2e7c81d, 2026-06-02)
+#  reescribió ese archivo para la VOZ PROPIA DE SPRINTIA — la que cualifica
+#  al que llama y le agenda una demo con Mario o Marcos. Son dos productos
+#  distintos y ahora viven en dos archivos distintos:
+#
+#    · `ana_prompt_new.txt`    → agente comercial de Sprintia. Lo sube
+#      `scripts/refresh_agent_prompt.py` al agente de ElevenLabs propio.
+#    · `ana_prompt_tenant.txt` → recepcionista del NEGOCIO DEL CLIENTE.
+#      Es la que personaliza `render_voice_prompt` para cada tenant.
+#
+#  Mientras compartieron archivo, los anchors de abajo dejaron de matchear
+#  y `render_voice_prompt` reventaba con RuntimeError en todo el CMS
+#  (alta de tenant, equipo, servicios, horarios) y en /diag.
 #
 #  `render_voice_prompt(tenant)` carga la plantilla y sustituye SOLO los
 #  datos específicos del negocio (nombre, asistente, horario, servicios,
@@ -1110,8 +1125,8 @@ def _peluqueros_legible(peluqueros: list[dict]) -> str:
 #  búsqueda por nombre tras fallo de teléfono) y "Cierre y colgar" con
 #  end_call.
 #
-#  La sustitución se hace por anchors de línea EXACTOS. Si Marcos edita
-#  `ana_prompt_new.txt` y rompe el matching, levantamos un RuntimeError
+#  La sustitución se hace por anchors de línea EXACTOS. Si alguien edita
+#  `ana_prompt_tenant.txt` y rompe el matching, levantamos un RuntimeError
 #  explícito en vez de fallar silenciosamente — así nos enteramos en los
 #  tests y en el primer render del CMS.
 #
@@ -1120,7 +1135,7 @@ def _peluqueros_legible(peluqueros: list[dict]) -> str:
 # Ruta absoluta a la plantilla. `app/db.py` está en `<repo>/app/`, así
 # que la plantilla queda un nivel arriba.
 import pathlib as _pathlib
-_VOICE_PROMPT_TEMPLATE_PATH = _pathlib.Path(__file__).resolve().parent.parent / "ana_prompt_new.txt"
+_VOICE_PROMPT_TEMPLATE_PATH = _pathlib.Path(__file__).resolve().parent.parent / "ana_prompt_tenant.txt"
 
 # Anchors (líneas exactas de la plantilla actual). Si la plantilla cambia
 # y alguno de estos textos desaparece, render_voice_prompt lanza un
@@ -1154,12 +1169,12 @@ _ANCHOR_PASO1 = (
 
 def render_voice_prompt(tenant: dict) -> str:
     """Renderiza el prompt de voz de un tenant a partir de la plantilla
-    maestra `ana_prompt_new.txt`. Sustituye solo los datos del negocio.
+    maestra `ana_prompt_tenant.txt`. Sustituye solo los datos del negocio.
 
     Acepta un dict (formato `Tenant.to_dict()`) para no acoplar este módulo
     al ORM.
 
-    Cualquier mejora a la jerarquía o reglas sobre `ana_prompt_new.txt`
+    Cualquier mejora a la jerarquía o reglas sobre `ana_prompt_tenant.txt`
     se hereda automáticamente: una sola fuente de verdad.
 
     Lanza RuntimeError si la plantilla se editó y alguno de los anchors
@@ -1251,7 +1266,7 @@ def render_voice_prompt(tenant: dict) -> str:
         muestras = "\n".join(f"  - {a[:100]!r}" for a in faltantes)
         raise RuntimeError(
             "render_voice_prompt: anchors de sustitución no encontrados en "
-            "ana_prompt_new.txt. La plantilla se editó y los textos de "
+            "ana_prompt_tenant.txt. La plantilla se editó y los textos de "
             "anchor quedaron desincronizados. Líneas no localizadas:\n"
             f"{muestras}\n"
             "Acción: actualiza las constantes _ANCHOR_* en app/db.py para "
