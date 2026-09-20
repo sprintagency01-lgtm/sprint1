@@ -29,6 +29,32 @@ Entrada más reciente arriba.
 ### Nota
 
 - Sube también `feat(seo)` del 2026-06-30 (entrada más abajo), que llevaba tres meses sin publicarse: un `.git/HEAD.lock` huérfano de ese día, más dos refs corruptas (`refs/heads/main.lock.cleanup_2` apuntando a ceros y un `refs/.DS_Store`), dejaron el clon local bloqueado — no admitía commits y `git fetch` fallaba con "bad object". Eliminados los tres.
+## 2026-09-16 (landing · mención del servicio de webs en hero, navegación y meta)
+
+### Añadido
+
+- **Línea bajo los botones del hero**: "¿Todavía sin web? También la hacemos, incluida en el plan desde 59€/mes", con enlace directo a `#planes-web`. Estilo nuevo `.hero-note`.
+
+### Cambiado
+
+- Navegación y pie: el enlace "Precios" pasa a **"Planes"** (EN: "Plans"), coherente con el nuevo nombre de la sección 06.
+- Intro de "Otros servicios": ahora dice "También hacemos tu web y ayudamos a pequeños negocios…".
+- Meta description y keywords: se añade "También diseñamos y mantenemos tu web" y "diseño web para negocios locales" (con sus equivalentes EN).
+
+## 2026-09-16 (landing · planes de asistente de IA y planes web, con solicitud de contacto)
+
+### Añadido
+
+- **Grupo "Web" en la sección 06** con tres planes en los que la web va incluida en la cuota y se cobra el mantenimiento: **Base 59€/mes** (web a medida, hosting, dominio, SSL, cambios de contenido, soporte por WhatsApp), **Visible 99€/mes** (Base + ficha de Google Business gestionada, reseñas/fotos/horarios al día, informe mensual; marcado "Más elegido") y **Crece 149€/mes** (Visible + reservas online, CRM con fichas de clientes, recordatorios y seguimientos por WhatsApp y email, campaña mensual). Sin coste de diseño ni de alta; permanencia mínima de 12 meses. (commit `722e90c`)
+- Anclas propias por grupo, `#planes-asistente` y `#planes-web`, para enlazar directamente desde los emails de captación.
+- CSS nuevo: cabecera de grupo (`.price-group-head`), separador entre grupos y clase `.price-note` para la nota al pie (antes era un estilo inline).
+
+### Cambiado
+
+- La sección pasa de "06 · Precios" a **"06 · Planes"**, con dos grupos independientes que no se mezclan: **Asistente de IA** (Solo 79€, Estudio 149€, Equipo desde 299€; mismas características, sin permanencia, alta 149€) y **Web**. Nuevo titular "Asistente de IA o web. O las dos cosas."
+- **Todas las tarjetas pasan a "Solicitar"** (antes "Empezar", "Empezar ahora" y "Habla con ventas"): abren el modal de contacto existente con el plan como contexto (`data-lead="Plan Solo"` … `"Plan Web Crece"`), de modo que el cliente envía una solicitud en lugar de contratar directamente.
+- JSON-LD: seis ofertas (Asistente Solo/Estudio/Equipo y Web Base/Visible/Crece).
+- `landing_i18n.py`: pares EN para los dos grupos, colocados antes de los pares parciales (`/mes`, `Cuéntanos`, `Sin permanencia`); retirados los pares de los planes antiguos que ya no aparecen en la plantilla. Etiquetas de lead en EN: `Plan Solo EN`, `Plan Studio EN`, `Plan Team EN`, `Web Plan Base EN`, `Web Plan Visible EN`, `Web Plan Grow EN`.
 
 ## 2026-08-31 (landing · retirada la promesa de 48 h)
 

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprintia — IA que reserva por ti · agente 24/7 para tu negocio</title>
-<meta name="description" content="Sprintia es un agente de IA que atiende tus llamadas, conversa y reserva por ti — un concierge digital para cualquier negocio que vive de citas. Para peluquerías, clínicas, consultores y más.">
-<meta name="keywords" content="asistente IA llamadas, recepcionista virtual 24/7, agente IA reservas, agenda automatizada, atención telefónica IA, concierge digital, Sprintia">
+<meta name="description" content="Sprintia es un agente de IA que atiende tus llamadas, conversa y reserva por ti — un concierge digital para cualquier negocio que vive de citas. También diseñamos y mantenemos tu web. Para peluquerías, clínicas, consultores y más.">
+<meta name="keywords" content="asistente IA llamadas, recepcionista virtual 24/7, agente IA reservas, agenda automatizada, atención telefónica IA, concierge digital, diseño web para negocios locales, Sprintia">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
 <meta name="author" content="Sprintia">
 <meta name="theme-color" content="#15161a">
@@ -43,9 +43,12 @@
   "inLanguage": "es-ES",
   "url": "https://sprintiasolutions.com/",
   "offers": [
-    {"@type": "Offer", "name": "Solo", "price": "79", "priceCurrency": "EUR", "description": "300 minutos de llamada/mes incluidos"},
-    {"@type": "Offer", "name": "Estudio", "price": "149", "priceCurrency": "EUR", "description": "800 minutos de llamada/mes incluidos + bot de Telegram"},
-    {"@type": "Offer", "name": "Equipo", "price": "299", "priceCurrency": "EUR", "description": "Desde 299€: 2.000 minutos de llamada/mes ampliables, multi-sede"}
+    {"@type": "Offer", "name": "Asistente Solo", "price": "79", "priceCurrency": "EUR", "description": "300 minutos de llamada/mes incluidos"},
+    {"@type": "Offer", "name": "Asistente Estudio", "price": "149", "priceCurrency": "EUR", "description": "800 minutos de llamada/mes incluidos + bot de Telegram"},
+    {"@type": "Offer", "name": "Asistente Equipo", "price": "299", "priceCurrency": "EUR", "description": "Desde 299€: 2.000 minutos de llamada/mes ampliables, multi-sede"},
+    {"@type": "Offer", "name": "Web Base", "price": "59", "priceCurrency": "EUR", "description": "Web profesional incluida, hosting y cambios de contenido"},
+    {"@type": "Offer", "name": "Web Visible", "price": "99", "priceCurrency": "EUR", "description": "Web Base + ficha de Google Business gestionada e informe mensual"},
+    {"@type": "Offer", "name": "Web Crece", "price": "149", "priceCurrency": "EUR", "description": "Web Visible + reservas online, CRM y campañas a tus clientes"}
   ]
 }
 </script>
@@ -281,6 +284,12 @@
     text-wrap: pretty;
   }
   .hero-actions{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .hero-note{ margin-top:18px; font-size:14.5px; line-height:1.5; color:var(--muted); max-width:560px; text-wrap:pretty; }
+  .hero-note a{
+    color:var(--ink); font-weight:500;
+    text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--accent);
+  }
+  .hero-note a:hover{ color:var(--accent); }
   .hero-meta{
     margin-top:36px;
     display:flex; align-items:center; gap:24px;
@@ -1079,6 +1088,17 @@
   .price-feat{ display:flex; align-items:flex-start; gap:10px; font-size:14.5px; line-height:1.45; }
   .price-feat svg{ width:16px; height:16px; color:var(--accent); flex-shrink:0; margin-top:3px; }
   .price-card .btn{ margin-top:auto; justify-content:center; }
+  .price-group + .price-group{ margin-top:72px; padding-top:56px; border-top:1px solid var(--line); }
+  .price-group-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:10px 32px; flex-wrap:wrap; margin-bottom:28px;
+  }
+  .price-group-head h3{
+    font-family:var(--sans); font-weight:500; font-size:24px;
+    letter-spacing:-0.02em; color:var(--ink);
+  }
+  .price-group-head p{ font-size:14.5px; line-height:1.5; color:var(--muted); max-width:560px; margin:0; text-wrap:pretty; }
+  .price-note{ text-align:center; color:var(--muted); font-size:14px; margin-top:22px; }
 
   /* ---------- TRY-IT (sección demo en vivo + modal) ---------- */
   .try-it{
@@ -1417,7 +1437,7 @@
       <a href="#como">Cómo funciona</a>
       <a href="#sectores">Sectores</a>
       <a href="#voz">Voz</a>
-      <a href="#precios">Precios</a>
+      <a href="#precios">Planes</a>
       <a href="#integraciones">Integraciones</a>
     </div>
     <div class="nav-cta">
@@ -1453,6 +1473,7 @@
         </a>
         <a href="#como" class="btn btn-ghost">Ver cómo funciona</a>
       </div>
+      <p class="hero-note">¿Todavía sin web? <a href="#planes-web">También la hacemos</a>, incluida en el plan desde 59€/mes.</p>
       <div class="hero-meta">
         <div class="hero-meta-item">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l4 4 10-10"/></svg>
@@ -1836,11 +1857,17 @@
 <section class="pricing" id="precios">
   <div class="container">
     <div class="sec-head">
-      <div class="sec-kicker">06 · Precios</div>
-      <h2>Menos que una llamada perdida. Bastante <em>menos</em>.</h2>
-      <p>Sin permanencia. Alta y configuración: 149€. Garantía de devolución si no te convence en los primeros días.</p>
+      <div class="sec-kicker">06 · Planes</div>
+      <h2>Asistente de IA o web. <em>O las dos cosas</em>.</h2>
+      <p>Precio cerrado al mes, sin sorpresas. Cada plan se activa tras una llamada: nos cuentas tu negocio y lo dejamos configurado.</p>
     </div>
-    <div class="price-grid">
+
+    <div class="price-group" id="planes-asistente">
+      <div class="price-group-head">
+        <h3>Asistente de IA</h3>
+        <p>Atiende, conversa y reserva por ti. Sin permanencia. Alta y configuración: 149€. Garantía de devolución si no te convence en los primeros días.</p>
+      </div>
+      <div class="price-grid">
       <div class="price-card">
         <div class="price-name">Solo</div>
         <div class="price-for">Profesional independiente</div>
@@ -1852,7 +1879,7 @@
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Recordatorios automáticos</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Panel de llamadas y citas</li>
         </ul>
-        <a href="#final" class="btn btn-ghost" data-lead="Plan Solo">Empezar</a>
+        <a href="#final" class="btn btn-ghost" data-lead="Plan Solo">Solicitar</a>
       </div>
 
       <div class="price-card highlight">
@@ -1868,7 +1895,7 @@
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Cobros por Stripe</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Voz y personalidad a medida</li>
         </ul>
-        <a href="#final" class="btn btn-accent" data-lead="Plan Estudio">Empezar ahora <span class="arrow">→</span></a>
+        <a href="#final" class="btn btn-accent" data-lead="Plan Estudio">Solicitar <span class="arrow">→</span></a>
       </div>
 
       <div class="price-card">
@@ -1883,10 +1910,64 @@
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Soporte prioritario</li>
           <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Account manager</li>
         </ul>
-        <a href="#final" class="btn btn-ghost" data-lead="Plan Equipo">Habla con ventas</a>
+        <a href="#final" class="btn btn-ghost" data-lead="Plan Equipo">Solicitar</a>
       </div>
+      </div>
+      <p class="price-note">Una llamada típica dura ~2,5 minutos. Minuto adicional en cualquier plan: 0,25€.</p>
     </div>
-    <p style="text-align:center; color:var(--muted); font-size:14px; margin-top:22px;">Una llamada típica dura ~2,5 minutos. Minuto adicional en cualquier plan: 0,25€.</p>
+
+    <div class="price-group" id="planes-web">
+      <div class="price-group-head">
+        <h3>Web</h3>
+        <p>La web va incluida en la cuota: sin coste de diseño ni de alta. Permanencia mínima de 12 meses.</p>
+      </div>
+      <div class="price-grid">
+      <div class="price-card">
+        <div class="price-name">Base</div>
+        <div class="price-for">Presencia profesional</div>
+        <div class="price-amount"><span class="num">59€</span><span class="per">/mes</span></div>
+        <div class="price-muted">Tu web, hecha y mantenida</div>
+        <ul class="price-feats">
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Web a medida, diseño incluido</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Hosting, dominio y certificado SSL</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Cambios de contenido cuando los necesites</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Soporte por WhatsApp</li>
+        </ul>
+        <a href="#final" class="btn btn-ghost" data-lead="Plan Web Base">Solicitar</a>
+      </div>
+
+      <div class="price-card highlight">
+        <div class="price-tag">Más elegido</div>
+        <div class="price-name">Visible</div>
+        <div class="price-for">Que te encuentren</div>
+        <div class="price-amount"><span class="num">99€</span><span class="per">/mes</span></div>
+        <div class="price-muted">Base + tu ficha de Google trabajada</div>
+        <ul class="price-feats">
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Todo lo de Base</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Ficha de Google Business gestionada</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Reseñas, fotos, horarios y publicaciones al día</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Informe mensual de visibilidad</li>
+        </ul>
+        <a href="#final" class="btn btn-accent" data-lead="Plan Web Visible">Solicitar <span class="arrow">→</span></a>
+      </div>
+
+      <div class="price-card">
+        <div class="price-name">Crece</div>
+        <div class="price-for">Que vuelvan</div>
+        <div class="price-amount"><span class="num">149€</span><span class="per">/mes</span></div>
+        <div class="price-muted">Visible + tus clientes en un CRM</div>
+        <ul class="price-feats">
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Todo lo de Visible</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Reservas online desde la web</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>CRM con fichas de clientes</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Recordatorios y seguimientos por WhatsApp y email</li>
+          <li class="price-feat"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4 10-10"/></svg>Campaña mensual a tu base de clientes</li>
+        </ul>
+        <a href="#final" class="btn btn-ghost" data-lead="Plan Web Crece">Solicitar</a>
+      </div>
+      </div>
+      <p class="price-note">¿Varias sedes, tienda online o algo a medida? Cuéntanoslo en la solicitud y te preparamos un plan.</p>
+    </div>
   </div>
 </section>
 
@@ -1910,7 +1991,7 @@
     <div class="sec-head">
       <div class="sec-kicker">07 · Más allá de las llamadas</div>
       <h2>¿Necesitas más que <em>llamadas</em>?</h2>
-      <p>La recepcionista es la puerta de entrada. También ayudamos a pequeños negocios a poner la IA a trabajar en el resto.</p>
+      <p>La recepcionista es la puerta de entrada. También hacemos tu web y ayudamos a pequeños negocios a poner la IA a trabajar en el resto.</p>
     </div>
     <div class="svc-grid">
       <div class="svc-card">
@@ -1972,7 +2053,7 @@
           <li><a href="#canales">Canales</a></li>
           <li><a href="#como">Cómo funciona</a></li>
           <li><a href="#integraciones">Integraciones</a></li>
-          <li><a href="#precios">Precios</a></li>
+          <li><a href="#precios">Planes</a></li>
         </ul>
       </div>
       <div>

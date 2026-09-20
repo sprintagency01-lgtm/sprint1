@@ -15,8 +15,8 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ("07 · Más allá de las llamadas", "07 · Beyond calls"),
     ("¿Necesitas más que <em>llamadas</em>?", "Need more than <em>calls</em>?"),
     (
-        "La recepcionista es la puerta de entrada. También ayudamos a pequeños negocios a poner la IA a trabajar en el resto.",
-        "The receptionist is the front door. We also help small businesses put AI to work on everything else.",
+        "La recepcionista es la puerta de entrada. También hacemos tu web y ayudamos a pequeños negocios a poner la IA a trabajar en el resto.",
+        "The receptionist is the front door. We also build your website and help small businesses put AI to work everywhere else.",
     ),
     ('<div class="svc-title">Automatización de procesos</div>', '<div class="svc-title">Process automation</div>'),
     (
@@ -43,27 +43,87 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
         'Tell us your case <span class="arrow">→</span>',
     ),
     # --- Fin sección "Otros servicios" ---
-    # --- Pricing (minutos incluidos + setup + precio fundador) ---
-    # También al principio: el par global ('/mes' → '/mo') de más abajo
-    # rompería el match exacto de estas cadenas si se ejecutara antes.
+    # --- Planes (asistente de IA + web, en grupos separados) ---
+    # También al principio: los pares parciales de más abajo ('/mes' → '/mo',
+    # 'Cuéntanos' → 'Tell us', 'Sin permanencia' → 'No lock-in') romperían
+    # el match exacto de estas cadenas.
+    ("06 · Planes", "06 · Plans"),
     (
-        "Sin permanencia. Alta y configuración: 149€. Garantía de devolución si no te convence en los primeros días.",
-        "No lock-in. Onboarding & setup: €149. Money-back guarantee if it is not a fit in the first few days.",
+        '¿Todavía sin web? <a href="#planes-web">También la hacemos</a>, incluida en el plan desde 59€/mes.',
+        'No website yet? <a href="#planes-web">We build it too</a>, included in the plan from €59/month.',
     ),
+    ("Asistente de IA o web. <em>O las dos cosas</em>.", "AI assistant or website. <em>Or both</em>."),
+    (
+        "Precio cerrado al mes, sin sorpresas. Cada plan se activa tras una llamada: nos cuentas tu negocio y lo dejamos configurado.",
+        "A fixed monthly price, no surprises. Every plan starts with a call: tell us about your business and we set it up.",
+    ),
+    # Grupo asistente
+    ("<h3>Asistente de IA</h3>", "<h3>AI assistant</h3>"),
+    (
+        "Atiende, conversa y reserva por ti. Sin permanencia. Alta y configuración: 149€. Garantía de devolución si no te convence en los primeros días.",
+        "Answers, talks and books for you. No lock-in. Onboarding & setup: €149. Money-back guarantee if it is not a fit in the first few days.",
+    ),
+    ("Profesional independiente", "Independent professional"),
     ("300 min de llamada/mes (~120 llamadas)", "300 call minutes/month (~120 calls)"),
+    ("Asistente de voz 24/7", "24/7 voice assistant"),
+    ("Recordatorios automáticos", "Automated reminders"),
+    ("Panel de llamadas y citas", "Calls and bookings dashboard"),
+    ("Pequeño equipo o local", "Small team or venue"),
     ("800 min de llamada/mes (~320 llamadas)", "800 call minutes/month (~320 calls)"),
-    ("2.000 min de llamada/mes (~800 llamadas), ampliable", "2,000 call minutes/month (~800 calls), expandable"),
+    ("Todo lo de Solo", "Everything in Solo"),
+    ("Chat automático en Telegram", "Automated Telegram chat"),
+    ("Varios profesionales / agendas", "Multiple professionals / calendars"),
+    ("Cobros por Stripe", "Stripe payments"),
+    ("Voz y personalidad a medida", "Custom voice and personality"),
+    ("Varios locales o clínica", "Multiple locations or clinic"),
     ('<span class="per">desde&nbsp;</span>', '<span class="per">from&nbsp;</span>'),
+    ("2.000 min de llamada/mes (~800 llamadas), ampliable", "2,000 call minutes/month (~800 calls), expandable"),
+    ("Todo lo de Estudio", "Everything in Studio"),
+    ("Múltiples sedes y números", "Multiple locations and numbers"),
+    ("CRM + integraciones avanzadas", "CRM + advanced integrations"),
+    ("Soporte prioritario", "Priority support"),
     (
         "Una llamada típica dura ~2,5 minutos. Minuto adicional en cualquier plan: 0,25€.",
         "A typical call lasts ~2.5 minutes. Extra minutes on any plan: €0.25/min.",
     ),
-    # --- Fin pricing ---
+    # Grupo web
+    ("<h3>Web</h3>", "<h3>Website</h3>"),
+    (
+        "La web va incluida en la cuota: sin coste de diseño ni de alta. Permanencia mínima de 12 meses.",
+        "The website is included in the fee: no design or setup cost. 12-month minimum term.",
+    ),
+    ("Presencia profesional", "Professional presence"),
+    ("Tu web, hecha y mantenida", "Your website, built and maintained"),
+    ("Web a medida, diseño incluido", "Custom website, design included"),
+    ("Hosting, dominio y certificado SSL", "Hosting, domain and SSL certificate"),
+    ("Cambios de contenido cuando los necesites", "Content changes whenever you need them"),
+    ("Soporte por WhatsApp", "WhatsApp support"),
+    ("Que te encuentren", "Get found"),
+    ("Base + tu ficha de Google trabajada", "Base + your Google listing, actively managed"),
+    ("Todo lo de Base", "Everything in Base"),
+    ("Ficha de Google Business gestionada", "Google Business Profile managed for you"),
+    ("Reseñas, fotos, horarios y publicaciones al día", "Reviews, photos, hours and posts kept current"),
+    ("Informe mensual de visibilidad", "Monthly visibility report"),
+    ("Que vuelvan", "Keep them coming back"),
+    ("Visible + tus clientes en un CRM", "Visible + your customers in a CRM"),
+    ("Todo lo de Visible", "Everything in Visible"),
+    ("Reservas online desde la web", "Online bookings from your website"),
+    ("CRM con fichas de clientes", "CRM with customer records"),
+    ("Recordatorios y seguimientos por WhatsApp y email", "Reminders and follow-ups via WhatsApp and email"),
+    ("Campaña mensual a tu base de clientes", "Monthly campaign to your customer base"),
+    (
+        "¿Varias sedes, tienda online o algo a medida? Cuéntanoslo en la solicitud y te preparamos un plan.",
+        "Several locations, an online shop or something custom? Tell us in your request and we will put a plan together.",
+    ),
+    # CTAs (todas las tarjetas abren el modal de solicitud)
+    ('Solicitar <span class="arrow">→</span>', 'Request <span class="arrow">→</span>'),
+    ('>Solicitar</a>', '>Request</a>'),
+    # --- Fin planes ---
     # --- Puesta en marcha (sin promesa de 48 h) ---
-    # Van aquí, DESPUÉS del bloque de precios, porque su frase también
-    # empieza por "Sin permanencia"; y antes que los pares parciales de más
-    # abajo ('Cuéntanos'→'Tell us', 'calendario'→'calendar'), que romperían
-    # el match exacto de estas cadenas.
+    # Van aquí, DESPUÉS del bloque de planes, porque el subtítulo del grupo
+    # asistente también contiene "Sin permanencia"; y antes que los pares
+    # parciales de más abajo ('Cuéntanos'→'Tell us', 'calendario'→'calendar'),
+    # que romperían el match exacto de estas cadenas.
     (
         "Creamos tu asistente con tu tono, tus reglas y tu calendario, y lo pruebas antes de activarlo.",
         "We build your assistant with your tone, your rules and your calendar, and you test it before going live.",
@@ -80,12 +140,12 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
         "Sprintia - AI that books for you · 24/7 agent for your business",
     ),
     (
-        'content="Sprintia es un agente de IA que atiende tus llamadas, conversa y reserva por ti — un concierge digital para cualquier negocio que vive de citas. Para peluquerías, clínicas, consultores y más."',
-        'content="Sprintia is an AI agent that answers your calls, talks to customers and books appointments for you. A digital concierge for appointment-based businesses: hair salons, clinics, consultants and more."',
+        'content="Sprintia es un agente de IA que atiende tus llamadas, conversa y reserva por ti — un concierge digital para cualquier negocio que vive de citas. También diseñamos y mantenemos tu web. Para peluquerías, clínicas, consultores y más."',
+        'content="Sprintia is an AI agent that answers your calls, talks to customers and books appointments for you. A digital concierge for appointment-based businesses. We also design and maintain your website. Hair salons, clinics, consultants and more."',
     ),
     (
-        'content="asistente IA llamadas, recepcionista virtual 24/7, agente IA reservas, agenda automatizada, atención telefónica IA, concierge digital, Sprintia"',
-        'content="AI phone assistant, 24/7 virtual receptionist, AI booking agent, automated scheduling, AI call answering, digital concierge, Sprintia"',
+        'content="asistente IA llamadas, recepcionista virtual 24/7, agente IA reservas, agenda automatizada, atención telefónica IA, concierge digital, diseño web para negocios locales, Sprintia"',
+        'content="AI phone assistant, 24/7 virtual receptionist, AI booking agent, automated scheduling, AI call answering, digital concierge, web design for local businesses, Sprintia"',
     ),
     ('<link rel="canonical" href="https://sprintiasolutions.com/">', '<link rel="canonical" href="https://sprintiasolutions.com/en">'),
     ('<meta property="og:locale" content="es_ES">', '<meta property="og:locale" content="en_US">'),
@@ -110,6 +170,9 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('"description": "300 minutos de llamada/mes incluidos"', '"description": "300 call minutes/month included"'),
     ('"description": "800 minutos de llamada/mes incluidos + bot de Telegram"', '"description": "800 call minutes/month included + Telegram bot"'),
     ('"description": "Desde 299€: 2.000 minutos de llamada/mes ampliables, multi-sede"', '"description": "From €299: 2,000 call minutes/month expandable, multi-location"'),
+    ('"description": "Web profesional incluida, hosting y cambios de contenido"', '"description": "Professional website included, hosting and content changes"'),
+    ('"description": "Web Base + ficha de Google Business gestionada e informe mensual"', '"description": "Web Base + managed Google Business Profile and monthly report"'),
+    ('"description": "Web Visible + reservas online, CRM y campañas a tus clientes"', '"description": "Web Visible + online bookings, CRM and campaigns to your customers"'),
     (
         '"description": "Sprintia es un agente de IA que atiende, conversa y reserva por ti. Concierge digital 24/7 para cualquier negocio que vive de citas.",',
         '"description": "Sprintia is an AI agent that answers, talks and books appointments for you. A 24/7 digital concierge for appointment-based businesses.",',
@@ -144,7 +207,7 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('<a href="#como">Cómo funciona</a>', '<a href="#como">How it works</a>'),
     ('<a href="#sectores">Sectores</a>', '<a href="#sectores">Industries</a>'),
     ('<a href="#voz">Voz</a>', '<a href="#voz">Voice</a>'),
-    ('<a href="#precios">Precios</a>', '<a href="#precios">Pricing</a>'),
+    ('<a href="#precios">Planes</a>', '<a href="#precios">Plans</a>'),
     ('<a href="#integraciones">Integraciones</a>', '<a href="#integraciones">Integrations</a>'),
     ('<a href="#final" class="btn btn-sm btn-ghost" data-lead="Entrar">Entrar</a>', '<a href="/" class="btn btn-sm btn-ghost" hreflang="es">ES</a>'),
     ('Probar Sprintia <span class="arrow">→</span>', 'Try Sprintia <span class="arrow">→</span>'),
@@ -271,28 +334,8 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('avisos', 'alerts'),
     ('reportes', 'reports'),
     ('telefonía', 'telephony'),
-    ('06 · Precios', '06 · Pricing'),
-    ('Menos que una llamada perdida. Bastante <em>menos</em>.', 'Less than one missed call. Much <em>less</em>.'),
-    ('Profesional independiente', 'Independent professional'),
     ('/mes', '/mo'),
-    ('Asistente de voz 24/7', '24/7 voice assistant'),
-    ('Recordatorios automáticos', 'Automated reminders'),
-    ('Panel de llamadas y citas', 'Calls and bookings dashboard'),
-    ('Empezar', 'Start'),
     ('Más elegido', 'Most chosen'),
-    ('Pequeño equipo o local', 'Small team or venue'),
-    ('Todo lo de Solo', 'Everything in Solo'),
-    ('Chat automático en Telegram', 'Automated Telegram chat'),
-    ('Varios profesionales / agendas', 'Multiple professionals / calendars'),
-    ('Cobros por Stripe', 'Stripe payments'),
-    ('Voz y personalidad a medida', 'Custom voice and personality'),
-    ('Empezar ahora <span class="arrow">→</span>', 'Start now <span class="arrow">→</span>'),
-    ('Varios locales o clínica', 'Multiple locations or clinic'),
-    ('Todo lo de Estudio', 'Everything in Studio'),
-    ('Múltiples sedes y números', 'Multiple locations and numbers'),
-    ('CRM + integraciones avanzadas', 'CRM + advanced integrations'),
-    ('Soporte prioritario', 'Priority support'),
-    ('Habla con ventas', 'Talk to sales'),
     ('Ahora toca hacer lo que te <em>gusta</em>.<br>De las llamadas nos encargamos nosotros.', 'Now do the work you <em>love</em>.<br>We handle the calls.'),
     ('IA que reserva por ti — un concierge digital para cualquier negocio que vive de citas.', 'AI that books for you: a digital concierge for any appointment-based business.'),
     ('Producto', 'Product'),
@@ -348,6 +391,9 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('data-lead="Plan Solo"', 'data-lead="Plan Solo EN"'),
     ('data-lead="Plan Estudio"', 'data-lead="Plan Studio EN"'),
     ('data-lead="Plan Equipo"', 'data-lead="Plan Team EN"'),
+    ('data-lead="Plan Web Base"', 'data-lead="Web Plan Base EN"'),
+    ('data-lead="Plan Web Visible"', 'data-lead="Web Plan Visible EN"'),
+    ('data-lead="Plan Web Crece"', 'data-lead="Web Plan Grow EN"'),
     ('data-lead="Final CTA"', 'data-lead="Final CTA EN"'),
     ('value="es"', 'value="en"'),
     ("ctxLabel.textContent = ctx || 'Contacto';", "ctxLabel.textContent = ctx || 'Contact';"),
