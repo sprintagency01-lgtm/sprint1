@@ -51,3 +51,7 @@ screens/
 # Solo se commitean los sanitized.
 docs/snapshots/*.json
 !docs/snapshots/*.sanitized.json
+
+# Scripts .command auxiliares de un solo uso (push/cleanup manuales).
+# Son de la máquina de cada uno, no del repo.
+_*.command
