@@ -1,3 +1,4 @@
+import dataclasses
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -5,6 +6,7 @@ from fastapi.testclient import TestClient
 from app import brevo
 from app import lead_notifications as ln
 from app.brevo import BrevoLead
+from app.config import Settings
 from app.lead_notifications import LeadNotification
 from app.main import app
 
@@ -15,7 +17,17 @@ class _Resp:
 
 
 def _settings(**overrides):
-    base = {
+    """Settings falso con TODOS los campos reales de `config.Settings`.
+
+    Se parte de los campos del dataclass (todos vacíos) para que añadir un
+    ajuste nuevo en `app/config.py` no vuelva a tirar estos tests con un
+    AttributeError: pasó con `brevo_language_attribute`, que llegó en
+    `342af0e fix(leads): guardar idioma en brevo` sin tocar este helper.
+    Vacío es el valor neutro aquí y además mantiene los tests herméticos:
+    ningún `.env` local se cuela en ellos.
+    """
+    base = {f.name: "" for f in dataclasses.fields(Settings)}
+    base.update({
         "lead_notify_webhook_url": "",
         "lead_notify_email_to": "",
         "resend_api_key": "",
@@ -31,7 +43,7 @@ def _settings(**overrides):
         "brevo_lead_id_attribute": "",
         "brevo_sender_email": "",
         "brevo_sender_name": "Sprintia",
-    }
+    })
     base.update(overrides)
     return SimpleNamespace(**base)
 
@@ -126,7 +138,8 @@ def test_autoreply_uses_landing_language():
     assert "Hi Laura" in html_body
 
 
-def test_autoreply_params_for_brevo_template():
+def test_autoreply_params_for_brevo_template(monkeypatch):
+    monkeypatch.setattr(ln, "settings", _settings())
     params = ln._autoreply_params(
         LeadNotification(
             lead_id=12,
