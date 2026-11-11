@@ -25,6 +25,7 @@ from . import db
 from . import eleven_tools
 from . import oauth_web
 from . import diag
+from . import diagnostico
 from . import sheets_sync
 from . import telegram as tg_module
 from . import gemini_live_bridge
@@ -158,6 +159,9 @@ app.include_router(oauth_web.router)
 # Endpoints /_diag/* de mantenimiento (listar/crear calendarios, verificar ids).
 # Protegidos con X-Tool-Secret igual que /tools/*.
 app.include_router(diag.router)
+# Diagnóstico de automatización (/diagnostico + /api/diagnostico/*): test
+# público que capta contactos; el presupuesto entra por /api/leads.
+app.include_router(diagnostico.router)
 # Demo Gemini 3.1 Flash Live (POC paralelo a ElevenLabs):
 #   GET  /gemini-demo      → UI HTML para probar Ana en navegador
 #   WS   /gemini-demo/ws   → bridge browser ↔ Gemini Live
@@ -277,6 +281,7 @@ async def sitemap() -> Response:
     urls = [
         (f"{base}/", "1.0"),
         (f"{base}/en", "0.8"),
+        (f"{base}/diagnostico", "0.9"),
     ]
     items = "".join(
         f"<url><loc>{loc}</loc><changefreq>weekly</changefreq>"

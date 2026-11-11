@@ -99,6 +99,8 @@ class Settings:
     # BREVO_LIST_IDS acepta una lista separada por comas, p.ej. "12,18".
     brevo_api_key: str = os.getenv("BREVO_API_KEY", "")
     brevo_list_ids: str = os.getenv("BREVO_LIST_IDS", "")
+    # Lista de Brevo para los contactos del diagnóstico (si vacía, usa BREVO_LIST_IDS).
+    brevo_diag_list_ids: str = os.getenv("BREVO_DIAG_LIST_IDS", "")
     brevo_update_enabled: bool = os.getenv("BREVO_UPDATE_ENABLED", "true").strip().lower() in {
         "1", "true", "yes", "on", "si", "sí",
     }
