@@ -26,6 +26,7 @@ from . import eleven_tools
 from . import oauth_web
 from . import diag
 from . import diagnostico
+from . import sitio
 from . import sheets_sync
 from . import telegram as tg_module
 from . import gemini_live_bridge
@@ -162,6 +163,8 @@ app.include_router(diag.router)
 # Diagnóstico de automatización (/diagnostico + /api/diagnostico/*): test
 # público que capta contactos; el presupuesto entra por /api/leads.
 app.include_router(diagnostico.router)
+# Web corporativa: home y páginas de producto (la home ya no es la landing de voz).
+app.include_router(sitio.router)
 # Demo Gemini 3.1 Flash Live (POC paralelo a ElevenLabs):
 #   GET  /gemini-demo      → UI HTML para probar Ana en navegador
 #   WS   /gemini-demo/ws   → bridge browser ↔ Gemini Live
@@ -208,9 +211,27 @@ def _localized_landing_html(lang: str = "es") -> str:
     return _LANDING_VARIANT_CACHE[key]
 
 
-@app.get("/", response_class=HTMLResponse)
+_VOZ_URL = "https://sprintiasolutions.com/asistente-de-voz"
+_VOZ_CACHE: str | None = None
+
+
+def _voice_page_html() -> str:
+    """La landing de siempre, ahora como página del producto asistente de voz.
+
+    La home (`/`) es la web corporativa (`app/sitio.py`); aquí solo se
+    corrigen canonical/og:url/hreflang y el logo vuelve a la home.
+    """
+    global _VOZ_CACHE
+    if _VOZ_CACHE is None:
+        html = _localized_landing_html("es").replace('https://sprintiasolutions.com/"', f'{_VOZ_URL}"')
+        html = html.replace('<a class="logo" href="#"', '<a class="logo" href="/"')
+        _VOZ_CACHE = html
+    return _VOZ_CACHE
+
+
+@app.get("/asistente-de-voz", response_class=HTMLResponse)
 async def landing() -> HTMLResponse:
-    return HTMLResponse(_localized_landing_html("es"))
+    return HTMLResponse(_voice_page_html())
 
 
 @app.get("/en", response_class=HTMLResponse)
@@ -280,8 +301,9 @@ async def sitemap() -> Response:
     base = "https://sprintiasolutions.com"
     urls = [
         (f"{base}/", "1.0"),
-        (f"{base}/en", "0.8"),
         (f"{base}/diagnostico", "0.9"),
+        *[(f"{base}{path}", "0.8") for path in sitio.product_paths()],
+        (f"{base}/en", "0.6"),
     ]
     items = "".join(
         f"<url><loc>{loc}</loc><changefreq>weekly</changefreq>"

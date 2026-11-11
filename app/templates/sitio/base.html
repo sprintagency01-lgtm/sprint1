@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ seo_title }}</title>
+<meta name="description" content="{{ seo_desc }}">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#f4efe6">
+<link rel="canonical" href="{{ base_url }}{{ path }}">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_ES">
+<meta property="og:site_name" content="Sprintia">
+<meta property="og:title" content="{{ og_title or seo_title }}">
+<meta property="og:description" content="{{ seo_desc }}">
+<meta property="og:url" content="{{ base_url }}{{ path }}">
+<meta property="og:image" content="{{ base_url }}/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="7.52" y="11.52" width="4.16" height="12.8" rx="2.08" fill="%2315161a"/><rect x="13.92" y="6.4" width="4.16" height="20.48" rx="2.08" fill="%2315161a"/><rect x="20.32" y="13.44" width="4.16" height="9.6" rx="2.08" fill="%2315161a"/><circle cx="22.4" cy="7.04" r="2.72" fill="%232d4cff"/></svg>'>
+{% block jsonld %}{% endblock %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ink:#15161a;--ink-2:#3a3b40;--bone:#f4efe6;--paper:#fafaf7;--stone:#7d7c78;--mist:#e3ddd0;
+    --line:rgba(21,22,26,.10);--accent:#2d4cff;--accent-2:#1f37c4;--accent-soft:#dee3ff;
+    --green:#1f4d3a;--yellow:#E8B84A;--red:#e2553f;
+    --radius:12px;--radius-lg:22px;
+    --shadow-1:0 1px 0 rgba(21,22,26,.04),0 8px 24px -12px rgba(21,22,26,.12);
+    --shadow-2:0 1px 0 rgba(21,22,26,.06),0 24px 60px -24px rgba(21,22,26,.22);
+    --serif:"Instrument Serif",Georgia,serif;--sans:"Inter Tight",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{margin:0;background:var(--bone);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit}
+  img,svg{display:block}
+  .container{max-width:1180px;margin:0 auto;padding:0 24px}
+  h1,h2,h3{margin:0;font-weight:400}
+  h1,h2{font-family:var(--serif);letter-spacing:-.015em}
+  h1 em,h2 em{font-style:italic;color:var(--accent)}
+  .kicker{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--stone)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;background:var(--ink);color:var(--paper);font:inherit;font-weight:600;padding:15px 24px;cursor:pointer;text-decoration:none;transition:transform .15s,background .15s,box-shadow .15s;white-space:nowrap}
+  .btn:hover{transform:translateY(-1px)}
+  .btn.accent{background:var(--accent)}.btn.accent:hover{background:var(--accent-2)}
+  .btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(21,22,26,.2)}
+  .btn.ghost:hover{box-shadow:inset 0 0 0 1.5px var(--ink)}
+  .btn.sm{padding:10px 18px;font-size:.92rem}
+  .btn[disabled]{opacity:.55;cursor:default;transform:none}
+
+  /* nav */
+  header{position:sticky;top:0;z-index:30;background:rgba(244,239,230,.86);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid transparent;transition:border-color .2s}
+  header.scrolled{border-bottom-color:var(--line)}
+  .nav{height:68px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:600;font-size:1.08rem;text-decoration:none;letter-spacing:-.01em}
+  .logo svg{width:26px;height:26px}.logo .b{fill:var(--ink)}.logo .d{fill:var(--accent)}
+  .links{display:flex;gap:28px;font-size:.95rem}
+  .links a{text-decoration:none;color:var(--ink-2)}.links a:hover{color:var(--ink)}
+  .drop{position:relative}
+  .drop>button{background:none;border:0;padding:0;font:inherit;color:var(--ink-2);cursor:pointer;display:flex;align-items:center;gap:5px}
+  .drop>button:hover{color:var(--ink)}
+  .drop-menu{position:absolute;top:calc(100% + 14px);left:-18px;width:340px;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:8px;box-shadow:var(--shadow-2);opacity:0;visibility:hidden;transform:translateY(-4px);transition:.15s}
+  .drop:hover .drop-menu,.drop:focus-within .drop-menu,.drop.open .drop-menu{opacity:1;visibility:visible;transform:none}
+  .drop-menu a{display:block;padding:11px 14px;border-radius:12px;text-decoration:none}
+  .drop-menu a:hover{background:var(--bone)}
+  .drop-menu b{display:block;font-weight:600;color:var(--ink);font-size:.95rem}
+  .drop-menu small{display:block;color:var(--stone);font-size:.84rem;line-height:1.35}
+  @media(max-width:900px){.links{display:none}}
+
+  /* secciones */
+  section{padding:96px 0}
+  .head{max-width:720px;margin-bottom:48px}
+  .head h2{font-size:clamp(2.3rem,5vw,3.5rem);line-height:1.02;margin:14px 0 14px}
+  .head p{color:var(--ink-2);font-size:1.12rem;margin:0}
+  @media(max-width:700px){section{padding:68px 0}.head{margin-bottom:34px}}
+
+  /* caja de URL */
+  .urlbox{display:flex;gap:8px;background:var(--paper);border:1.5px solid rgba(21,22,26,.16);border-radius:999px;padding:6px 6px 6px 22px;max-width:560px;box-shadow:var(--shadow-1);transition:border-color .15s}
+  .urlbox:focus-within{border-color:var(--accent)}
+  .urlbox input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:17px;color:var(--ink);outline:none}
+  .urlbox .btn{flex:none}
+  .urlnote{font-size:.88rem;color:var(--stone);margin:12px 0 0}
+  .dark .urlbox{background:#fff;border-color:transparent}
+  @media(max-width:560px){.urlbox{flex-direction:column;border-radius:18px;padding:8px}.urlbox input{padding:10px}.urlbox .btn{width:100%}}
+
+  /* flujo (visual de automatización) */
+  .flow{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px;box-shadow:var(--shadow-2)}
+  .flow-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .flow-top .live{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;color:var(--green)}
+  .flow-top .live i{width:7px;height:7px;border-radius:50%;background:#2fb36d;box-shadow:0 0 0 4px rgba(47,179,109,.18);animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 7px rgba(47,179,109,.05)}}
+  .fstep{display:flex;gap:14px;align-items:flex-start;position:relative;padding:0 0 18px}
+  .fstep:last-child{padding-bottom:0}
+  .fstep::before{content:"";position:absolute;left:15px;top:32px;bottom:2px;width:2px;background:var(--mist)}
+  .fstep:last-child::before{display:none}
+  .fdot{flex:none;width:32px;height:32px;border-radius:10px;background:var(--bone);border:1px solid var(--line);display:grid;place-items:center;color:var(--stone);transition:background .3s,color .3s,border-color .3s}
+  .fdot svg{width:16px;height:16px}
+  .fstep.on .fdot{background:var(--accent);border-color:var(--accent);color:#fff}
+  .fstep b{display:block;font-weight:600;font-size:.97rem}
+  .fstep span{display:block;color:var(--stone);font-size:.86rem}
+  .fstep .t{margin-left:auto;font-family:var(--mono);font-size:.72rem;color:var(--stone);padding-top:3px;white-space:nowrap}
+
+  /* tarjetas */
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:28px}
+  .ticks{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+  .ticks li{display:flex;gap:10px;color:var(--ink-2);font-size:.97rem}
+  .ticks li::before{content:"";flex:none;width:18px;height:18px;margin-top:3px;border-radius:50%;background:var(--accent-soft) url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%231f37c4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12.5l4 4 8-9"/></svg>') center/12px no-repeat}
+
+  /* bloque oscuro */
+  .dark{background:var(--ink);color:var(--paper)}
+  .dark .kicker{color:#a9a8a3}
+  .dark h2 em{color:#8fa2ff}
+  .dark p{color:#cfcdc6}
+
+  /* faq */
+  .faq{max-width:820px}
+  .faq details{border-top:1px solid var(--line);padding:20px 0}
+  .faq details:last-child{border-bottom:1px solid var(--line)}
+  .faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:20px;font-weight:600;font-size:1.06rem}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";font-family:var(--mono);color:var(--stone);font-weight:400;transition:transform .2s}
+  .faq details[open] summary::after{transform:rotate(45deg)}
+  .faq p{margin:12px 0 0;color:var(--ink-2);max-width:68ch}
+
+  /* formulario */
+  form .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:600px){form .row{grid-template-columns:1fr}}
+  label.f{display:block;font-size:.84rem;color:var(--stone);margin:0 0 12px}
+  label.f input,label.f textarea{display:block;width:100%;margin-top:5px;padding:13px 14px;border:1px solid rgba(21,22,26,.16);border-radius:var(--radius);background:#fff;font:inherit;font-size:16px;color:var(--ink)}
+  label.f textarea{min-height:110px;resize:vertical}
+  label.f input:focus,label.f textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .chk{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;color:var(--ink-2);margin:4px 0 16px;cursor:pointer}
+  .chk input{margin-top:3px;accent-color:var(--accent);width:16px;height:16px;flex:none}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .err{color:#c0392b;font-size:.9rem;margin:10px 0 0;min-height:1px}
+  .ok-msg{display:flex;gap:14px;align-items:flex-start}
+  .ok-msg .ic{flex:none;width:42px;height:42px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:56px 0 40px;font-size:.92rem}
+  .foot{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px}
+  .foot h4{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);font-weight:400;margin:0 0 14px}
+  .foot ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+  .foot a{text-decoration:none;color:var(--ink-2)}.foot a:hover{color:var(--ink)}
+  .foot p{color:var(--stone);margin:12px 0 0;max-width:30ch}
+  .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:44px;padding-top:22px;border-top:1px solid var(--line);color:var(--stone);font-size:.84rem}
+  @media(max-width:800px){.foot{grid-template-columns:1fr 1fr}}
+
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+  {% block css %}{% endblock %}
+</style>
+</head>
+<body>
+<header id="top"><div class="container nav">
+  <a class="logo" href="/" aria-label="Sprintia, inicio">
+    <svg viewBox="0 0 28 28" aria-hidden="true"><rect class="b" x="6.58" y="10.08" width="3.64" height="11.2" rx="1.82"/><rect class="b" x="12.18" y="5.6" width="3.64" height="17.92" rx="1.82"/><rect class="b" x="17.78" y="11.76" width="3.64" height="8.4" rx="1.82"/><circle class="d" cx="19.6" cy="6.16" r="2.38"/></svg>
+    Sprintia
+  </a>
+  <nav class="links" aria-label="Principal">
+    <div class="drop" id="drop">
+      <button type="button" aria-haspopup="true" aria-expanded="false" onclick="this.parentNode.classList.toggle('open');this.setAttribute('aria-expanded',this.parentNode.classList.contains('open'))">Productos
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="drop-menu">
+        {% for p in productos %}<a href="{{ p.url }}"><b>{{ p.nombre }}</b><small>{{ p.menu }}</small></a>{% endfor %}
+      </div>
+    </div>
+    <a href="/#como">Cómo trabajamos</a>
+    <a href="/diagnostico">Diagnóstico gratis</a>
+    <a href="#contacto">Contacto</a>
+  </nav>
+  <a class="btn sm accent" href="/diagnostico" data-cta="nav">Analiza tu web <span aria-hidden="true">→</span></a>
+</div></header>
+
+<main>
+{% block main %}{% endblock %}
+
+<section id="contacto">
+  <div class="container" style="display:grid;grid-template-columns:1fr 1.1fr;gap:56px;align-items:start" id="contactGrid">
+    <div>
+      <div class="kicker">Contacto</div>
+      <h2 style="font-size:clamp(2.2rem,4.6vw,3.2rem);line-height:1.03;margin:14px 0 16px">{% block contact_title %}Cuéntanos qué te quita <em>tiempo</em>.{% endblock %}</h2>
+      <p style="color:var(--ink-2);font-size:1.08rem;margin:0 0 22px">Te respondemos en uno o dos días laborables. Si lo vemos claro, te proponemos qué automatizar primero y cuánto cuesta, sin compromiso.</p>
+      <p style="color:var(--stone);font-size:.95rem;margin:0">¿Prefieres el email? <a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></p>
+    </div>
+    <div class="card" id="contactCard" style="box-shadow:var(--shadow-1)">
+      <form id="contactForm" novalidate>
+        <div class="row">
+          <label class="f">Nombre<input name="name" autocomplete="name" required maxlength="120"></label>
+          <label class="f">Empresa<input name="company" autocomplete="organization" maxlength="200"></label>
+        </div>
+        <div class="row">
+          <label class="f">Email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+          <label class="f">Teléfono<input name="phone" type="tel" autocomplete="tel" required maxlength="25"></label>
+        </div>
+        <label class="f">¿Qué te gustaría automatizar? (opcional)<textarea name="message" maxlength="2000" placeholder="Por ejemplo: pasamos las facturas a mano, los contactos de la web se pierden…"></textarea></label>
+        <label class="hp" aria-hidden="true">Web<input name="website" tabindex="-1" autocomplete="off"></label>
+        <label class="chk"><input type="checkbox" name="consent" required> Acepto que Sprintia me contacte para responder a mi solicitud.</label>
+        <button class="btn accent" type="submit">Enviar <span aria-hidden="true">→</span></button>
+        <div class="err" id="contactErr" role="alert"></div>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer><div class="container">
+  <div class="foot">
+    <div>
+      <a class="logo" href="/" aria-label="Sprintia"><svg viewBox="0 0 28 28" aria-hidden="true"><rect class="b" x="6.58" y="10.08" width="3.64" height="11.2" rx="1.82"/><rect class="b" x="12.18" y="5.6" width="3.64" height="17.92" rx="1.82"/><rect class="b" x="17.78" y="11.76" width="3.64" height="8.4" rx="1.82"/><circle class="d" cx="19.6" cy="6.16" r="2.38"/></svg>Sprintia</a>
+      <p>Automatización para empresas: webs, CRM, atención y procesos que funcionan solos.</p>
+    </div>
+    <div><h4>Productos</h4><ul>{% for p in productos %}<li><a href="{{ p.url }}">{{ p.nombre }}</a></li>{% endfor %}</ul></div>
+    <div><h4>Empieza</h4><ul><li><a href="/diagnostico">Analiza tu web gratis</a></li><li><a href="/#como">Cómo trabajamos</a></li><li><a href="#contacto">Pide presupuesto</a></li></ul></div>
+    <div><h4>Sprintia</h4><ul><li><a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></li><li><a href="/en">English</a></li></ul></div>
+  </div>
+  <div class="foot-bottom"><div>© {{ year }} Sprintia</div><div>sprintiasolutions.com</div></div>
+</div></footer>
+
+<script>
+(function(){
+  /* Analítica: proyecto PostHog compartido, se separa por site */
+  window.track = function(n, p){ try{ if(window.posthog && posthog.capture) posthog.capture(n, Object.assign({site:'sprintia', page: location.pathname}, p||{})); }catch(e){} };
+  if(!/^(localhost|127\.)/.test(location.hostname)){
+    !function(t,e){var o,n,p,r;if(e.__SV||(window.posthog&&window.posthog.__loaded))return;window.posthog=e;e._i=[];e.init=function(i,s,a){function g(t,e){var o=e.split('.');if(o.length===2){t=t[o[0]];e=o[1]}t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments)))}}p=t.createElement('script');p.type='text/javascript';p.crossOrigin='anonymous';p.async=true;p.src=s.api_host.replace('.i.posthog.com','-assets.i.posthog.com')+'/static/array.js';r=t.getElementsByTagName('script')[0];r.parentNode.insertBefore(p,r);var u=e;if(a!==undefined)u=e[a]=[];else a='posthog';u.people=u.people||[];u.toString=function(){return'posthog'};u.people.toString=function(){return'posthog.people'};o='capture register register_once get_distinct_id opt_in_capturing opt_out_capturing'.split(' ');for(n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])};e.__SV=1}(document,window.posthog||[]);
+    posthog.init('phc_QPwTqqZbVEIwjiRz7bRvM2W8PXmBEgyjpIjHLq0zJQH',{api_host:'https://eu.i.posthog.com',person_profiles:'identified_only',capture_pageview:true});
+    posthog.register({site:'sprintia'});
+  }
+
+  var hdr = document.getElementById('top');
+  addEventListener('scroll', function(){ hdr.classList.toggle('scrolled', scrollY > 8); }, {passive:true});
+  document.addEventListener('click', function(e){ var d = document.getElementById('drop'); if(d && !d.contains(e.target)) d.classList.remove('open'); });
+
+  /* Cajas de URL → diagnóstico ya analizando */
+  document.querySelectorAll('form[data-url]').forEach(function(f){
+    f.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var v = (f.querySelector('input').value || '').trim(), err = f.querySelector('.err');
+      if(!/^[^\s]+\.[^\s]{2,}/.test(v)){ if(err) err.textContent = 'Escribe la dirección de tu web, por ejemplo tuempresa.com'; return; }
+      track('home_url_submitted', {where: f.dataset.url});
+      location.href = '/diagnostico?web=' + encodeURIComponent(v) + '&utm_source=web&utm_medium=' + encodeURIComponent(f.dataset.url);
+    });
+  });
+  document.querySelectorAll('[data-cta]').forEach(function(a){ a.addEventListener('click', function(){ track('home_cta', {cta: a.dataset.cta}); }); });
+
+  /* Aparición suave al hacer scroll */
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }); }, {rootMargin:'0px 0px -8% 0px'}) : null;
+  document.querySelectorAll('.reveal').forEach(function(el){ io ? io.observe(el) : el.classList.add('in'); });
+
+  /* Animación del flujo */
+  document.querySelectorAll('.flow').forEach(function(fl){
+    var st = fl.querySelectorAll('.fstep'), i = 0;
+    if(!st.length) return;
+    function tick(){ st.forEach(function(s, j){ s.classList.toggle('on', j <= i); }); i = (i + 1) % (st.length + 2); }
+    tick(); setInterval(tick, 1100);
+  });
+
+  /* Contacto → /api/leads */
+  var cf = document.getElementById('contactForm');
+  if(cf) cf.addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    var o = {}; new FormData(cf).forEach(function(v, k){ o[k] = v; });
+    var err = document.getElementById('contactErr'), btn = cf.querySelector('button[type=submit]');
+    err.textContent = '';
+    if(!o.name || o.name.trim().length < 2) return err.textContent = 'Dinos tu nombre.';
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = 'Revisa el email.';
+    if(!/^\+?[0-9\s\-\(\)\.]{6,25}$/.test(o.phone || '')) return err.textContent = 'Revisa el teléfono.';
+    if(!o.consent) return err.textContent = 'Marca la casilla para que podamos contactarte.';
+    var fd = new FormData();
+    ['name','email','phone','company','message','website'].forEach(function(k){ fd.set(k, o[k] || ''); });
+    fd.set('consent', '1'); fd.set('country', 'España'); fd.set('landing_language', 'es');
+    fd.set('source', '{{ lead_source }}');
+    var q = new URLSearchParams(location.search);
+    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(function(k){ if(q.get(k)) fd.set(k, q.get(k)); });
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    try{
+      var r = await fetch('/api/leads', {method:'POST', body: fd});
+      var d = await r.json().catch(function(){ return {}; });
+      if(!r.ok) throw new Error(d.error || 'No se pudo enviar.');
+      track('home_lead_submitted', {source: '{{ lead_source }}'});
+      document.getElementById('contactCard').innerHTML = '<div class="ok-msg"><div class="ic">✓</div><div><h3 style="font-family:var(--serif);font-size:1.9rem;margin:0 0 6px">Recibido</h3><p style="margin:0;color:var(--ink-2)">Te escribimos en uno o dos días laborables.</p></div></div>';
+    }catch(e){ btn.disabled = false; btn.innerHTML = 'Enviar <span aria-hidden="true">→</span>'; err.textContent = e.message || 'No se pudo enviar.'; }
+  });
+})();
+</script>
+{% block js %}{% endblock %}
+</body>
+</html>

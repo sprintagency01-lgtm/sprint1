@@ -14,11 +14,10 @@ def test_health():
 
 
 def test_landing_ok():
-    # Tras retirar el webhook de WhatsApp, el endpoint público que nos
-    # interesa comprobar es la landing pública en `/`.
+    # La home es la web corporativa; la landing de voz vive en /asistente-de-voz.
     client = TestClient(app)
-    r = client.get("/")
-    assert r.status_code == 200
+    assert client.get("/").status_code == 200
+    assert client.get("/asistente-de-voz").status_code == 200
 
 
 def test_english_landing_ok():

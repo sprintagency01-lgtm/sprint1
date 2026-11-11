@@ -491,7 +491,7 @@ def render_landing_variant(html: str, lang: str = "es") -> str:
     if lang != "en":
         return html.replace(
             '<link rel="canonical" href="https://sprintiasolutions.com/">',
-            '<link rel="canonical" href="https://sprintiasolutions.com/">\n<link rel="alternate" hreflang="en" href="https://sprintiasolutions.com/en">\n<link rel="alternate" hreflang="es" href="https://sprintiasolutions.com/">',
+            '<link rel="canonical" href="https://sprintiasolutions.com/">\n<link rel="alternate" hreflang="en" href="https://sprintiasolutions.com/en">\n<link rel="alternate" hreflang="es" href="https://sprintiasolutions.com/asistente-de-voz">',
         ).replace(
             '<a href="#final" class="btn btn-sm btn-ghost" data-lead="Entrar">Entrar</a>',
             '<a href="/en" class="btn btn-sm btn-ghost" hreflang="en">EN</a>',
@@ -502,5 +502,5 @@ def render_landing_variant(html: str, lang: str = "es") -> str:
         out = out.replace(old, new)
     return out.replace(
         '<link rel="canonical" href="https://sprintiasolutions.com/en">',
-        '<link rel="canonical" href="https://sprintiasolutions.com/en">\n<link rel="alternate" hreflang="es" href="https://sprintiasolutions.com/">\n<link rel="alternate" hreflang="en" href="https://sprintiasolutions.com/en">',
+        '<link rel="canonical" href="https://sprintiasolutions.com/en">\n<link rel="alternate" hreflang="es" href="https://sprintiasolutions.com/asistente-de-voz">\n<link rel="alternate" hreflang="en" href="https://sprintiasolutions.com/en">',
     )

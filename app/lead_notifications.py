@@ -305,6 +305,16 @@ def _autoreply_parts(lead: LeadNotification) -> tuple[str, str, str, str, str]:
         )
         extra = "Si quieres añadir algo, responde directamente a este email."
         signoff = "Un saludo,\nMario, de Sprintia"
+    elif (lead.source or "").startswith(("home", "producto")):
+        greeting = f"Hola {name}," if name else "Hola,"
+        subject = "Hemos recibido tu mensaje en Sprintia"
+        body = (
+            "Gracias por escribirnos. Hemos recibido tu solicitud: la revisamos y "
+            "te escribimos en uno o dos días laborables para ver qué podemos "
+            "automatizar en tu caso."
+        )
+        extra = "Si quieres añadir algo, responde directamente a este email."
+        signoff = "Un saludo,\nMario, de Sprintia"
     else:
         greeting = f"Hola {name}," if name else "Hola,"
         subject = settings.lead_autoreply_subject or "Hemos recibido tu solicitud en Sprintia"
