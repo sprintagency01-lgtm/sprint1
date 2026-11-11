@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnóstico de automatización gratis · Sprintia</title>
+<meta name="description" content="Descubre en 3 minutos cuántas horas pierde tu empresa en trabajo manual, dónde se te escapan clientes y qué podrías automatizar. Diagnóstico gratuito.">
+<link rel="canonical" href="https://sprintiasolutions.com/diagnostico">
+<meta property="og:title" content="¿Cuántas horas regala tu empresa al trabajo manual?">
+<meta property="og:description" content="Diagnóstico de automatización gratuito en 3 minutos.">
+<meta property="og:url" content="https://sprintiasolutions.com/diagnostico">
+<meta name="theme-color" content="#f4efe6">
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="7.52" y="11.52" width="4.16" height="12.8" rx="2.08" fill="%2315161a"/><rect x="13.92" y="6.4" width="4.16" height="20.48" rx="2.08" fill="%2315161a"/><rect x="20.32" y="13.44" width="4.16" height="9.6" rx="2.08" fill="%2315161a"/><circle cx="22.4" cy="7.04" r="2.72" fill="%232d4cff"/></svg>'>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#15161a;--ink-2:#3a3b40;--bone:#f4efe6;--paper:#fafaf7;--stone:#7d7c78;--mist:#e3ddd0;
+    --line:rgba(21,22,26,.10);--accent:#2d4cff;--accent-2:#1f37c4;--accent-soft:#dee3ff;
+    --radius:12px;--radius-lg:22px;
+    --shadow-1:0 1px 0 rgba(21,22,26,.04),0 8px 24px -12px rgba(21,22,26,.12);
+    --shadow-2:0 1px 0 rgba(21,22,26,.06),0 24px 60px -24px rgba(21,22,26,.22);
+    --serif:"Instrument Serif",Georgia,serif;--sans:"Inter Tight",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bone);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  button{font:inherit;color:inherit}
+  .wrap{max-width:760px;margin:0 auto;padding:0 20px}
+  header{position:sticky;top:0;z-index:20;background:rgba(244,239,230,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav{height:64px;display:flex;align-items:center;justify-content:space-between}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:600;font-size:1.05rem;text-decoration:none;letter-spacing:-.01em}
+  .logo svg{width:26px;height:26px}.logo .b{fill:var(--ink)}.logo .d{fill:var(--accent)}
+  .back{font-size:.86rem;color:var(--stone);text-decoration:none}.back:hover{color:var(--ink)}
+  .screen{display:none;animation:in .45s ease}.screen.on{display:block}
+  @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--stone)}
+  h1,h2{font-family:var(--serif);font-weight:400;letter-spacing:-.01em;margin:0}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;background:var(--ink);color:var(--paper);font-weight:600;padding:16px 26px;cursor:pointer;text-decoration:none;transition:transform .15s,background .15s}
+  .btn:hover{transform:translateY(-1px)}.btn:active{transform:none}
+  .btn.accent{background:var(--accent)}.btn.accent:hover{background:var(--accent-2)}
+  .btn[disabled]{opacity:.55;cursor:default;transform:none}
+  /* intro */
+  #intro{padding:72px 0 60px}
+  #intro h1{font-size:clamp(2.6rem,7.4vw,4.4rem);line-height:1;margin:18px 0 20px}
+  #intro h1 em{font-style:italic;color:var(--accent)}
+  #intro .lead{font-size:1.15rem;color:var(--ink-2);max-width:40ch;margin:0 0 30px}
+  .trust{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:26px;font-size:.88rem;color:var(--stone)}
+  .trust span::before{content:"✓";color:var(--accent);margin-right:6px;font-weight:700}
+  .areas{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:46px}
+  .areas div{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px 12px}
+  .areas b{display:block;font-size:.95rem}.areas small{color:var(--stone);font-size:.8rem;line-height:1.35;display:block;margin-top:2px}
+  @media(max-width:620px){.areas{grid-template-columns:1fr 1fr}}
+  /* quiz */
+  #quiz{padding:34px 0 60px}
+  .qtop{display:flex;align-items:center;gap:14px;margin-bottom:34px}
+  .qback{border:0;background:transparent;cursor:pointer;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--stone);flex:none}
+  .qback:hover{background:var(--mist);color:var(--ink)}.qback[hidden]{visibility:hidden;display:grid}
+  .bar{flex:1;height:6px;border-radius:99px;background:var(--mist);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
+  .qcount{font-family:var(--mono);font-size:.78rem;color:var(--stone);flex:none;min-width:44px;text-align:right}
+  .qblock{color:var(--accent)}
+  #qText{font-size:clamp(1.9rem,5vw,2.6rem);line-height:1.08;margin:10px 0 8px}
+  #qHelp{color:var(--stone);font-size:.92rem;margin:0 0 6px;min-height:1px}
+  .opts{display:grid;gap:10px;margin-top:22px}
+  .opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;cursor:pointer;font-size:1.02rem;transition:border-color .15s,background .15s,transform .1s}
+  .opt:hover{border-color:rgba(45,76,255,.45)}
+  .opt:active{transform:scale(.995)}
+  .opt .k{flex:none;width:26px;height:26px;border-radius:8px;border:1.5px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:.74rem;color:var(--stone)}
+  .opt.sel{border-color:var(--accent);background:var(--accent-soft)}
+  .opt.sel .k{background:var(--accent);border-color:var(--accent);color:#fff}
+  .multi .opt .k{border-radius:6px}
+  #qNext{margin-top:22px}
+  /* calc */
+  #calc{padding:120px 0;text-align:center}
+  .spin{width:44px;height:44px;margin:0 auto 22px;border-radius:50%;border:3px solid var(--mist);border-top-color:var(--accent);animation:sp 0.9s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  /* result */
+  #result{padding:46px 0 30px}
+  #rName{font-size:clamp(2.5rem,7vw,4rem);line-height:1;margin:12px 0 14px}
+  #rFrase{font-size:1.15rem;color:var(--ink-2);max-width:46ch;margin:0}
+  .stat{margin:30px 0 26px;background:var(--ink);color:var(--paper);border-radius:var(--radius-lg);padding:26px 26px 24px;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;box-shadow:var(--shadow-2)}
+  .stat .h{font-family:var(--serif);font-size:clamp(2.8rem,9vw,4.2rem);line-height:.95}
+  .stat .h small{font-family:var(--sans);font-size:1rem;color:#b9b8b3;margin-left:6px}
+  .stat .e{font-size:1rem;color:#d9d7d0;text-align:right}.stat .e b{display:block;font-size:1.5rem;color:#fff}
+  .blocks{display:grid;gap:14px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px 22px 20px}
+  .blk{display:grid;grid-template-columns:110px 1fr 46px;align-items:center;gap:14px;font-size:.95rem}
+  .blk .t{height:10px;border-radius:99px;background:var(--mist);overflow:hidden}
+  .blk .t i{display:block;height:100%;border-radius:99px;background:var(--accent);width:0;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+  .blk .t i.hi{background:#e2553f}.blk .t i.mid{background:#E8B84A}.blk .t i.lo{background:#1f4d3a}
+  .blk .p{font-family:var(--mono);font-size:.8rem;color:var(--stone);text-align:right}
+  .blocks .note{font-size:.8rem;color:var(--stone);margin:2px 0 0}
+  .card{margin-top:22px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px;box-shadow:var(--shadow-1)}
+  .card h2{font-size:1.9rem;line-height:1.08;margin:0 0 8px}
+  .card p{color:var(--ink-2);margin:0 0 18px}
+  .teaser{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px}
+  .teaser span{background:var(--accent-soft);color:var(--accent-2);border-radius:999px;padding:7px 13px;font-size:.88rem;font-weight:600}
+  form .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:560px){.stat .e{text-align:left}form .row{grid-template-columns:1fr}.blk{grid-template-columns:92px 1fr 40px;gap:10px}}
+  label.f{display:block;font-size:.82rem;color:var(--stone);margin:0 0 10px}
+  label.f input,label.f textarea{display:block;width:100%;margin-top:5px;padding:13px 14px;border:1px solid rgba(21,22,26,.18);border-radius:var(--radius);background:#fff;font:inherit;font-size:16px;color:var(--ink)}
+  label.f textarea{min-height:92px;resize:vertical}
+  label.f input:focus,label.f textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .chk{display:flex;gap:10px;align-items:flex-start;font-size:.86rem;color:var(--ink-2);margin:4px 0 10px;cursor:pointer}
+  .chk input{margin-top:3px;accent-color:var(--accent);width:16px;height:16px;flex:none}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .err{color:#c0392b;font-size:.88rem;margin:8px 0 0;min-height:1px}
+  .done{display:flex;gap:14px;align-items:flex-start}
+  .done .ic{flex:none;width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700}
+  #presupuesto{padding:10px 0 70px;scroll-margin-top:80px}
+  #presupuesto .card{background:var(--ink);color:var(--paper);border-color:transparent}
+  #presupuesto .card p{color:#cfcdc6}
+  #presupuesto label.f{color:#b9b8b3}
+  #presupuesto .chk{color:#cfcdc6}
+  #presupuesto label.f input,#presupuesto label.f textarea{border-color:transparent}
+  #presupuesto .err{color:#ff8a7a}
+  .foot{border-top:1px solid var(--line);padding:26px 0 40px;font-size:.8rem;color:var(--stone)}
+  .restart{background:none;border:0;color:var(--stone);text-decoration:underline;cursor:pointer;font-size:.86rem;padding:0;margin-top:14px}
+</style>
+</head>
+<body>
+<header><div class="wrap nav">
+  <a class="logo" href="/" aria-label="Sprintia">
+    <svg viewBox="0 0 28 28" aria-hidden="true"><rect class="b" x="6.58" y="10.08" width="3.64" height="11.2" rx="1.82"/><rect class="b" x="12.18" y="5.6" width="3.64" height="17.92" rx="1.82"/><rect class="b" x="17.78" y="11.76" width="3.64" height="8.4" rx="1.82"/><circle class="d" cx="19.6" cy="6.16" r="2.38"/></svg>
+    Sprintia
+  </a>
+  <a class="back" href="/">Volver a la web</a>
+</div></header>
+
+<main class="wrap">
+  <!-- Intro -->
+  <section id="intro" class="screen on">
+    <div class="eyebrow">Diagnóstico gratuito · 3 minutos</div>
+    <h1>¿Cuántas horas regala tu empresa al <em>trabajo manual</em>?</h1>
+    <p class="lead">15 preguntas para ver dónde se te escapan tiempo y clientes, y qué se podría automatizar.</p>
+    <button class="btn accent" type="button" onclick="startQuiz()" data-analytics-name="Empezar diagnóstico">Empezar el diagnóstico →</button>
+    <div class="trust"><span>Resultado al momento</span><span>Sin registro para verlo</span><span>Gratis</span></div>
+    <div class="areas" aria-label="Qué analiza">
+      <div><b>Visibilidad</b><small>Web, Google y reseñas</small></div>
+      <div><b>Ventas</b><small>Contactos y seguimiento</small></div>
+      <div><b>Operaciones</b><small>Facturas, datos e informes</small></div>
+      <div><b>Clientes</b><small>Atención y emails</small></div>
+    </div>
+  </section>
+
+  <!-- Preguntas -->
+  <section id="quiz" class="screen" aria-live="polite">
+    <div class="qtop">
+      <button class="qback" id="qBack" type="button" onclick="prevQ()" aria-label="Pregunta anterior">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="bar"><i id="qBar"></i></div>
+      <div class="qcount" id="qCount">1/15</div>
+    </div>
+    <div class="eyebrow qblock" id="qBlock"></div>
+    <h2 id="qText"></h2>
+    <p id="qHelp"></p>
+    <div class="opts" id="qOpts"></div>
+    <button class="btn" id="qNext" type="button" onclick="nextFromMulti()" hidden>Continuar →</button>
+  </section>
+
+  <!-- Calculando -->
+  <section id="calc" class="screen"><div class="spin"></div><div class="eyebrow">Calculando tu diagnóstico</div></section>
+
+  <!-- Resultado -->
+  <section id="result" class="screen">
+    <div class="eyebrow">Tu resultado</div>
+    <h1 id="rName"></h1>
+    <p id="rFrase"></p>
+    <div class="stat">
+      <div><div class="eyebrow" style="color:#b9b8b3">Horas recuperables</div><div class="h"><span id="rHoras"></span><small>h/mes</small></div></div>
+      <div class="e">equivale a unos<b id="rEuros"></b>al mes</div>
+    </div>
+    <div class="blocks" id="rBlocks"></div>
+
+    <div class="card" id="gate">
+      <h2>Recibe tu diagnóstico</h2>
+      <p>Te enviamos por email lo que le falta a tu empresa y lo que se podría automatizar en tu caso.</p>
+      <div class="teaser" id="rTeaser"></div>
+      <form id="gateForm" onsubmit="sendGate(event)" novalidate>
+        <div class="row">
+          <label class="f">Nombre<input name="name" autocomplete="given-name" required maxlength="120"></label>
+          <label class="f">Empresa<input name="company" autocomplete="organization" maxlength="200"></label>
+        </div>
+        <label class="f">Email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+        <label class="hp" aria-hidden="true">Web<input name="website" tabindex="-1" autocomplete="off"></label>
+        <label class="chk"><input type="checkbox" name="consent" required> Acepto que Sprintia me envíe el diagnóstico por email.</label>
+        <label class="chk"><input type="checkbox" name="marketing_consent"> Quiero recibir de vez en cuando ideas y casos de automatización.</label>
+        <button class="btn accent" type="submit" data-analytics-name="Enviar diagnóstico">Recibir mi diagnóstico</button>
+        <div class="err" id="gateErr" role="alert"></div>
+      </form>
+    </div>
+    <button class="restart" type="button" onclick="restart()">Repetir el test</button>
+  </section>
+
+  <!-- Presupuesto -->
+  <section id="presupuesto" class="screen">
+    <div class="card" id="quoteCard">
+      <div class="eyebrow" style="color:#b9b8b3">Sin compromiso</div>
+      <h2 style="margin-top:8px">¿Lo vemos para tu caso?</h2>
+      <p>Te preparamos un presupuesto con lo que haríamos en tu empresa: web, Google, ventas o automatizaciones. Te respondemos en uno o dos días.</p>
+      <form id="quoteForm" onsubmit="sendQuote(event)" novalidate>
+        <div class="row">
+          <label class="f">Nombre<input name="name" autocomplete="name" required maxlength="120"></label>
+          <label class="f">Empresa<input name="company" autocomplete="organization" maxlength="200"></label>
+        </div>
+        <div class="row">
+          <label class="f">Email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+          <label class="f">Teléfono<input name="phone" type="tel" autocomplete="tel" required maxlength="25"></label>
+        </div>
+        <label class="f">¿Qué te gustaría resolver primero? (opcional)<textarea name="ask" maxlength="1500"></textarea></label>
+        <label class="hp" aria-hidden="true">Web<input name="website" tabindex="-1" autocomplete="off"></label>
+        <label class="chk"><input type="checkbox" name="consent" required> Acepto que Sprintia me contacte para preparar el presupuesto.</label>
+        <button class="btn accent" type="submit" data-analytics-name="Pedir presupuesto diagnóstico">Pedir presupuesto</button>
+        <div class="err" id="quoteErr" role="alert"></div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="foot"><div class="wrap">Las horas son una estimación a partir de tus respuestas y de supuestos medios (25 €/h de trabajo administrativo). Sprintia · sprintiasolutions.com</div></footer>
+
+<script>
+try{ history.scrollRestoration = 'manual'; }catch(e){}
+const DATA = __DIAG_DATA__;
+const Q = DATA.questions;
+const BLOCK_NAME = {empresa:'Tu empresa', visibilidad:'Visibilidad', ventas:'Ventas', operaciones:'Operaciones', clientes:'Clientes'};
+const $ = id => document.getElementById(id);
+let answers = new Array(Q.length).fill(null), idx = 0, result = null, started = false;
+
+/* Analítica (proyecto PostHog compartido, se separa por site) */
+(function(){
+  window.track = function(name, props){ try{ if(window.posthog && posthog.capture) posthog.capture(name, Object.assign({site:'sprintia', domain:location.hostname}, props||{})); }catch(e){} };
+  if(/^(localhost|127\.)/.test(location.hostname)) return;
+  !function(t,e){var o,n,p,r;if(e.__SV||(window.posthog&&window.posthog.__loaded))return;window.posthog=e;e._i=[];e.init=function(i,s,a){function g(t,e){var o=e.split('.');if(o.length===2){t=t[o[0]];e=o[1]}t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments)))}}p=t.createElement('script');p.type='text/javascript';p.crossOrigin='anonymous';p.async=true;p.src=s.api_host.replace('.i.posthog.com','-assets.i.posthog.com')+'/static/array.js';r=t.getElementsByTagName('script')[0];r.parentNode.insertBefore(p,r);var u=e;if(a!==undefined)u=e[a]=[];else a='posthog';u.people=u.people||[];u.toString=function(){return'posthog'};u.people.toString=function(){return'posthog.people'};o='capture register register_once get_distinct_id opt_in_capturing opt_out_capturing'.split(' ');for(n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])};e.__SV=1}(document,window.posthog||[]);
+  posthog.init('phc_QPwTqqZbVEIwjiRz7bRvM2W8PXmBEgyjpIjHLq0zJQH',{api_host:'https://eu.i.posthog.com',person_profiles:'identified_only',capture_pageview:true});
+  posthog.register({site:'sprintia'});
+})();
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id || (id === 'result' && s.id === 'presupuesto')));
+  window.scrollTo({top:0});
+}
+function startQuiz(){
+  answers = new Array(Q.length).fill(null); idx = 0;
+  if(!started){ started = true; track('diag_started'); }
+  show('quiz'); renderQ();
+}
+function restart(){ history.replaceState(null,'',location.pathname); startQuiz(); }
+
+function renderQ(){
+  const q = Q[idx], multi = !!q.multi;
+  $('qBar').style.width = (idx / Q.length * 100) + '%';
+  $('qCount').textContent = (idx + 1) + '/' + Q.length;
+  $('qBlock').textContent = BLOCK_NAME[q.bloque] || '';
+  $('qText').textContent = q.texto;
+  $('qHelp').textContent = q.ayuda || '';
+  $('qBack').hidden = idx === 0;
+  const box = $('qOpts'); box.innerHTML = ''; box.className = 'opts' + (multi ? ' multi' : '');
+  const cur = answers[idx];
+  q.opciones.forEach((label, j) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'opt';
+    const sel = multi ? (cur !== null && (cur & (1 << j))) : cur === j;
+    if(sel) b.classList.add('sel');
+    b.setAttribute('aria-pressed', sel ? 'true' : 'false');
+    b.innerHTML = '<span class="k">' + (multi ? (sel ? '✓' : '') : String.fromCharCode(65 + j)) + '</span><span></span>';
+    b.lastChild.textContent = label;
+    b.onclick = () => multi ? toggleMulti(j) : pick(j, b);
+    box.appendChild(b);
+  });
+  $('qNext').hidden = !multi;
+  if(multi) $('qNext').disabled = !answers[idx];
+}
+function pick(j, el){
+  answers[idx] = j;
+  el.classList.add('sel');
+  track('diag_answered', {q: Q[idx].id, step: idx + 1});
+  setTimeout(advance, 220);
+}
+function toggleMulti(j){
+  let v = answers[idx] || 0;
+  const nada = Q[idx].opciones.length - 1;          // «Nada en especial» excluye al resto
+  v = (j === nada) ? ((v & (1 << nada)) ? 0 : (1 << nada)) : ((v ^ (1 << j)) & ~(1 << nada));
+  answers[idx] = v || null;
+  renderQ();
+}
+function nextFromMulti(){ if(answers[idx]){ track('diag_answered', {q: Q[idx].id, step: idx + 1}); advance(); } }
+function advance(){
+  if(idx < Q.length - 1){ idx++; renderQ(); }
+  else finish();
+}
+function prevQ(){ if(idx > 0){ idx--; renderQ(); } }
+document.addEventListener('keydown', e => {
+  if(!$('quiz').classList.contains('on') || Q[idx].multi) return;
+  const j = e.key.toUpperCase().charCodeAt(0) - 65;
+  if(e.key.length === 1 && j >= 0 && j < Q[idx].opciones.length){ const b = $('qOpts').children[j]; if(b) b.click(); }
+});
+
+async function finish(){
+  show('calc');
+  const t0 = Date.now();
+  try{
+    result = await fetchResult(answers);
+    await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now() - t0))));
+    renderResult(false);
+    track('diag_completed', {perfil: result.perfil.id, fuga: result.fuga_pct, horas_max: result.horas.max, sector: Q[0].opciones[answers[0]], tamano: Q[1].opciones[answers[1]]});
+  }catch(e){
+    show('quiz'); alert('No hemos podido calcular el resultado. Inténtalo de nuevo.');
+  }
+}
+async function fetchResult(ans){
+  const r = await fetch('/api/diagnostico/resultado', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({answers: ans})});
+  if(!r.ok) throw new Error('resultado');
+  return r.json();
+}
+const fmt = n => n.toLocaleString('es-ES');
+function renderResult(fromEmail){
+  show('result');
+  $('rName').textContent = result.perfil.nombre;
+  $('rFrase').textContent = result.perfil.frase;
+  $('rHoras').textContent = result.horas.min + '–' + result.horas.max;
+  $('rEuros').textContent = fmt(result.euros_mes) + ' €';
+  $('rBlocks').innerHTML = result.bloques.map(b =>
+    '<div class="blk"><span>' + b.nombre + '</span><div class="t"><i data-w="' + b.pct + '" class="' + (b.pct >= 60 ? 'hi' : b.pct >= 30 ? 'mid' : 'lo') + '"></i></div><span class="p">' + b.pct + ' %</span></div>'
+  ).join('') + '<p class="note">Cuanto más larga la barra, más tiempo o clientes se escapan en esa área.</p>';
+  requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll('#rBlocks i').forEach(i => i.style.width = i.dataset.w + '%')));
+  const t = [];
+  if(result.n_fugas) t.push(result.n_fugas + (result.n_fugas === 1 ? ' punto de mejora' : ' puntos de mejora'));
+  if(result.n_automatizaciones) t.push(result.n_automatizaciones + (result.n_automatizaciones === 1 ? ' automatización posible' : ' automatizaciones posibles'));
+  $('rTeaser').innerHTML = t.map(x => '<span>' + x + '</span>').join('');
+  $('gate').hidden = !!fromEmail;
+  try{ history.replaceState(null, '', location.pathname + '?r=' + result.codigo); }catch(e){}
+  if(fromEmail) setTimeout(() => window.scrollTo({top: $('presupuesto').getBoundingClientRect().top + window.scrollY - 70}), 300);
+}
+
+function formJSON(f){ const o = {}; new FormData(f).forEach((v, k) => o[k] = v); return o; }
+function remember(o){ try{ localStorage.setItem('sprintia_diag_contact', JSON.stringify({name:o.name||'', email:o.email||'', company:o.company||''})); }catch(e){} }
+function prefillQuote(){
+  let c = {}; try{ c = JSON.parse(localStorage.getItem('sprintia_diag_contact')) || {}; }catch(e){}
+  const f = $('quoteForm');
+  ['name','email','company'].forEach(k => { if(c[k] && !f[k].value) f[k].value = c[k]; });
+}
+async function sendGate(ev){
+  ev.preventDefault();
+  const f = ev.target, o = formJSON(f), err = $('gateErr'), btn = f.querySelector('button[type=submit]');
+  err.textContent = '';
+  if(!o.name || o.name.trim().length < 2) return err.textContent = 'Dinos tu nombre.';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = 'Revisa el email.';
+  if(!o.consent) return err.textContent = 'Marca la casilla para que podamos enviártelo.';
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try{
+    const r = await fetch('/api/diagnostico/enviar', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({answers, name:o.name, email:o.email, company:o.company, consent:true, marketing_consent:!!o.marketing_consent, website:o.website||''})});
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.error || 'No se pudo enviar.');
+    remember(o); prefillQuote();
+    track('diag_email_submitted', {perfil: result.perfil.id, marketing: !!o.marketing_consent});
+    $('gate').innerHTML = '<div class="done"><div class="ic">✓</div><div><h2 style="font-size:1.7rem;margin:0 0 6px">Te lo hemos enviado</h2><p style="margin:0">Llega a <b></b> en un minuto. Si no lo ves, mira en promociones o spam.</p></div></div>';
+    $('gate').querySelector('b').textContent = o.email;
+  }catch(e){
+    btn.disabled = false; btn.textContent = 'Recibir mi diagnóstico'; err.textContent = e.message || 'No se pudo enviar.';
+  }
+}
+async function sendQuote(ev){
+  ev.preventDefault();
+  const f = ev.target, o = formJSON(f), err = $('quoteErr'), btn = f.querySelector('button[type=submit]');
+  err.textContent = '';
+  if(!o.name || o.name.trim().length < 2) return err.textContent = 'Dinos tu nombre.';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = 'Revisa el email.';
+  if(!/^\+?[0-9\s\-\(\)\.]{6,25}$/.test(o.phone || '')) return err.textContent = 'Revisa el teléfono.';
+  if(!o.consent) return err.textContent = 'Marca la casilla para que podamos contactarte.';
+  const fd = new FormData();
+  fd.set('name', o.name); fd.set('email', o.email); fd.set('phone', o.phone); fd.set('company', o.company || '');
+  fd.set('sector', answers[0] !== null ? Q[0].opciones[answers[0]] : '');
+  fd.set('country', 'España'); fd.set('landing_language', 'es'); fd.set('consent', '1');
+  fd.set('source', 'diagnostico'); fd.set('website', o.website || '');
+  fd.set('message', ((o.ask || '').trim() ? 'Quiere resolver primero: ' + o.ask.trim() + '\n\n' : '') + (result ? result.resumen : ''));
+  const p = new URLSearchParams(location.search);
+  ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(k => { if(p.get(k)) fd.set(k, p.get(k)); });
+  if(!p.get('utm_source') && p.get('r') && !started) fd.set('utm_source', 'email-diagnostico');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try{
+    const r = await fetch('/api/leads', {method:'POST', body: fd});
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.error || 'No se pudo enviar.');
+    remember(o);
+    track('diag_quote_submitted', {perfil: result && result.perfil.id});
+    $('quoteCard').innerHTML = '<div class="done"><div class="ic">✓</div><div><h2 style="font-size:1.8rem;margin:0 0 6px">Recibido</h2><p style="margin:0">Revisamos tu diagnóstico y te escribimos en uno o dos días laborables con una propuesta.</p></div></div>';
+  }catch(e){
+    btn.disabled = false; btn.textContent = 'Pedir presupuesto'; err.textContent = e.message || 'No se pudo enviar.';
+  }
+}
+
+/* Viene del botón del email: ?r=1.0.2…  → resultado directo y formulario de presupuesto */
+(async function(){
+  const code = new URLSearchParams(location.search).get('r');
+  if(!code) return;
+  const ans = code.split('.').map(Number);
+  if(ans.length !== Q.length || ans.some(isNaN)) return;
+  try{
+    answers = ans; result = await fetchResult(ans);
+    renderResult(location.hash === '#presupuesto'); prefillQuote();
+    track('diag_reopened', {from: location.hash === '#presupuesto' ? 'email' : 'link'});
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

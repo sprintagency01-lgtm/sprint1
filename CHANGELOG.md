@@ -6,6 +6,19 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-11-11 (diagnóstico de automatización)
+
+### Añadido
+- `/diagnostico`: test público de 15 preguntas para empresas que quieren automatizar. En pantalla da perfil, horas recuperables al mes y cuatro bloques (visibilidad, ventas, operaciones, clientes); por email manda un avance de lo que le falta y lo que se podría automatizar, con botón de presupuesto sin compromiso. Preguntas, puntuación y textos en `app/diagnostico.py`.
+- `POST /api/diagnostico/resultado` (cálculo) y `POST /api/diagnostico/enviar` (email + contacto en Brevo con atributos `DIAG_*` + aviso interno con temperatura del contacto). Honeypot y rate limit propios.
+- El presupuesto entra por `POST /api/leads` con `source=diagnostico` y el resumen del diagnóstico en el mensaje; autorespuesta propia que no habla del asistente de voz.
+- `/diagnostico` en el sitemap. Eventos PostHog `diag_*` con `site=sprintia`.
+
+### Env / despliegue
+- Opcional: `BREVO_DIAG_LIST_IDS` (lista de Brevo para los contactos del diagnóstico; si no, usa `BREVO_LIST_IDS`). Usa `BREVO_SENDER_EMAIL` y `LEAD_NOTIFY_EMAIL_TO`, que ya existen.
+
+---
+
 ## 2026-09-20 (anti-spam de leads · plantilla de voz de tenants · repo desbloqueado)
 
 ### Corregido
