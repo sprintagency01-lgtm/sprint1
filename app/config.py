@@ -101,6 +101,10 @@ class Settings:
     brevo_list_ids: str = os.getenv("BREVO_LIST_IDS", "")
     # Lista de Brevo para los contactos del diagnóstico (si vacía, usa BREVO_LIST_IDS).
     brevo_diag_list_ids: str = os.getenv("BREVO_DIAG_LIST_IDS", "")
+    # Clave de Google Cloud para el análisis de webs del diagnóstico
+    # (PageSpeed Insights API + Places API). Sin ella se analiza el HTML igual,
+    # pero sin nota de velocidad ni reseñas de Google.
+    diag_google_api_key: str = os.getenv("DIAG_GOOGLE_API_KEY", "")
     brevo_update_enabled: bool = os.getenv("BREVO_UPDATE_ENABLED", "true").strip().lower() in {
         "1", "true", "yes", "on", "si", "sí",
     }

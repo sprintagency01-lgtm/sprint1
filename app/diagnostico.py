@@ -11,6 +11,10 @@ contactos sin vender nada en la primera interacción:
    /api/leads`, `source=diagnostico`), así que llega al CMS, a Brevo y al
    email interno igual que cualquier solicitud de la landing.
 
+Si el visitante pone su web, `app/web_audit.py` la analiza primero (nota,
+hallazgos) y rellena solo las preguntas que se ven desde fuera; el test baja
+de 15 a 9-10 preguntas y el email incluye lo que hemos visto en su web.
+
 Las preguntas, la puntuación y los textos viven aquí; la página solo pinta.
 Las respuestas viajan como una lista de índices (`1.0.2.3…`) que no contiene
 datos personales, por eso pueden ir en la URL del botón del email.
@@ -22,12 +26,14 @@ import json
 import logging
 import pathlib
 import re
+import secrets
 import time
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from . import web_audit
 from .brevo import send_transactional_email
 from .config import settings
 
@@ -316,11 +322,12 @@ def public_result(r: dict) -> dict:
     }
 
 
-def summary_text(r: dict) -> str:
+def summary_text(r: dict, audit: dict | None = None) -> str:
     """Resumen en texto plano para el mensaje del presupuesto (lo lee Mario)."""
     c = r["contexto"]
     lines = [
         "— Diagnóstico —",
+        *(web_audit.summary_lines(audit) if audit else []),
         f"Perfil: {r['perfil']['nombre']} (fuga {r['fuga_pct']} %)",
         f"Horas recuperables: {r['horas']['min']}–{r['horas']['max']} h/mes (≈ {r['euros_mes']} €/mes)",
         f"Sector: {c['sector']} · Tamaño: {c['tamano']} · Rol: {c['rol']}",
@@ -334,11 +341,22 @@ def summary_text(r: dict) -> str:
     return "\n".join(lines)
 
 
+def public_audit(audit: dict, audit_id: str) -> dict:
+    """Lo que ve la pantalla del análisis de la web."""
+    return {
+        "id": audit_id, "url": audit["url"], "dominio": audit["dominio"],
+        "nota": audit["nota"], "nivel": audit["nivel"],
+        "hallazgos": audit["hallazgos"], "bien": audit["bien"],
+        "detectado": audit["detectado"], "auto": audit["auto"], "parcial": audit["parcial"],
+        "con_google": audit.get("velocidad") is not None, "resumen_web": "\n".join(web_audit.summary_lines(audit)),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Email del diagnóstico
 # ---------------------------------------------------------------------------
 
-def build_email(name: str, r: dict) -> tuple[str, str, str]:
+def build_email(name: str, r: dict, audit: dict | None = None) -> tuple[str, str, str]:
     first = (name or "").split()[0] if name else ""
     h = r["horas"]
     if h["max"] >= 15:
@@ -353,6 +371,19 @@ def build_email(name: str, r: dict) -> tuple[str, str, str]:
         f"<li style='margin:0 0 10px'><b>{e(f['titulo'])}:</b> {e(f['texto'])}</li>" for f in r["fugas"]
     ) or "<li>No hemos visto fugas grandes: tenéis lo básico bien resuelto.</li>"
     autos_html = "".join(f"<li style='margin:0 0 8px'>{e(t)}</li>" for t in r["automatizaciones"])
+    web_html, web_txt = "", []
+    if audit:
+        malos = audit["hallazgos"][:5]
+        items = "".join(f"<li style='margin:0 0 8px'>{e(f['titulo'])}</li>" for f in malos) \
+            or "<li>No hemos visto nada grave.</li>"
+        web_html = (
+            f"<h2 style=\"font-size:16px;margin:0 0 4px\">Lo que hemos visto en tu web</h2>"
+            f"<p style=\"margin:0 0 10px;font-size:14px;color:#7d7c78\">{e(audit['dominio'])} · "
+            f"<b style=\"color:#15161a\">{audit['nota']}/100</b> ({e(audit['nivel'].lower())})</p>"
+            f"<ul style=\"margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.5;color:#3a3b40\">{items}</ul>"
+        )
+        web_txt = [f"Lo que hemos visto en tu web ({audit['dominio']}, {audit['nota']}/100):",
+                   *[f"- {f['titulo']}" for f in malos], ""]
 
     html_body = f"""<!doctype html><html lang="es"><body style="margin:0;background:#f4efe6;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#15161a">
 <div style="max-width:560px;margin:0 auto;padding:28px 18px">
@@ -365,7 +396,7 @@ def build_email(name: str, r: dict) -> tuple[str, str, str]:
       <div style="font-size:26px;font-weight:700;color:#1f37c4">{h['min']}–{h['max']} h/mes</div>
       <div style="font-size:14px;color:#3a3b40">que se pueden recuperar · unos {euros_txt} € al mes</div>
     </div>
-    <h2 style="font-size:16px;margin:0 0 10px">Lo que te falta</h2>
+    {web_html}<h2 style="font-size:16px;margin:0 0 10px">Lo que te falta</h2>
     <ul style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.5;color:#3a3b40">{fugas_html}</ul>
     <h2 style="font-size:16px;margin:0 0 10px">Lo que se podría automatizar</h2>
     <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.5;color:#3a3b40">{autos_html}</ul>
@@ -381,6 +412,7 @@ def build_email(name: str, r: dict) -> tuple[str, str, str]:
         f"Tu diagnóstico: {r['perfil']['nombre']}. {r['perfil']['frase']}",
         f"{h['min']}–{h['max']} h/mes que se pueden recuperar (unos {euros_txt} € al mes).",
         "",
+        *web_txt,
         "Lo que te falta:",
         *[f"- {f['titulo']}: {f['texto']}" for f in r["fugas"]],
         "",
@@ -399,7 +431,8 @@ def build_email(name: str, r: dict) -> tuple[str, str, str]:
 # ---------------------------------------------------------------------------
 
 _BREVO = "https://api.brevo.com/v3"
-_ATTRS = ("DIAG_PERFIL", "DIAG_HORAS", "DIAG_FUGAS", "DIAG_TAMANO", "DIAG_TEMPERATURA", "DIAG_FECHA")
+_ATTRS = ("DIAG_PERFIL", "DIAG_HORAS", "DIAG_FUGAS", "DIAG_TAMANO", "DIAG_TEMPERATURA", "DIAG_FECHA",
+          "DIAG_WEB", "DIAG_WEB_NOTA")
 _attrs_ready = False
 
 
@@ -421,7 +454,7 @@ def _ensure_attrs() -> None:
     _attrs_ready = True
 
 
-def _sync_contact(name: str, email: str, company: str, marketing: bool, r: dict) -> None:
+def _sync_contact(name: str, email: str, company: str, marketing: bool, r: dict, audit: dict | None = None) -> None:
     if not settings.brevo_api_key.strip():
         return
     _ensure_attrs()
@@ -435,6 +468,9 @@ def _sync_contact(name: str, email: str, company: str, marketing: bool, r: dict)
         "DIAG_TEMPERATURA": r["temperatura"],
         "DIAG_FECHA": time.strftime("%Y-%m-%d"),
     }
+    if audit:
+        attributes["DIAG_WEB"] = audit["dominio"]
+        attributes["DIAG_WEB_NOTA"] = str(audit["nota"])
     if last:
         attributes["LASTNAME"] = last
     if company and settings.brevo_company_attribute:
@@ -453,19 +489,19 @@ def _sync_contact(name: str, email: str, company: str, marketing: bool, r: dict)
         log.exception("No se pudo sincronizar el contacto del diagnóstico con Brevo")
 
 
-def _deliver(name: str, email: str, company: str, marketing: bool, r: dict) -> None:
-    subject, text, html_body = build_email(name, r)
+def _deliver(name: str, email: str, company: str, marketing: bool, r: dict, audit: dict | None = None) -> None:
+    subject, text, html_body = build_email(name, r, audit)
     if not send_transactional_email(to_email=email, to_name=name, subject=subject, text=text,
                                     html_body=html_body, tag="diagnostico"):
         log.warning("Email de diagnóstico no enviado a %s (¿falta BREVO_SENDER_EMAIL?)", email)
-    _sync_contact(name, email, company, marketing, r)
+    _sync_contact(name, email, company, marketing, r, audit)
     to = settings.lead_notify_email_to.strip()
     if to:
         internal = (
             f"Nuevo diagnóstico ({r['temperatura']})\n"
             f"Nombre: {name}\nEmail: {email}\nEmpresa: {company or '—'}\n"
             f"Consentimiento marketing: {'sí' if marketing else 'no'}\n\n"
-            f"{summary_text(r)}"
+            f"{summary_text(r, audit)}"
         )
         for rcpt in [p.strip() for p in to.replace(";", ",").split(",") if p.strip()]:
             send_transactional_email(
@@ -483,6 +519,13 @@ def _deliver(name: str, email: str, company: str, marketing: bool, r: dict) -> N
 
 _HITS: dict[str, list[float]] = {}
 _MAX_HITS, _WINDOW_S = 5, 3600
+# Análisis de webs: cuesta llamadas a Google, así que va con su propio límite.
+_AUDIT_HITS: dict[str, list[float]] = {}
+_MAX_AUDITS = 20
+# Auditorías hechas, para que el email use los hallazgos del servidor y no
+# lo que mande el navegador (si no, cualquiera podría meter texto en el email).
+_AUDITS: dict[str, tuple[float, dict]] = {}
+_AUDIT_TTL = 48 * 3600
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
@@ -491,20 +534,41 @@ def _ip(request: Request) -> str:
     return (xff or (request.client.host if request.client else ""))[:64]
 
 
-def _limited(ip: str) -> bool:
+def _limited(ip: str, store: dict | None = None, limit: int | None = None) -> bool:
+    store = _HITS if store is None else store
+    limit = _MAX_HITS if limit is None else limit
     if not ip:
         return False
     cutoff = time.monotonic() - _WINDOW_S
-    hits = [t for t in _HITS.get(ip, []) if t > cutoff]
-    if len(_HITS) > 10_000:
-        _HITS.clear()
-    _HITS[ip] = hits
-    return len(hits) >= _MAX_HITS
+    hits = [t for t in store.get(ip, []) if t > cutoff]
+    if len(store) > 10_000:
+        store.clear()
+    store[ip] = hits
+    return len(hits) >= limit
 
 
-def _hit(ip: str) -> None:
+def _hit(ip: str, store: dict | None = None) -> None:
     if ip:
-        _HITS.setdefault(ip, []).append(time.monotonic())
+        (_HITS if store is None else store).setdefault(ip, []).append(time.monotonic())
+
+
+def _save_audit(audit: dict) -> str:
+    now = time.time()
+    if len(_AUDITS) > 5000:
+        for k in [k for k, (ts, _) in _AUDITS.items() if now - ts > _AUDIT_TTL]:
+            _AUDITS.pop(k, None)
+        if len(_AUDITS) > 5000:
+            _AUDITS.clear()
+    audit_id = secrets.token_urlsafe(9)
+    _AUDITS[audit_id] = (now, audit)
+    return audit_id
+
+
+def get_audit(audit_id) -> dict | None:
+    hit = _AUDITS.get(str(audit_id or ""))
+    if hit and time.time() - hit[0] < _AUDIT_TTL:
+        return hit[1]
+    return None
 
 
 def _template() -> str:
@@ -540,6 +604,31 @@ async def diagnostico_resultado(request: Request):
     return public_result(r)
 
 
+@router.post("/api/diagnostico/analizar")
+async def diagnostico_analizar(request: Request):
+    body = await _json(request)
+    ip = _ip(request)
+    if _limited(ip, _AUDIT_HITS, _MAX_AUDITS):
+        return JSONResponse({"error": "Has analizado muchas webs seguidas. Prueba dentro de un rato."},
+                            status_code=429)
+    negocio = str(body.get("negocio") or "").strip()[:120]
+    try:
+        url = web_audit.normalize_url(body.get("url"))
+    except web_audit.AuditError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    _hit(ip, _AUDIT_HITS)
+    try:
+        audit = await web_audit.analyze(url, negocio)
+    except web_audit.AuditError as e:
+        log.info("análisis web fallido url=%s motivo=%s", url, e)
+        return JSONResponse({"error": str(e)}, status_code=422)
+    except Exception:
+        log.exception("análisis web roto url=%s", url)
+        return JSONResponse({"error": "No hemos podido analizar esa web ahora mismo."}, status_code=502)
+    log.info("análisis web url=%s nota=%s", audit["url"], audit["nota"])
+    return public_audit(audit, _save_audit(audit))
+
+
 @router.post("/api/diagnostico/enviar")
 async def diagnostico_enviar(request: Request, background_tasks: BackgroundTasks):
     body = await _json(request)
@@ -565,7 +654,9 @@ async def diagnostico_enviar(request: Request, background_tasks: BackgroundTasks
         r = compute(parse_answers(body.get("answers")))
     except InvalidAnswers as e:
         return JSONResponse({"error": str(e)}, status_code=400)
+    audit = get_audit(body.get("audit_id"))
     _hit(ip)
-    log.info("diagnóstico enviado email=%s perfil=%s temp=%s", email, r["perfil"]["id"], r["temperatura"])
-    background_tasks.add_task(_deliver, name, email, company, marketing, r)
+    log.info("diagnóstico enviado email=%s perfil=%s temp=%s web=%s", email, r["perfil"]["id"], r["temperatura"],
+             audit["dominio"] if audit else "-")
+    background_tasks.add_task(_deliver, name, email, company, marketing, r, audit)
     return {"ok": True}

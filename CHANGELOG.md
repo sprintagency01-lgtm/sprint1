@@ -6,6 +6,22 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-11-11 (diagnóstico: análisis automático de la web)
+
+### Añadido
+- `/diagnostico` empieza ahora pidiendo la web: la analiza en unos segundos y enseña una nota de 0 a 100 con hallazgos concretos (velocidad en móvil, SEO básico, formas de contacto, analítica, CRM/email, HTTPS, móvil, © desactualizado y reseñas de Google). Lo que se ve desde fuera ya no se pregunta: el test baja de 15 a 9-10 preguntas. Sigue habiendo un "No tengo web" que hace el test completo. Lógica en `app/web_audit.py`.
+- `POST /api/diagnostico/analizar` (límite de 20 análisis/hora por IP; caché por dominio de 6 h). La auditoría se guarda en el servidor y el email del diagnóstico y el aviso interno incluyen "Lo que hemos visto en tu web"; en Brevo se añaden `DIAG_WEB` y `DIAG_WEB_NOTA`. El resumen del presupuesto lleva la nota y los fallos de la web.
+- `?web=dominio.com` (y opcional `&negocio=`) lanza el análisis al abrir la página: sirve para prospección en frío.
+- Eventos PostHog `diag_web_submitted`, `diag_web_analyzed`, `diag_web_failed`, `diag_skip_web`.
+
+### Seguridad
+- La URL la escribe el visitante y la pide el servidor: solo http/https a puertos 80/443, hosts que resuelven a IPs públicas (se revalida en cada redirección), descarga cortada a 2,5 MB.
+
+### Env / despliegue
+- Nueva (opcional): `DIAG_GOOGLE_API_KEY`, clave de Google Cloud con **PageSpeed Insights API** y **Places API (New)** habilitadas. Sin ella el análisis funciona sin nota de velocidad ni reseñas (y la pregunta de reseñas se sigue haciendo). Recomendado: tope de cuota diario en Places.
+
+---
+
 ## 2026-11-11 (diagnóstico de automatización)
 
 ### Añadido
