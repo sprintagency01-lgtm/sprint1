@@ -112,6 +112,7 @@
   label.f textarea{min-height:92px;resize:vertical}
   label.f input:focus,label.f textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
   .chk{display:flex;gap:10px;align-items:flex-start;font-size:.86rem;color:var(--ink-2);margin:4px 0 10px;cursor:pointer}
+  .chk a{color:inherit}
   .chk input{margin-top:3px;accent-color:var(--accent);width:16px;height:16px;flex:none}
   .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
   .err{color:#c0392b;font-size:.88rem;margin:8px 0 0;min-height:1px}
@@ -270,7 +271,7 @@
         </div>
         <label class="f">{{ u.f_email }}<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
         <label class="hp" aria-hidden="true">{{ u.f_web }}<input name="website" tabindex="-1" autocomplete="off"></label>
-        <label class="chk"><input type="checkbox" name="consent" required> {{ u.consent_diag }}</label>
+        <label class="chk"><input type="checkbox" name="consent" required> <span>{{ u.consent_diag }} <a href="{{ u.privacy }}" target="_blank">{{ u.privacy_link }}</a>.</span></label>
         <label class="chk"><input type="checkbox" name="marketing_consent"> {{ u.consent_mkt }}</label>
         <button class="btn accent" type="submit" data-analytics-name="Enviar diagnóstico">{{ u.gate_btn }}</button>
         <div class="err" id="gateErr" role="alert"></div>
@@ -296,7 +297,7 @@
         </div>
         <label class="f">{{ u.f_ask }}<textarea name="ask" maxlength="1500"></textarea></label>
         <label class="hp" aria-hidden="true">{{ u.f_web }}<input name="website" tabindex="-1" autocomplete="off"></label>
-        <label class="chk"><input type="checkbox" name="consent" required> {{ u.consent_quote }}</label>
+        <label class="chk"><input type="checkbox" name="consent" required> <span>{{ u.consent_quote }} <a href="{{ u.privacy }}" target="_blank">{{ u.privacy_link }}</a>.</span></label>
         <button class="btn accent" type="submit" data-analytics-name="Pedir presupuesto diagnóstico">{{ u.quote_btn }}</button>
         <div class="err" id="quoteErr" role="alert"></div>
       </form>

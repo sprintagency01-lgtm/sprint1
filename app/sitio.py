@@ -5,8 +5,8 @@ automatización para empresas y el asistente de voz pasa a ser un producto más,
 con su página de siempre en `/asistente-de-voz` (la sirve `main.py`).
 
 Los textos de los productos viven aquí; las plantillas están en
-`app/templates/sitio/` (Jinja2). Sin precios en la home: solo los planes de
-webs en su página (y los de voz en la suya).
+`app/templates/sitio/` (Jinja2). Sin precios en la web corporativa: se da presupuesto cerrado
+después del diagnóstico (los planes de voz siguen en su landing).
 """
 from __future__ import annotations
 
@@ -110,19 +110,7 @@ PRODUCTOS: list[dict] = [
                     ("Contacto conectado", "Formularios, WhatsApp y reservas que entran directos en tu CRM o tu email."),
                     ("Ficha de Google y reseñas", "Ficha al día y petición automática de reseñas después de cada venta o servicio."),
                     ("Mantenimiento incluido", "Hosting, dominio, certificado SSL y los cambios de contenido que necesites.")],
-        "planes_intro": "La web va incluida en la cuota: sin coste de diseño ni de alta.",
-        "planes": [
-            {"nombre": "Base", "para": "Presencia profesional", "precio": "59",
-             "incluye": ["Web a medida, diseño incluido", "Hosting, dominio y certificado SSL",
-                         "Cambios de contenido cuando los necesites", "Soporte por WhatsApp"]},
-            {"nombre": "Visible", "para": "Que te encuentren", "precio": "99", "destacado": True,
-             "incluye": ["Todo lo de Base", "Ficha de Google Business gestionada",
-                         "Reseñas, fotos, horarios y publicaciones al día", "Informe mensual de visibilidad"]},
-            {"nombre": "Crece", "para": "Que vuelvan", "precio": "149",
-             "incluye": ["Todo lo de Visible", "Reservas online desde la web", "CRM con fichas de clientes",
-                         "Recordatorios y seguimientos por WhatsApp y email", "Campaña mensual a tu base de clientes"]},
-        ],
-        "planes_nota": "Sin permanencia: te das de baja cuando quieras. ¿Varias sedes, tienda online o algo a medida? Cuéntanoslo y te preparamos un plan.",
+        "precio_texto": "Una cuota mensual que incluye el diseño, el alojamiento y el mantenimiento, sin coste de alta y sin permanencia. Te damos un precio cerrado según lo que necesites: páginas, idiomas, reservas o tienda online.",
         "faq": [("¿Cuánto se tarda en tener la web?", "Unas dos o tres semanas desde que nos pasas la información, según el tamaño de la web."),
                 ("¿La web es mía?", "El contenido y el dominio son tuyos. La cuota cubre el diseño, el alojamiento y el mantenimiento."),
                 ("¿Puedo ver antes cómo está mi web actual?", "Sí: el diagnóstico gratuito la analiza en segundos y te dice qué le falta."),
@@ -178,7 +166,7 @@ FAQ_HOME = [
     ("¿Tengo que cambiar los programas que usamos?",
      "No. Conectamos los que ya usáis. Solo proponemos cambiar alguno si de verdad os está frenando."),
     ("¿Cuánto cuesta?",
-     "Depende de qué haya que automatizar. Después del diagnóstico te damos un precio cerrado, con lo que incluye y el plazo. El asistente de voz y las webs tienen planes mensuales en su página."),
+     "Depende de qué haya que automatizar. Después del diagnóstico te damos un precio cerrado, con lo que incluye y el plazo."),
     ("¿Cuánto se tarda?",
      "Una automatización sencilla puede estar en una o dos semanas; un CRM completo o varios procesos conectados, de cuatro a seis."),
     ("¿Qué pasa con nuestros datos?",
@@ -265,19 +253,7 @@ PRODUCTOS_EN: list[dict] = [
                     ("Connected contact", "Forms, WhatsApp and bookings that go straight into your CRM or inbox."),
                     ("Google profile and reviews", "An up-to-date profile and automatic review requests after each sale or service."),
                     ("Maintenance included", "Hosting, domain, SSL certificate and any content changes you need.")],
-        "planes_intro": "The website is included in the fee: no design or setup cost.",
-        "planes": [
-            {"nombre": "Base", "para": "Professional presence", "precio": "59",
-             "incluye": ["Custom website, design included", "Hosting, domain and SSL certificate",
-                         "Content changes whenever you need them", "WhatsApp support"]},
-            {"nombre": "Visible", "para": "Get found", "precio": "99", "destacado": True,
-             "incluye": ["Everything in Base", "Managed Google Business Profile",
-                         "Reviews, photos, hours and posts kept up to date", "Monthly visibility report"]},
-            {"nombre": "Grow", "para": "Bring them back", "precio": "149",
-             "incluye": ["Everything in Visible", "Online bookings from your website", "CRM with customer records",
-                         "Reminders and follow-ups via WhatsApp and email", "Monthly campaign to your customer base"]},
-        ],
-        "planes_nota": "No lock-in: cancel whenever you like. Several locations, an online shop or something custom? Tell us and we'll put together a plan.",
+        "precio_texto": "A monthly fee that covers design, hosting and maintenance, with no setup cost and no lock-in. You get a fixed price based on what you need: pages, languages, bookings or an online shop.",
         "faq": [("How long does the website take?", "About two to three weeks from when you send us the information, depending on the size of the site."),
                 ("Do I own the website?", "The content and the domain are yours. The fee covers design, hosting and maintenance."),
                 ("Can I see how my current site is doing first?", "Yes: the free assessment analyses it in seconds and tells you what's missing."),
@@ -328,7 +304,7 @@ FAQ_HOME_EN = [
     ("Do we have to change the tools we use?",
      "No. We connect the ones you already use. We only suggest changing something if it's genuinely holding you back."),
     ("How much does it cost?",
-     "It depends on what needs automating. After the assessment you get a fixed price, with what's included and the timeline. The voice assistant and websites have monthly plans on their pages."),
+     "It depends on what needs automating. After the assessment you get a fixed price, with what's included and the timeline."),
     ("How long does it take?",
      "A simple automation can be ready in one or two weeks; a full CRM or several connected processes take four to six."),
     ("What happens to our data?",
@@ -353,7 +329,7 @@ T: dict[str, dict[str, str]] = {
         "contact_email": "¿Prefieres el email?", "f_name": "Nombre", "f_company": "Empresa", "f_email": "Email", "f_phone": "Teléfono",
         "f_message": "¿Qué te gustaría automatizar? (opcional)",
         "f_placeholder": "Por ejemplo: pasamos las facturas a mano, los contactos de la web se pierden…",
-        "f_consent": "Acepto que Sprintia me contacte para responder a mi solicitud.", "f_send": "Enviar",
+        "f_consent": "Acepto que Sprintia me contacte para responder a mi solicitud, según la", "privacy_link": "política de privacidad", "privacy": "/privacidad", "foot_legal": "Privacidad y aviso legal", "f_send": "Enviar",
         "foot_tagline": "Automatización para empresas: webs, CRM, atención y procesos que funcionan solos.",
         "foot_products": "Productos", "foot_start": "Empieza", "foot_diag": "Analiza tu web gratis",
         "foot_quote": "Pide presupuesto", "foot_lang": "English",
@@ -363,8 +339,7 @@ T: dict[str, dict[str, str]] = {
         "js_ok_text": "Te escribimos en uno o dos días laborables.", "country": "España",
         "live": "EN MARCHA", "crumb_products": "Productos", "example": "Ejemplo",
         "p_quote": "Pide presupuesto", "p_diag": "Analiza tu web gratis", "p_for": "Para quién es",
-        "p_if": "Si te pasa <em>esto</em>…", "p_includes": "Qué incluye", "p_plans": "Planes",
-        "p_plans_title": "Precio cerrado <em>al mes</em>.", "p_badge": "Más elegido", "p_month": "€/mes", "p_want": "Lo quiero",
+        "p_if": "Si te pasa <em>esto</em>…", "p_includes": "Qué incluye",
         "p_cost": "Cuánto cuesta", "p_cost_title": "Presupuesto cerrado, <em>según tu caso</em>.",
         "p_start_diag": "Empieza con el diagnóstico", "faq_kicker": "Preguntas frecuentes",
         "faq_title": "Lo que nos <em>suelen</em> preguntar.", "p_combines": "Se combina con", "p_others": "Otros <em>productos</em>.",
@@ -378,7 +353,7 @@ T: dict[str, dict[str, str]] = {
         "contact_email": "Prefer email?", "f_name": "Name", "f_company": "Company", "f_email": "Email", "f_phone": "Phone",
         "f_message": "What would you like to automate? (optional)",
         "f_placeholder": "For example: we type invoices by hand, website leads get lost…",
-        "f_consent": "I agree that Sprintia may contact me to respond to my request.", "f_send": "Send",
+        "f_consent": "I agree that Sprintia may contact me to respond to my request, as set out in the", "privacy_link": "privacy policy", "privacy": "/en/privacy", "foot_legal": "Privacy and legal notice", "f_send": "Send",
         "foot_tagline": "Automation for businesses: websites, CRM, support and processes that run on their own.",
         "foot_products": "Products", "foot_start": "Get started", "foot_diag": "Analyse your website for free",
         "foot_quote": "Get a quote", "foot_lang": "Español",
@@ -388,8 +363,7 @@ T: dict[str, dict[str, str]] = {
         "js_ok_text": "We'll get back to you within one or two working days.", "country": "",
         "live": "RUNNING", "crumb_products": "Products", "example": "Example",
         "p_quote": "Get a quote", "p_diag": "Analyse your website for free", "p_for": "Who it's for",
-        "p_if": "If <em>this</em> sounds familiar…", "p_includes": "What's included", "p_plans": "Plans",
-        "p_plans_title": "A fixed price, <em>monthly</em>.", "p_badge": "Most popular", "p_month": "€/month", "p_want": "I want it",
+        "p_if": "If <em>this</em> sounds familiar…", "p_includes": "What's included",
         "p_cost": "Pricing", "p_cost_title": "A fixed quote, <em>for your case</em>.",
         "p_start_diag": "Start with the assessment", "faq_kicker": "FAQ",
         "faq_title": "What people <em>usually</em> ask.", "p_combines": "Works well with", "p_others": "Other <em>products</em>.",
@@ -461,6 +435,38 @@ async def product_en(slug: str):
     if not p:
         raise HTTPException(status_code=404)
     return _product_page(p, "en")
+
+
+# Titular de la web (LSSI) y responsable del tratamiento (RGPD).
+OWNER = {
+    "name": "Mario Calvo Castillo",
+    "nif": "31008034D",
+    "address": "Calle Alcántara 12, Córdoba (España)",
+    "email": "hola@sprintiasolutions.com",
+}
+_LEGAL_UPDATED = {"es": "12 de noviembre de 2026", "en": "12 November 2026"}
+
+
+def _legal_page(lang: str) -> HTMLResponse:
+    es = lang == "es"
+    return _cached(f"legal:{lang}", lambda: _render(
+        "privacidad.html", lang, path="/privacidad" if es else "/en/privacy",
+        alt_path="/en/privacy" if es else "/privacidad", lead_source="privacidad",
+        seo_title="Privacidad y aviso legal · Sprintia" if es else "Privacy and legal notice · Sprintia",
+        seo_desc=("Quién es el responsable de tus datos en Sprintia, qué datos tratamos, para qué, con quién los compartimos y cómo ejercer tus derechos."
+                  if es else "Who is responsible for your data at Sprintia, what we collect, why, who we share it with and how to exercise your rights."),
+        owner=OWNER, updated_es=_LEGAL_UPDATED["es"], updated_en=_LEGAL_UPDATED["en"],
+    ))
+
+
+@router.get("/privacidad", response_class=HTMLResponse)
+async def privacidad() -> HTMLResponse:
+    return _legal_page("es")
+
+
+@router.get("/en/privacy", response_class=HTMLResponse)
+async def privacy_en() -> HTMLResponse:
+    return _legal_page("en")
 
 
 def product_paths() -> list[str]:

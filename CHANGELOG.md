@@ -6,6 +6,15 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-11-12 (sin precios y política de privacidad)
+
+### Añadido
+- **Privacidad y aviso legal** en `/privacidad` y `/en/privacy`: titular (LSSI), datos que tratamos y para qué, base legal, proveedores (Railway, Brevo, Resend, PostHog, Google), plazos, derechos, cookies y aviso legal. Los datos del titular viven en `sitio.OWNER`. Entran en el sitemap.
+- Las casillas de consentimiento (contacto, diagnóstico y presupuesto, en los dos idiomas) enlazan a la política, y el pie de la web corporativa y de la landing de voz tiene el enlace "Privacidad y aviso legal".
+
+### Cambiado
+- **Sin precios en la web corporativa**: la página de webs ya no muestra los planes de 59/99/149 €/mes; pasa a "presupuesto cerrado según tu caso", como CRM y procesos. La pregunta frecuente de la home ya no remite a planes mensuales. La landing de voz (`/asistente-de-voz`) mantiene sus planes.
+
 ## 2026-11-12 (diagnóstico en inglés y repaso de diseño)
 
 ### Añadido

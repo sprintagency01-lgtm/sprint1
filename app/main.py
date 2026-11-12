@@ -237,7 +237,7 @@ async def landing() -> HTMLResponse:
 @app.get("/en/voice-assistant", response_class=HTMLResponse)
 async def landing_en() -> HTMLResponse:
     # `/en` es la home corporativa en inglés (app/sitio.py); el logo vuelve allí.
-    html = _localized_landing_html("en").replace('<a class="logo" href="#"', '<a class="logo" href="/en"')
+    html = _localized_landing_html("en").replace('<a class="logo" href="#"', '<a class="logo" href="/en"').replace('href="/privacidad"', 'href="/en/privacy"')
     return HTMLResponse(html)
 
 
@@ -307,6 +307,8 @@ async def sitemap() -> Response:
         (f"{base}/diagnostico", "0.9"),
         (f"{base}/en/diagnosis", "0.8"),
         *[(f"{base}{path}", "0.8") for path in sitio.product_paths()],
+        (f"{base}/privacidad", "0.3"),
+        (f"{base}/en/privacy", "0.3"),
     ]
     items = "".join(
         f"<url><loc>{loc}</loc><changefreq>weekly</changefreq>"
