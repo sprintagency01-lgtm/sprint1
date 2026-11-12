@@ -48,6 +48,29 @@ class AuditError(ValueError):
     """Error con mensaje apto para enseñárselo al visitante."""
 
 
+# Los mismos mensajes para /en/diagnosis (el de «error (404)» se traduce aparte).
+_ERRORS_EN = {
+    "Escribe la dirección de tu web.": "Type your website address.",
+    "Esa dirección es demasiado larga.": "That address is too long.",
+    "Esa dirección no parece una web.": "That doesn't look like a website address.",
+    "No encontramos esa web. Revisa que la dirección esté bien escrita.":
+        "We couldn't find that website. Check the address is spelled correctly.",
+    "Esa dirección no es una web pública.": "That address isn't a public website.",
+    "La web redirige a una dirección que no podemos analizar.": "The site redirects to an address we can't analyse.",
+    "La web redirige demasiadas veces.": "The site redirects too many times.",
+    "No hemos podido abrir esa web. Revisa la dirección.": "We couldn't open that website. Check the address.",
+    "Esa web no deja que la analicemos: bloquea las visitas automáticas.":
+        "That site won't let us analyse it: it blocks automated visits.",
+}
+
+
+def error_en(msg: str) -> str:
+    m = re.match(r"La web responde con un error \((\d+)\)", msg)
+    if m:
+        return f"The site responds with an error ({m.group(1)}). Check the address."
+    return _ERRORS_EN.get(msg, msg)
+
+
 # ---------------------------------------------------------------------------
 # URL y descarga segura
 # ---------------------------------------------------------------------------
@@ -456,16 +479,19 @@ async def google_reviews(query: str, host: str, negocio: str = "") -> dict | Non
 # Nota y hallazgos
 # ---------------------------------------------------------------------------
 
-def _f(nivel: str, area: str, titulo: str, detalle: str = "") -> dict:
-    return {"nivel": nivel, "area": area, "titulo": titulo, "detalle": detalle}
+def _f(nivel: str, area: str, titulo: str, detalle: str = "", en: tuple[str, str] | str = "") -> dict:
+    """Un hallazgo. `en` es (titulo, detalle) en inglés para /en/diagnosis."""
+    t_en, d_en = (en, "") if isinstance(en, str) else en
+    return {"nivel": nivel, "area": area, "titulo": titulo, "detalle": detalle,
+            "titulo_en": t_en or titulo, "detalle_en": d_en}
 
 
 def _num(x: float) -> str:
     return f"{x:.1f}".replace(".", ",")
 
 
-def _join(names: list[str]) -> str:
-    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " y " + names[-1]
+def _join(names: list[str], y: str = "y") -> str:
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + f" {y} " + names[-1]
 
 
 def evaluate(facts: dict, psi: dict | None = None, reviews: dict | None = None, year: int | None = None) -> dict:
@@ -480,46 +506,67 @@ def evaluate(facts: dict, psi: dict | None = None, reviews: dict | None = None, 
         lcp = psi.get("lcp_s")
         points["velocidad"] = (25 * perf / 100, 25)
         cuanto = f" ({_num(lcp)} s)" if lcp else ""
+        cuanto_en = f" ({lcp:.1f} s)" if lcp else ""
         if (lcp and lcp > 4) or perf < 50:
             out.append(_f("mal", "velocidad",
                           f"Tarda {_num(lcp)} s en cargar en el móvil" if lcp else f"Va lenta en el móvil: {perf}/100 en Google",
-                          "Google recomienda menos de 2,5 s. Con cada segundo de más se va parte de las visitas antes de ver nada."))
+                          "Google recomienda menos de 2,5 s. Con cada segundo de más se va parte de las visitas antes de ver nada.",
+                          (f"Takes {lcp:.1f} s to load on mobile" if lcp else f"Slow on mobile: {perf}/100 on Google",
+                           "Google recommends under 2.5 s. Every extra second loses visitors before they see anything.")))
         elif (lcp and lcp > 2.5) or perf < 80:
             out.append(_f("aviso", "velocidad", f"Carga algo lenta en el móvil{cuanto}",
-                          "Google recomienda menos de 2,5 s y nota de 90 o más."))
+                          "Google recomienda menos de 2,5 s y nota de 90 o más.",
+                          (f"A bit slow to load on mobile{cuanto_en}",
+                           "Google recommends under 2.5 s and a score of 90 or more.")))
         else:
-            out.append(_f("ok", "velocidad", f"Carga rápido en el móvil{cuanto}"))
+            out.append(_f("ok", "velocidad", f"Carga rápido en el móvil{cuanto}",
+                          en=f"Loads fast on mobile{cuanto_en}"))
 
     # SEO básico
     t, d = facts.get("title", ""), facts.get("description", "")
     seo_checks = []
     if not t:
         seo_checks.append((False, 4, _f("mal", "seo", "La página no tiene título para Google",
-                                        "Es lo primero que lee Google y lo que sale en azul en los resultados.")))
+                                        "Es lo primero que lee Google y lo que sale en azul en los resultados.",
+                                        ("The page has no title for Google",
+                                         "It's the first thing Google reads and the blue link people see in the results."))))
     elif not 10 <= len(t) <= 70:
         seo_checks.append((False, 4, _f("aviso", "seo", "El título que ve Google es demasiado " + ("corto" if len(t) < 10 else "largo"),
-                                        "Lo ideal son 30-60 caracteres con lo que hacéis y dónde.")))
+                                        "Lo ideal son 30-60 caracteres con lo que hacéis y dónde.",
+                                        ("The title Google sees is too " + ("short" if len(t) < 10 else "long"),
+                                         "Ideally 30-60 characters saying what you do and where."))))
     else:
         seo_checks.append((True, 4, None))
     if not d:
         seo_checks.append((False, 4, _f("mal", "seo", "No tiene descripción para Google",
-                                        "Google se inventa el texto que sale bajo tu enlace, y suele ser peor que uno escrito a mano.")))
+                                        "Google se inventa el texto que sale bajo tu enlace, y suele ser peor que uno escrito a mano.",
+                                        ("No description for Google",
+                                         "Google makes up the text under your link, and it's usually worse than one written by hand."))))
     else:
         seo_checks.append((True, 4, None))
     seo_checks.append((facts.get("h1", 0) > 0, 2, _f("aviso", "seo", "No tiene un titular principal (H1)",
-                                                      "Le dice a Google de qué va la página.")))
+                                                      "Le dice a Google de qué va la página.",
+                                                      ("No main headline (H1)", "It tells Google what the page is about."))))
     indexable = not facts.get("noindex") and not facts.get("robots_block")
     seo_checks.append((indexable, 6, _f("mal", "seo", "La web le pide a Google que no la muestre",
-                                        "Tiene una etiqueta o regla que impide aparecer en los resultados. Suele quedarse puesta por error.")))
+                                        "Tiene una etiqueta o regla que impide aparecer en los resultados. Suele quedarse puesta por error.",
+                                        ("The site asks Google not to show it",
+                                         "A tag or rule keeps it out of the results. It's usually left on by mistake."))))
     if facts.get("sitemap") is not None:
         seo_checks.append((bool(facts["sitemap"]), 3, _f("aviso", "seo", "No tiene mapa del sitio para Google",
-                                                         "Sin sitemap, Google tarda más en encontrar las páginas nuevas.")))
+                                                         "Sin sitemap, Google tarda más en encontrar las páginas nuevas.",
+                                                         ("No sitemap for Google",
+                                                          "Without one, Google takes longer to find new pages."))))
     seo_checks.append((bool(facts.get("schema")), 3, _f("aviso", "seo", "Google no sabe qué tipo de negocio sois",
-                                                        "Faltan los datos estructurados (tipo de negocio, dirección, horario) que usa para los resultados enriquecidos.")))
+                                                        "Faltan los datos estructurados (tipo de negocio, dirección, horario) que usa para los resultados enriquecidos.",
+                                                        ("Google doesn't know what kind of business you are",
+                                                         "The structured data it uses for rich results (business type, address, opening hours) is missing."))))
     imgs, no_alt = facts.get("imgs", 0), facts.get("imgs_no_alt", 0)
     if imgs >= 3:
         seo_checks.append((no_alt / imgs <= 0.3, 2, _f("aviso", "seo", f"{no_alt} de {imgs} imágenes no tienen texto alternativo",
-                                                       "Google no puede leer las imágenes sin él, y tampoco quien usa lector de pantalla.")))
+                                                       "Google no puede leer las imágenes sin él, y tampoco quien usa lector de pantalla.",
+                                                       (f"{no_alt} of {imgs} images have no alt text",
+                                                        "Without it, neither Google nor people using screen readers can read them."))))
     got = sum(w for ok, w, _ in seo_checks if ok)
     top = sum(w for _, w, _ in seo_checks)
     seo_ratio = got / top if top else 0
@@ -528,7 +575,8 @@ def evaluate(facts: dict, psi: dict | None = None, reviews: dict | None = None, 
     points["seo"] = (25 * seo_ratio, 25)
     out += [f for ok, _, f in seo_checks if not ok and f]
     if all(ok for ok, _, _ in seo_checks):
-        out.append(_f("ok", "seo", "SEO básico en orden: título, descripción y Google puede indexarla"))
+        out.append(_f("ok", "seo", "SEO básico en orden: título, descripción y Google puede indexarla",
+                      en="SEO basics in place: title, description and Google can index it"))
 
     # Captación
     form, wa, chat, tel = facts.get("form"), facts.get("whatsapp"), facts.get("chat") or [], facts.get("tel")
@@ -538,71 +586,101 @@ def evaluate(facts: dict, psi: dict | None = None, reviews: dict | None = None, 
     if not form and not instant:
         out.append(_f("mal", "captacion",
                       "No hay forma de contactar sin llamar" if tel else "No hay ninguna forma clara de contactar",
-                      "Ni formulario, ni WhatsApp, ni chat: quien no quiere llamar se va sin dejar sus datos."))
+                      "Ni formulario, ni WhatsApp, ni chat: quien no quiere llamar se va sin dejar sus datos.",
+                      ("No way to get in touch without calling" if tel else "No clear way to get in touch",
+                       "No form, no WhatsApp, no chat: anyone who doesn't want to call leaves without a trace.")))
     elif not form:
         out.append(_f("aviso", "captacion", "No tiene formulario de contacto",
-                      "Quien prefiere escribir y esperar respuesta no tiene dónde dejar sus datos."))
+                      "Quien prefiere escribir y esperar respuesta no tiene dónde dejar sus datos.",
+                      ("No contact form", "People who'd rather write and wait for a reply have nowhere to leave their details.")))
     if not instant:
         out.append(_f("aviso", "captacion", "Fuera de horario no responde nadie: no hay chat ni WhatsApp",
-                      "Cada vez más clientes escriben en vez de llamar, y muchos lo hacen por la noche."))
+                      "Cada vez más clientes escriben en vez de llamar, y muchos lo hacen por la noche.",
+                      ("Nobody answers after hours: no chat or WhatsApp",
+                       "More and more customers message instead of calling, and many do it at night.")))
     if not tel:
-        out.append(_f("aviso", "captacion", "El teléfono no se puede pulsar para llamar desde el móvil"))
+        out.append(_f("aviso", "captacion", "El teléfono no se puede pulsar para llamar desde el móvil",
+                      en="The phone number can't be tapped to call from a mobile"))
     if form and instant:
         canales = ["formulario"] + (["WhatsApp"] if wa else []) + chat[:1]
-        out.append(_f("ok", "captacion", "Se puede contactar por " + _join(canales)))
+        canales_en = ["form"] + canales[1:]
+        out.append(_f("ok", "captacion", "Se puede contactar por " + _join(canales),
+                      en="Visitors can get in touch by " + _join(canales_en, "or")))
     if facts.get("reservas"):
-        out.append(_f("ok", "captacion", f"Tiene reservas o citas online ({facts['reservas'][0]})"))
+        out.append(_f("ok", "captacion", f"Tiene reservas o citas online ({facts['reservas'][0]})",
+                      en=f"Online bookings or appointments ({facts['reservas'][0]})"))
 
     # Medición y herramientas
     an, mk = facts.get("analitica") or [], facts.get("marketing") or []
     points["medicion"] = ((9 if an else 0) + (6 if mk else 0), 15)
     if not an:
         out.append(_f("mal", "medicion", "No mide sus visitas",
-                      "No hay Google Analytics ni nada parecido: no se sabe cuánta gente entra ni de dónde viene."))
+                      "No hay Google Analytics ni nada parecido: no se sabe cuánta gente entra ni de dónde viene.",
+                      ("It doesn't measure its visits",
+                       "No Google Analytics or anything similar: nobody knows how many people visit or where they come from.")))
     else:
-        out.append(_f("ok", "medicion", "Mide sus visitas con " + _join(an[:2])))
+        out.append(_f("ok", "medicion", "Mide sus visitas con " + _join(an[:2]),
+                      en="Visits are measured with " + _join(an[:2], "and")))
     if not mk:
         out.append(_f("aviso", "medicion", "No vemos dónde acaban los contactos",
-                      "Ni CRM ni herramienta de email conectada a la web: los contactos se quedan en un buzón."))
+                      "Ni CRM ni herramienta de email conectada a la web: los contactos se quedan en un buzón.",
+                      ("We can't see where your leads end up",
+                       "No CRM or email tool connected to the site: leads sit in an inbox.")))
     else:
-        out.append(_f("ok", "medicion", "Los contactos van a " + _join(mk[:2])))
+        out.append(_f("ok", "medicion", "Los contactos van a " + _join(mk[:2]),
+                      en="Leads go to " + _join(mk[:2], "and")))
 
     # Confianza y mantenimiento
     old = facts.get("copyright") is not None and facts["copyright"] <= year - 2
     points["confianza"] = ((6 if facts.get("https") else 0) + (5 if facts.get("viewport") else 0) + (0 if old else 4), 15)
     if not facts.get("https"):
         out.append(_f("mal", "confianza", "La web no es segura (sin HTTPS)",
-                      "Chrome la marca como «No segura» delante de cada visita y Google la penaliza."))
+                      "Chrome la marca como «No segura» delante de cada visita y Google la penaliza.",
+                      ("The site isn't secure (no HTTPS)",
+                       "Chrome labels it \"Not secure\" in front of every visitor, and Google ranks it lower.")))
     if not facts.get("viewport"):
         out.append(_f("mal", "confianza", "No está adaptada al móvil",
-                      "En el móvil se ve en miniatura, y desde ahí llegan la mayoría de las visitas."))
+                      "En el móvil se ve en miniatura, y desde ahí llegan la mayoría de las visitas.",
+                      ("Not adapted for mobile",
+                       "On a phone it shows up tiny, and that's where most visits come from.")))
     if old:
         out.append(_f("aviso", "confianza", f"El pie de la web dice © {facts['copyright']}",
-                      "Da sensación de web abandonada aunque el negocio esté a tope."))
+                      "Da sensación de web abandonada aunque el negocio esté a tope.",
+                      (f"The footer still says © {facts['copyright']}",
+                       "It makes the site look abandoned, even if business is booming.")))
 
     # Reseñas en Google
     if reviews is not None:
         if not reviews.get("found"):
             points["resenas"] = (0, 15)
             out.append(_f("mal", "resenas", "No encontramos vuestra ficha de Google",
-                          "Sin ficha (o sin la web enlazada en ella) no salís en Google Maps ni en las búsquedas de la zona."))
+                          "Sin ficha (o sin la web enlazada en ella) no salís en Google Maps ni en las búsquedas de la zona.",
+                          ("We couldn't find your Google Business Profile",
+                           "Without one (or without your site linked to it) you don't show up on Google Maps or in local searches.")))
         else:
             n, r = reviews.get("count") or 0, reviews.get("rating") or 0
             points["resenas"] = (7.5 * min(1, n / 50) + 7.5 * max(0, min(1, (r - 3.5) / 1.3)), 15)
             if n < 10:
                 out.append(_f("aviso", "resenas", f"Solo {n} reseña{'s' if n != 1 else ''} en Google",
-                              "Con menos de 10, quien te compara elige al de al lado. Pedirlas después de cada venta se puede automatizar."))
+                              "Con menos de 10, quien te compara elige al de al lado. Pedirlas después de cada venta se puede automatizar.",
+                              (f"Only {n} review{'s' if n != 1 else ''} on Google",
+                               "With fewer than 10, people comparing you pick the business next door. Asking after every sale can be automated.")))
             elif r < 4.2:
                 out.append(_f("aviso", "resenas", f"{_num(r)} ★ de media en Google ({n} reseñas)",
-                              "Por debajo de 4,2 muchos clientes ni hacen clic. Responder y pedir reseñas a los contentos lo sube."))
+                              "Por debajo de 4,2 muchos clientes ni hacen clic. Responder y pedir reseñas a los contentos lo sube.",
+                              (f"{r:.1f} ★ average on Google ({n} reviews)",
+                               "Below 4.2 many customers don't even click. Replying, and asking happy customers for reviews, brings it up.")))
             else:
-                out.append(_f("ok", "resenas", f"{_num(r)} ★ con {n} reseñas en Google"))
+                out.append(_f("ok", "resenas", f"{_num(r)} ★ con {n} reseñas en Google",
+                              en=f"{r:.1f} ★ from {n} reviews on Google"))
 
     got = sum(p[0] for p in points.values())
     top = sum(p[1] for p in points.values())
     nota = round(100 * got / top) if top else 0
     nivel = ("Bien resuelta" if nota >= 80 else "Mejorable" if nota >= 60 else "Floja" if nota >= 40
              else "Necesita trabajo")
+    nivel_en = ("In good shape" if nota >= 80 else "Room to improve" if nota >= 60 else "Weak" if nota >= 40
+                else "Needs work")
 
     orden = {"mal": 0, "aviso": 1, "ok": 2}
     out.sort(key=lambda f: orden[f["nivel"]])
@@ -610,8 +688,10 @@ def evaluate(facts: dict, psi: dict | None = None, reviews: dict | None = None, 
     return {
         "nota": nota,
         "nivel": nivel,
+        "nivel_en": nivel_en,
         "hallazgos": [f for f in out if f["nivel"] != "ok"],
         "bien": [f["titulo"] for f in out if f["nivel"] == "ok"],
+        "bien_en": [f["titulo_en"] for f in out if f["nivel"] == "ok"],
         "detectado": {k: facts.get(k) or [] for k in ("plataforma", "analitica", "marketing", "chat", "reservas")}
                      | {"whatsapp": bool(wa)},
         "auto": auto_answers(facts, psi, reviews, seo_ratio, year),

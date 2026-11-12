@@ -1,14 +1,18 @@
 <!doctype html>
-<html lang="es">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Analiza tu web y tu empresa gratis · Sprintia</title>
-<meta name="description" content="Pon tu web y en segundos ves su nota: velocidad, Google, reseñas y formas de contacto. Con 9 preguntas más, cuántas horas de trabajo manual podrías automatizar. Gratis.">
-<link rel="canonical" href="https://sprintiasolutions.com/diagnostico">
-<meta property="og:title" content="Pon tu web y te decimos qué se te escapa">
-<meta property="og:description" content="Análisis de tu web y diagnóstico de automatización gratis en 2 minutos.">
-<meta property="og:url" content="https://sprintiasolutions.com/diagnostico">
+<title>{{ u.title }}</title>
+<meta name="description" content="{{ u.description }}">
+<link rel="canonical" href="https://sprintiasolutions.com{{ u.path }}">
+<link rel="alternate" hreflang="{{ lang }}" href="https://sprintiasolutions.com{{ u.path }}">
+<link rel="alternate" hreflang="{{ 'en' if lang == 'es' else 'es' }}" href="https://sprintiasolutions.com{{ u.alt_path }}">
+<link rel="alternate" hreflang="x-default" href="https://sprintiasolutions.com/diagnostico">
+<meta property="og:title" content="{{ u.og_title }}">
+<meta property="og:description" content="{{ u.og_desc }}">
+<meta property="og:url" content="https://sprintiasolutions.com{{ u.path }}">
+<meta property="og:locale" content="{{ u.og_locale }}">
 <meta name="theme-color" content="#f4efe6">
 <link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="7.52" y="11.52" width="4.16" height="12.8" rx="2.08" fill="%2315161a"/><rect x="13.92" y="6.4" width="4.16" height="20.48" rx="2.08" fill="%2315161a"/><rect x="20.32" y="13.44" width="4.16" height="9.6" rx="2.08" fill="%2315161a"/><circle cx="22.4" cy="7.04" r="2.72" fill="%232d4cff"/></svg>'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +20,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#15161a;--ink-2:#3a3b40;--bone:#f4efe6;--paper:#fafaf7;--stone:#7d7c78;--mist:#e3ddd0;
+    --ink:#15161a;--ink-2:#3a3b40;--bone:#f4efe6;--paper:#fafaf7;--stone:#66655f;--mist:#e3ddd0;
     --line:rgba(21,22,26,.10);--accent:#2d4cff;--accent-2:#1f37c4;--accent-soft:#dee3ff;
     --radius:12px;--radius-lg:22px;
     --shadow-1:0 1px 0 rgba(21,22,26,.04),0 8px 24px -12px rgba(21,22,26,.12);
@@ -24,6 +28,7 @@
     --serif:"Instrument Serif",Georgia,serif;--sans:"Inter Tight",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
   }
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   html{-webkit-text-size-adjust:100%}
   body{margin:0;background:var(--bone);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
   a{color:inherit}
@@ -33,11 +38,13 @@
   .nav{height:64px;display:flex;align-items:center;justify-content:space-between}
   .logo{display:flex;align-items:center;gap:9px;font-weight:600;font-size:1.05rem;text-decoration:none;letter-spacing:-.01em}
   .logo svg{width:26px;height:26px}.logo .b{fill:var(--ink)}.logo .d{fill:var(--accent)}
-  .back{font-size:.86rem;color:var(--stone);text-decoration:none}.back:hover{color:var(--ink)}
+  .nav-r{display:flex;align-items:center;gap:6px}
+  .back,.lang{font-size:.86rem;color:var(--ink-2);text-decoration:none;padding:10px 8px;border-radius:999px}.back:hover,.lang:hover{color:var(--ink)}
+  .lang{font-family:var(--mono);font-size:.78rem;letter-spacing:.06em;box-shadow:inset 0 0 0 1px var(--line);padding:8px 11px}
   .screen{display:none;animation:in .45s ease}.screen.on{display:block}
   @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--stone)}
-  h1,h2{font-family:var(--serif);font-weight:400;letter-spacing:-.01em;margin:0}
+  h1,h2{font-family:var(--serif);font-weight:400;letter-spacing:-.01em;margin:0;text-wrap:balance}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;background:var(--ink);color:var(--paper);font-weight:600;padding:16px 26px;cursor:pointer;text-decoration:none;transition:transform .15s,background .15s}
   .btn:hover{transform:translateY(-1px)}.btn:active{transform:none}
   .btn.accent{background:var(--accent)}.btn.accent:hover{background:var(--accent-2)}
@@ -72,6 +79,7 @@
   .opt.sel{border-color:var(--accent);background:var(--accent-soft)}
   .opt.sel .k{background:var(--accent);border-color:var(--accent);color:#fff}
   .multi .opt .k{border-radius:6px}
+  @media(hover:none){.opts:not(.multi) .opt .k{font-size:0;width:10px;height:10px;border-radius:50%}}
   #qNext{margin-top:22px}
   /* calc */
   #calc{padding:120px 0;text-align:center}
@@ -104,6 +112,7 @@
   label.f textarea{min-height:92px;resize:vertical}
   label.f input:focus,label.f textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
   .chk{display:flex;gap:10px;align-items:flex-start;font-size:.86rem;color:var(--ink-2);margin:4px 0 10px;cursor:pointer}
+  .chk a{color:inherit}
   .chk input{margin-top:3px;accent-color:var(--accent);width:16px;height:16px;flex:none}
   .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
   .err{color:#c0392b;font-size:.88rem;margin:8px 0 0;min-height:1px}
@@ -120,13 +129,13 @@
   .restart{background:none;border:0;color:var(--stone);text-decoration:underline;cursor:pointer;font-size:.86rem;padding:0;margin-top:14px}
   /* entrada con la web */
   .urlbox{display:flex;gap:8px;background:var(--paper);border:1.5px solid rgba(21,22,26,.16);border-radius:999px;padding:6px 6px 6px 20px;max-width:560px;box-shadow:var(--shadow-1);transition:border-color .15s}
-  .urlbox:focus-within{border-color:var(--accent)}
+  .urlbox:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px rgba(45,76,255,.16),var(--shadow-1)}
   .urlbox input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:17px;color:var(--ink);outline:none}
   .urlbox .btn{padding:14px 22px;flex:none}
   .biz{display:block;max-width:560px;margin:12px 0 0}
-  .biz input{width:100%;padding:12px 18px;border:1px solid var(--line);border-radius:999px;background:transparent;font:inherit;font-size:15px;color:var(--ink)}
+  .biz input{width:100%;padding:12px 18px;border:1px solid var(--line);border-radius:999px;background:transparent;font:inherit;font-size:16px;color:var(--ink);text-overflow:ellipsis}
   .biz input:focus{outline:2px solid var(--accent);outline-offset:1px}
-  .alt{display:inline-block;margin-top:16px;background:none;border:0;padding:0;color:var(--stone);font-size:.9rem;text-decoration:underline;cursor:pointer}
+  .alt{display:inline-block;margin-top:8px;background:none;border:0;padding:10px 0;color:var(--stone);font-size:.9rem;text-decoration:underline;cursor:pointer}
   .alt:hover{color:var(--ink)}
   #urlErr{max-width:560px}
   @media(max-width:560px){.urlbox{flex-direction:column;border-radius:18px;padding:8px}.urlbox input{padding:10px 10px}.urlbox .btn{width:100%}}
@@ -164,68 +173,65 @@
 </head>
 <body>
 <header><div class="wrap nav">
-  <a class="logo" href="/" aria-label="Sprintia">
+  <a class="logo" href="{{ u.home }}" aria-label="Sprintia">
     <svg viewBox="0 0 28 28" aria-hidden="true"><rect class="b" x="6.58" y="10.08" width="3.64" height="11.2" rx="1.82"/><rect class="b" x="12.18" y="5.6" width="3.64" height="17.92" rx="1.82"/><rect class="b" x="17.78" y="11.76" width="3.64" height="8.4" rx="1.82"/><circle class="d" cx="19.6" cy="6.16" r="2.38"/></svg>
     Sprintia
   </a>
-  <a class="back" href="/">Volver a la web</a>
+  <div class="nav-r"><a class="back" href="{{ u.home }}">{{ u.back }}</a><a class="lang" href="{{ u.alt_path }}" hreflang="{{ 'en' if lang == 'es' else 'es' }}" title="{{ u.switch_title }}">{{ u.switch }}</a></div>
 </div></header>
 
 <main class="wrap">
   <!-- Intro -->
   <section id="intro" class="screen on">
-    <div class="eyebrow">Diagnóstico gratuito · 2 minutos</div>
-    <h1>Pon tu web y te decimos <em>qué se te escapa</em></h1>
-    <p class="lead">La analizamos en unos segundos (velocidad, Google, reseñas, formas de contacto) y con unas preguntas rápidas calculamos cuántas horas de trabajo manual podrías automatizar.</p>
+    <div class="eyebrow">{{ u.intro_eyebrow }}</div>
+    <h1>{{ u.intro_h1|safe }}</h1>
+    <p class="lead">{{ u.intro_lead }}</p>
     <form id="urlForm" onsubmit="analyze(event)" novalidate>
       <div class="urlbox">
-        <input id="urlIn" name="url" type="text" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="tuempresa.com" aria-label="Dirección de tu web" maxlength="300">
-        <button class="btn accent" type="submit" data-analytics-name="Analizar web">Analizar mi web →</button>
+        <input id="urlIn" name="url" type="text" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="{{ u.url_ph }}" aria-label="{{ u.url_aria }}" maxlength="300">
+        <button class="btn accent" type="submit" data-analytics-name="Analizar web">{{ u.url_btn }} →</button>
       </div>
-      <label class="biz"><input id="bizIn" name="negocio" type="text" autocomplete="organization" maxlength="120" placeholder="Nombre del negocio en Google (opcional, para tus reseñas)" aria-label="Nombre del negocio"></label>
+      <label class="biz"><input id="bizIn" name="negocio" type="text" autocomplete="organization" maxlength="120" placeholder="{{ u.biz_ph }}" aria-label="{{ u.biz_aria }}"></label>
       <div class="err" id="urlErr" role="alert"></div>
     </form>
-    <button class="alt" type="button" onclick="skipWeb()">No tengo web: hacer el test sin ella</button>
-    <div class="trust"><span>Resultado al momento</span><span>Sin registro para verlo</span><span>Gratis</span></div>
-    <div class="areas" aria-label="Qué analiza">
-      <div><b>Visibilidad</b><small>Web, Google y reseñas</small></div>
-      <div><b>Ventas</b><small>Contactos y seguimiento</small></div>
-      <div><b>Operaciones</b><small>Facturas, datos e informes</small></div>
-      <div><b>Clientes</b><small>Atención y emails</small></div>
-    </div>
+    <button class="alt" type="button" onclick="skipWeb()">{{ u.skip }}</button>
+    <div class="trust">{% for x in u.trust %}<span>{{ x }}</span>{% endfor %}</div>
+    <div class="areas" aria-label="{{ u.areas_aria }}">
+      {% for b, sm in u.areas %}<div><b>{{ b }}</b><small>{{ sm }}</small></div>
+      {% endfor %}</div>
   </section>
 
   <!-- Analizando la web -->
   <section id="scan" class="screen" aria-live="polite">
-    <div class="eyebrow">Analizando</div>
+    <div class="eyebrow">{{ u.scan }}</div>
     <h2 id="scanHost"></h2>
     <ul class="steps" id="scanSteps"></ul>
   </section>
 
   <!-- Nota de la web -->
   <section id="web" class="screen">
-    <div class="eyebrow">Tu web</div>
+    <div class="eyebrow">{{ u.web_eyebrow }}</div>
     <div class="score">
       <div class="ring" id="wRing"><div><span><b id="wNota"></b><small>/100</small></span></div></div>
       <div><h1 id="wNivel"></h1><p id="wHost"></p></div>
     </div>
     <div class="eyebrow sub" id="wFindsT"></div>
     <div class="finds" id="wFinds"></div>
-    <div id="wGoodBox"><div class="eyebrow sub">Lo que está bien</div><div class="chips good" id="wGood"></div></div>
-    <div id="wDetBox"><div class="eyebrow sub">Hemos detectado</div><div class="chips" id="wDet"></div></div>
-    <p class="partial" id="wPartial" hidden>Tu web se genera con JavaScript y desde fuera vemos menos de lo normal: puede que algún punto esté mejor de lo que sale aquí.</p>
+    <div id="wGoodBox"><div class="eyebrow sub">{{ u.good }}</div><div class="chips good" id="wGood"></div></div>
+    <div id="wDetBox"><div class="eyebrow sub">{{ u.detected }}</div><div class="chips" id="wDet"></div></div>
+    <p class="partial" id="wPartial" hidden>{{ u.partial }}</p>
     <div class="next">
-      <div class="eyebrow" style="color:#b9b8b3">Siguiente paso</div>
-      <h2 style="margin-top:8px">Ahora, lo que no se ve desde fuera</h2>
+      <div class="eyebrow" style="color:#b9b8b3">{{ u.next_eyebrow }}</div>
+      <h2 style="margin-top:8px">{{ u.next_h2 }}</h2>
       <p id="wNextP"></p>
-      <button class="btn accent" type="button" onclick="startQuiz(true)" data-analytics-name="Seguir al test">Seguir →</button>
+      <button class="btn accent" type="button" onclick="startQuiz(true)" data-analytics-name="Seguir al test">{{ u.next_btn }} →</button>
     </div>
   </section>
 
   <!-- Preguntas -->
   <section id="quiz" class="screen" aria-live="polite">
     <div class="qtop">
-      <button class="qback" id="qBack" type="button" onclick="prevQ()" aria-label="Pregunta anterior">
+      <button class="qback" id="qBack" type="button" onclick="prevQ()" aria-label="{{ u.q_back }}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       <div class="bar"><i id="qBar"></i></div>
@@ -234,83 +240,85 @@
     <div class="eyebrow qblock" id="qBlock"></div>
     <h2 id="qText"></h2>
     <p id="qHelp"></p>
+    <div class="err" id="qErr" role="alert"></div>
     <div class="opts" id="qOpts"></div>
-    <button class="btn" id="qNext" type="button" onclick="nextFromMulti()" hidden>Continuar →</button>
+    <button class="btn" id="qNext" type="button" onclick="nextFromMulti()" hidden>{{ u.q_next }} →</button>
   </section>
 
   <!-- Calculando -->
-  <section id="calc" class="screen"><div class="spin"></div><div class="eyebrow">Calculando tu diagnóstico</div></section>
+  <section id="calc" class="screen"><div class="spin"></div><div class="eyebrow">{{ u.calc }}</div></section>
 
   <!-- Resultado -->
   <section id="result" class="screen">
-    <div class="eyebrow">Tu resultado</div>
+    <div class="eyebrow">{{ u.r_eyebrow }}</div>
     <h1 id="rName"></h1>
     <p id="rFrase"></p>
     <div class="stat">
-      <div><div class="eyebrow" style="color:#b9b8b3">Horas recuperables</div><div class="h"><span id="rHoras"></span><small>h/mes</small></div></div>
-      <div class="e">equivale a unos<b id="rEuros"></b>al mes</div>
+      <div><div class="eyebrow" style="color:#b9b8b3">{{ u.r_hours }}</div><div class="h"><span id="rHoras"></span><small>{{ u.r_hm }}</small></div></div>
+      <div class="e">{{ u.r_equiv }}<b id="rEuros"></b>{{ u.r_month }}</div>
     </div>
     <div class="blocks" id="rBlocks"></div>
     <span class="webchip" id="rWeb" hidden></span>
 
     <div class="card" id="gate">
-      <h2>Recibe tu diagnóstico</h2>
-      <p>Te enviamos por email lo que le falta a tu empresa y lo que se podría automatizar en tu caso.</p>
+      <h2>{{ u.gate_h2 }}</h2>
+      <p>{{ u.gate_p }}</p>
       <div class="teaser" id="rTeaser"></div>
       <form id="gateForm" onsubmit="sendGate(event)" novalidate>
         <div class="row">
-          <label class="f">Nombre<input name="name" autocomplete="given-name" required maxlength="120"></label>
-          <label class="f">Empresa<input name="company" autocomplete="organization" maxlength="200"></label>
+          <label class="f">{{ u.f_name }}<input name="name" autocomplete="given-name" required maxlength="120"></label>
+          <label class="f">{{ u.f_company }}<input name="company" autocomplete="organization" maxlength="200"></label>
         </div>
-        <label class="f">Email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
-        <label class="hp" aria-hidden="true">Web<input name="website" tabindex="-1" autocomplete="off"></label>
-        <label class="chk"><input type="checkbox" name="consent" required> Acepto que Sprintia me envíe el diagnóstico por email.</label>
-        <label class="chk"><input type="checkbox" name="marketing_consent"> Quiero recibir de vez en cuando ideas y casos de automatización.</label>
-        <button class="btn accent" type="submit" data-analytics-name="Enviar diagnóstico">Recibir mi diagnóstico</button>
+        <label class="f">{{ u.f_email }}<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+        <label class="hp" aria-hidden="true">{{ u.f_web }}<input name="website" tabindex="-1" autocomplete="off"></label>
+        <label class="chk"><input type="checkbox" name="consent" required> <span>{{ u.consent_diag }} <a href="{{ u.privacy }}" target="_blank">{{ u.privacy_link }}</a>.</span></label>
+        <label class="chk"><input type="checkbox" name="marketing_consent"> {{ u.consent_mkt }}</label>
+        <button class="btn accent" type="submit" data-analytics-name="Enviar diagnóstico">{{ u.gate_btn }}</button>
         <div class="err" id="gateErr" role="alert"></div>
       </form>
     </div>
-    <button class="restart" type="button" onclick="restart()">Repetir el test</button>
+    <button class="restart" type="button" onclick="restart()">{{ u.restart }}</button>
   </section>
 
   <!-- Presupuesto -->
   <section id="presupuesto" class="screen">
     <div class="card" id="quoteCard">
-      <div class="eyebrow" style="color:#b9b8b3">Sin compromiso</div>
-      <h2 style="margin-top:8px">¿Lo vemos para tu caso?</h2>
-      <p>Te preparamos un presupuesto con lo que haríamos en tu empresa: web, Google, ventas o automatizaciones. Te respondemos en uno o dos días.</p>
+      <div class="eyebrow" style="color:#b9b8b3">{{ u.quote_eyebrow }}</div>
+      <h2 style="margin-top:8px">{{ u.quote_h2 }}</h2>
+      <p>{{ u.quote_p }}</p>
       <form id="quoteForm" onsubmit="sendQuote(event)" novalidate>
         <div class="row">
-          <label class="f">Nombre<input name="name" autocomplete="name" required maxlength="120"></label>
-          <label class="f">Empresa<input name="company" autocomplete="organization" maxlength="200"></label>
+          <label class="f">{{ u.f_name }}<input name="name" autocomplete="name" required maxlength="120"></label>
+          <label class="f">{{ u.f_company }}<input name="company" autocomplete="organization" maxlength="200"></label>
         </div>
         <div class="row">
-          <label class="f">Email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
-          <label class="f">Teléfono<input name="phone" type="tel" autocomplete="tel" required maxlength="25"></label>
+          <label class="f">{{ u.f_email }}<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+          <label class="f">{{ u.f_phone }}<input name="phone" type="tel" autocomplete="tel" required maxlength="25"></label>
         </div>
-        <label class="f">¿Qué te gustaría resolver primero? (opcional)<textarea name="ask" maxlength="1500"></textarea></label>
-        <label class="hp" aria-hidden="true">Web<input name="website" tabindex="-1" autocomplete="off"></label>
-        <label class="chk"><input type="checkbox" name="consent" required> Acepto que Sprintia me contacte para preparar el presupuesto.</label>
-        <button class="btn accent" type="submit" data-analytics-name="Pedir presupuesto diagnóstico">Pedir presupuesto</button>
+        <label class="f">{{ u.f_ask }}<textarea name="ask" maxlength="1500"></textarea></label>
+        <label class="hp" aria-hidden="true">{{ u.f_web }}<input name="website" tabindex="-1" autocomplete="off"></label>
+        <label class="chk"><input type="checkbox" name="consent" required> <span>{{ u.consent_quote }} <a href="{{ u.privacy }}" target="_blank">{{ u.privacy_link }}</a>.</span></label>
+        <button class="btn accent" type="submit" data-analytics-name="Pedir presupuesto diagnóstico">{{ u.quote_btn }}</button>
         <div class="err" id="quoteErr" role="alert"></div>
       </form>
     </div>
   </section>
 </main>
 
-<footer class="foot"><div class="wrap">Las horas son una estimación a partir de tus respuestas y de supuestos medios (25 €/h de trabajo administrativo). Sprintia · sprintiasolutions.com</div></footer>
+<footer class="foot"><div class="wrap">{{ u.foot }} Sprintia · sprintiasolutions.com</div></footer>
 
 <script>
 try{ history.scrollRestoration = 'manual'; }catch(e){}
-const DATA = __DIAG_DATA__;
-const Q = DATA.questions;
-const BLOCK_NAME = {empresa:'Tu empresa', visibilidad:'Visibilidad', ventas:'Ventas', operaciones:'Operaciones', clientes:'Clientes'};
+const DATA = {{ data|tojson }};
+const Q = DATA.questions, T = DATA.t;
+const BLOCK_NAME = T.blocks;
+const tr = (s, n) => s.replace('{n}', n);
 const $ = id => document.getElementById(id);
 let answers = new Array(Q.length).fill(null), idx = 0, result = null, started = false;
 
 /* Analítica (proyecto PostHog compartido, se separa por site) */
 (function(){
-  window.track = function(name, props){ try{ if(window.posthog && posthog.capture) posthog.capture(name, Object.assign({site:'sprintia', domain:location.hostname}, props||{})); }catch(e){} };
+  window.track = function(name, props){ try{ if(window.posthog && posthog.capture) posthog.capture(name, Object.assign({site:'sprintia', domain:location.hostname, lang:T.lang}, props||{})); }catch(e){} };
   if(/^(localhost|127\.)/.test(location.hostname)) return;
   !function(t,e){var o,n,p,r;if(e.__SV||(window.posthog&&window.posthog.__loaded))return;window.posthog=e;e._i=[];e.init=function(i,s,a){function g(t,e){var o=e.split('.');if(o.length===2){t=t[o[0]];e=o[1]}t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments)))}}p=t.createElement('script');p.type='text/javascript';p.crossOrigin='anonymous';p.async=true;p.src=s.api_host.replace('.i.posthog.com','-assets.i.posthog.com')+'/static/array.js';r=t.getElementsByTagName('script')[0];r.parentNode.insertBefore(p,r);var u=e;if(a!==undefined)u=e[a]=[];else a='posthog';u.people=u.people||[];u.toString=function(){return'posthog'};u.people.toString=function(){return'posthog.people'};o='capture register register_once get_distinct_id opt_in_capturing opt_out_capturing'.split(' ');for(n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])};e.__SV=1}(document,window.posthog||[]);
   posthog.init('phc_QPwTqqZbVEIwjiRz7bRvM2W8PXmBEgyjpIjHLq0zJQH',{api_host:'https://eu.i.posthog.com',person_profiles:'identified_only',capture_pageview:true});
@@ -326,7 +334,7 @@ let steps = Q.map((_, i) => i), audit = null;
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* 1. La web */
-const SCAN_STEPS = ['Abriendo la web', 'Revisando lo que ve Google', 'Buscando formas de contacto', 'Detectando herramientas', 'Buscando vuestra ficha de Google', 'Midiendo la velocidad en el móvil'];
+const SCAN_STEPS = T.scan_steps;
 let scanTimer = null;
 function scanUI(host){
   $('scanHost').textContent = host;
@@ -344,16 +352,16 @@ async function analyze(ev){
   if(ev) ev.preventDefault();
   const url = $('urlIn').value.trim(), negocio = $('bizIn').value.trim(), err = $('urlErr');
   err.textContent = '';
-  if(!url) return err.textContent = 'Escribe la dirección de tu web.';
-  if(!/^[^\s]+\.[^\s]{2,}/.test(url)) return err.textContent = 'Eso no parece una dirección web (por ejemplo, tuempresa.com).';
+  if(!url) return err.textContent = T.err_url_empty;
+  if(!/^[^\s]+\.[^\s]{2,}/.test(url)) return err.textContent = T.err_url_bad;
   if(!started){ started = true; track('diag_started', {con_web: true}); }
   track('diag_web_submitted');
   show('scan'); scanUI(url.replace(/^https?:\/\//i, '').replace(/\/$/, ''));
   const t0 = Date.now();
   try{
-    const r = await fetch('/api/diagnostico/analizar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url, negocio})});
+    const r = await fetch('/api/diagnostico/analizar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url, negocio, lang: T.lang})});
     const d = await r.json().catch(() => ({}));
-    if(!r.ok) throw new Error(d.error || 'No hemos podido analizar esa web.');
+    if(!r.ok) throw new Error(d.error || T.err_analyze);
     await new Promise(res => setTimeout(res, Math.max(0, 5200 - (Date.now() - t0))));
     scanDone();
     await new Promise(res => setTimeout(res, 450));
@@ -361,7 +369,7 @@ async function analyze(ev){
     track('diag_web_analyzed', {nota: d.nota, dominio: d.dominio, hallazgos: d.hallazgos.length, con_google: d.con_google});
   }catch(e){
     clearInterval(scanTimer); show('intro');
-    err.textContent = (e.message || 'No hemos podido analizar esa web.') + ' Si quieres, puedes hacer el test sin ella.';
+    err.textContent = (e.message || T.err_analyze) + T.err_analyze_tail;
     track('diag_web_failed', {error: String(e.message || '').slice(0, 80)});
   }
 }
@@ -373,7 +381,7 @@ function renderWeb(){
   $('wNivel').textContent = a.nivel;
   $('wHost').textContent = a.dominio;
   const f = a.hallazgos.slice(0, 6);
-  $('wFindsT').textContent = f.length ? (f.length === 1 ? 'Lo que te está costando clientes' : f.length + ' cosas que te están costando clientes') : 'No hemos visto nada grave';
+  $('wFindsT').textContent = f.length ? (f.length === 1 ? T.finds_one : tr(T.finds_many, f.length)) : T.finds_none;
   $('wFinds').innerHTML = f.map(x => '<div class="find ' + x.nivel + '"><i></i><div><b>' + esc(x.titulo) + '</b>' + (x.detalle ? '<span>' + esc(x.detalle) + '</span>' : '') + '</div></div>').join('');
   $('wGood').innerHTML = a.bien.map(t => '<span>' + esc(t) + '</span>').join('');
   $('wGoodBox').hidden = !a.bien.length;
@@ -382,14 +390,15 @@ function renderWeb(){
   $('wDetBox').hidden = !tools.length;
   $('wPartial').hidden = !a.parcial;
   const left = Q.length - Object.keys(a.auto).length;
-  $('wNextP').textContent = left + ' preguntas rápidas sobre facturas, datos e informes para calcular cuántas horas de trabajo manual se podrían recuperar.';
+  $('wNextP').textContent = tr(T.next_p, left);
 }
-function skipWeb(){ audit = null; track('diag_skip_web'); startQuiz(false); }
+function skipWeb(){ audit = null; track('diag_skip_web'); startQuiz(false, true); }
 
 /* 2. Las preguntas */
-function startQuiz(fromWeb){
+function startQuiz(fromWeb, noWeb){
   answers = new Array(Q.length).fill(null); idx = 0;
   steps = Q.map((_, i) => i);
+  if(noWeb){ answers[QI.web] = Q[QI.web].opciones.length - 1; steps = steps.filter(i => i !== QI.web); }  // «No tenemos web»
   if(fromWeb && audit){
     Object.entries(audit.auto).forEach(([k, v]) => { if(k in QI) answers[QI[k]] = v; });
     steps = steps.filter(i => !(Q[i].id in audit.auto));
@@ -408,6 +417,7 @@ function renderQ(){
   $('qText').textContent = q.texto;
   $('qHelp').textContent = q.ayuda || '';
   $('qBack').hidden = idx === 0;
+  $('qErr').textContent = '';
   const box = $('qOpts'); box.innerHTML = ''; box.className = 'opts' + (multi ? ' multi' : '');
   const cur = answers[k];
   q.opciones.forEach((label, j) => {
@@ -457,34 +467,34 @@ async function finish(){
     result = await fetchResult(answers);
     await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now() - t0))));
     renderResult(false);
-    track('diag_completed', {perfil: result.perfil.id, fuga: result.fuga_pct, horas_max: result.horas.max, sector: Q[0].opciones[answers[0]], tamano: Q[1].opciones[answers[1]], con_web: !!audit, nota_web: audit ? audit.nota : null});
+    track('diag_completed', {perfil: result.perfil.id, fuga: result.fuga_pct, horas_max: result.horas.max, sector: DATA.sector_es[answers[0]], tamano: Q[1].opciones[answers[1]], con_web: !!audit, nota_web: audit ? audit.nota : null});
   }catch(e){
-    show('quiz'); alert('No hemos podido calcular el resultado. Inténtalo de nuevo.');
+    show('quiz'); $('qErr').textContent = T.calc_err;
   }
 }
 async function fetchResult(ans){
-  const r = await fetch('/api/diagnostico/resultado', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({answers: ans})});
+  const r = await fetch('/api/diagnostico/resultado', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({answers: ans, lang: T.lang})});
   if(!r.ok) throw new Error('resultado');
   return r.json();
 }
-const fmt = n => n.toLocaleString('es-ES');
+const fmt = n => n.toLocaleString(T.locale);
 function renderResult(fromEmail){
   show('result');
   $('rName').textContent = result.perfil.nombre;
   $('rFrase').textContent = result.perfil.frase;
   $('rHoras').textContent = result.horas.min + '–' + result.horas.max;
-  $('rEuros').textContent = fmt(result.euros_mes) + ' €';
+  $('rEuros').textContent = T.lang === 'en' ? '€' + fmt(result.euros_mes) : fmt(result.euros_mes) + ' €';
   $('rBlocks').innerHTML = result.bloques.map(b =>
     '<div class="blk"><span>' + b.nombre + '</span><div class="t"><i data-w="' + b.pct + '" class="' + (b.pct >= 60 ? 'hi' : b.pct >= 30 ? 'mid' : 'lo') + '"></i></div><span class="p">' + b.pct + ' %</span></div>'
-  ).join('') + '<p class="note">Cuanto más larga la barra, más tiempo o clientes se escapan en esa área.</p>';
+  ).join('') + '<p class="note">' + T.blocks_note + '</p>';
   requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll('#rBlocks i').forEach(i => i.style.width = i.dataset.w + '%')));
   const t = [];
-  if(result.n_fugas) t.push(result.n_fugas + (result.n_fugas === 1 ? ' punto de mejora' : ' puntos de mejora'));
-  if(result.n_automatizaciones) t.push(result.n_automatizaciones + (result.n_automatizaciones === 1 ? ' automatización posible' : ' automatizaciones posibles'));
+  if(result.n_fugas) t.push(result.n_fugas + ' ' + (result.n_fugas === 1 ? T.fuga_1 : T.fuga_n));
+  if(result.n_automatizaciones) t.push(result.n_automatizaciones + ' ' + (result.n_automatizaciones === 1 ? T.auto_1 : T.auto_n));
   $('rTeaser').innerHTML = t.map(x => '<span>' + x + '</span>').join('');
   $('gate').hidden = !!fromEmail;
   $('rWeb').hidden = !audit;
-  if(audit) $('rWeb').textContent = 'Tu web: ' + audit.nota + '/100 · ' + audit.dominio;
+  if(audit) $('rWeb').textContent = T.web_chip + audit.nota + '/100 · ' + audit.dominio;
   try{ history.replaceState(null, '', location.pathname + '?r=' + result.codigo); }catch(e){}
   if(fromEmail) setTimeout(() => window.scrollTo({top: $('presupuesto').getBoundingClientRect().top + window.scrollY - 70}), 300);
 }
@@ -500,50 +510,50 @@ async function sendGate(ev){
   ev.preventDefault();
   const f = ev.target, o = formJSON(f), err = $('gateErr'), btn = f.querySelector('button[type=submit]');
   err.textContent = '';
-  if(!o.name || o.name.trim().length < 2) return err.textContent = 'Dinos tu nombre.';
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = 'Revisa el email.';
-  if(!o.consent) return err.textContent = 'Marca la casilla para que podamos enviártelo.';
-  btn.disabled = true; btn.textContent = 'Enviando…';
+  if(!o.name || o.name.trim().length < 2) return err.textContent = T.err_name;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = T.err_email;
+  if(!o.consent) return err.textContent = T.err_consent;
+  btn.disabled = true; btn.textContent = T.sending;
   try{
     const r = await fetch('/api/diagnostico/enviar', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({answers, audit_id: audit ? audit.id : null, name:o.name, email:o.email, company:o.company, consent:true, marketing_consent:!!o.marketing_consent, website:o.website||''})});
+      body: JSON.stringify({answers, audit_id: audit ? audit.id : null, name:o.name, email:o.email, company:o.company, consent:true, marketing_consent:!!o.marketing_consent, website:o.website||'', lang:T.lang})});
     const d = await r.json().catch(() => ({}));
-    if(!r.ok) throw new Error(d.error || 'No se pudo enviar.');
+    if(!r.ok) throw new Error(d.error || T.err_send);
     remember(o); prefillQuote();
     track('diag_email_submitted', {perfil: result.perfil.id, marketing: !!o.marketing_consent});
-    $('gate').innerHTML = '<div class="done"><div class="ic">✓</div><div><h2 style="font-size:1.7rem;margin:0 0 6px">Te lo hemos enviado</h2><p style="margin:0">Llega a <b></b> en un minuto. Si no lo ves, mira en promociones o spam.</p></div></div>';
+    $('gate').innerHTML = '<div class="done"><div class="ic">✓</div><div><h2 style="font-size:1.7rem;margin:0 0 6px">' + T.gate_done_h + '</h2><p style="margin:0">' + T.gate_done_p + '</p></div></div>';
     $('gate').querySelector('b').textContent = o.email;
   }catch(e){
-    btn.disabled = false; btn.textContent = 'Recibir mi diagnóstico'; err.textContent = e.message || 'No se pudo enviar.';
+    btn.disabled = false; btn.textContent = T.gate_btn; err.textContent = e.message || T.err_send;
   }
 }
 async function sendQuote(ev){
   ev.preventDefault();
   const f = ev.target, o = formJSON(f), err = $('quoteErr'), btn = f.querySelector('button[type=submit]');
   err.textContent = '';
-  if(!o.name || o.name.trim().length < 2) return err.textContent = 'Dinos tu nombre.';
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = 'Revisa el email.';
-  if(!/^\+?[0-9\s\-\(\)\.]{6,25}$/.test(o.phone || '')) return err.textContent = 'Revisa el teléfono.';
-  if(!o.consent) return err.textContent = 'Marca la casilla para que podamos contactarte.';
+  if(!o.name || o.name.trim().length < 2) return err.textContent = T.err_name;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = T.err_email;
+  if(!/^\+?[0-9\s\-\(\)\.]{6,25}$/.test(o.phone || '')) return err.textContent = T.err_phone;
+  if(!o.consent) return err.textContent = T.err_consent_quote;
   const fd = new FormData();
   fd.set('name', o.name); fd.set('email', o.email); fd.set('phone', o.phone); fd.set('company', o.company || '');
-  fd.set('sector', answers[0] !== null ? Q[0].opciones[answers[0]] : '');
-  fd.set('country', 'España'); fd.set('landing_language', 'es'); fd.set('consent', '1');
-  fd.set('source', 'diagnostico'); fd.set('website', o.website || '');
+  fd.set('sector', answers[0] !== null ? DATA.sector_es[answers[0]] : '');
+  fd.set('country', T.country); fd.set('landing_language', T.lang); fd.set('consent', '1');
+  fd.set('source', T.source); fd.set('website', o.website || '');
   fd.set('message', ((o.ask || '').trim() ? 'Quiere resolver primero: ' + o.ask.trim() + '\n\n' : '') + (result ? result.resumen : '') + (audit ? '\n\n' + audit.resumen_web : ''));
   const p = new URLSearchParams(location.search);
   ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(k => { if(p.get(k)) fd.set(k, p.get(k)); });
   if(!p.get('utm_source') && p.get('r') && !started) fd.set('utm_source', 'email-diagnostico');
-  btn.disabled = true; btn.textContent = 'Enviando…';
+  btn.disabled = true; btn.textContent = T.sending;
   try{
     const r = await fetch('/api/leads', {method:'POST', body: fd});
     const d = await r.json().catch(() => ({}));
-    if(!r.ok) throw new Error(d.error || 'No se pudo enviar.');
+    if(!r.ok) throw new Error(d.error || T.err_send);
     remember(o);
     track('diag_quote_submitted', {perfil: result && result.perfil.id});
-    $('quoteCard').innerHTML = '<div class="done"><div class="ic">✓</div><div><h2 style="font-size:1.8rem;margin:0 0 6px">Recibido</h2><p style="margin:0">Revisamos tu diagnóstico y te escribimos en uno o dos días laborables con una propuesta.</p></div></div>';
+    $('quoteCard').innerHTML = '<div class="done"><div class="ic">✓</div><div><h2 style="font-size:1.8rem;margin:0 0 6px">' + T.quote_done_h + '</h2><p style="margin:0">' + T.quote_done_p + '</p></div></div>';
   }catch(e){
-    btn.disabled = false; btn.textContent = 'Pedir presupuesto'; err.textContent = e.message || 'No se pudo enviar.';
+    btn.disabled = false; btn.textContent = T.quote_btn; err.textContent = e.message || T.err_send;
   }
 }
 

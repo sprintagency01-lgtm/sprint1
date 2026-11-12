@@ -6,6 +6,43 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-11-12 (sin precios y política de privacidad)
+
+### Añadido
+- **Privacidad y aviso legal** en `/privacidad` y `/en/privacy`: titular (LSSI), datos que tratamos y para qué, base legal, proveedores (Railway, Brevo, Resend, PostHog, Google), plazos, derechos, cookies y aviso legal. Los datos del titular viven en `sitio.OWNER`. Entran en el sitemap.
+- Las casillas de consentimiento (contacto, diagnóstico y presupuesto, en los dos idiomas) enlazan a la política, y el pie de la web corporativa y de la landing de voz tiene el enlace "Privacidad y aviso legal".
+
+### Cambiado
+- **Sin precios en la web corporativa**: la página de webs ya no muestra los planes de 59/99/149 €/mes; pasa a "presupuesto cerrado según tu caso", como CRM y procesos. La pregunta frecuente de la home ya no remite a planes mensuales. La landing de voz (`/asistente-de-voz`) mantiene sus planes.
+
+## 2026-11-12 (diagnóstico en inglés y repaso de diseño)
+
+### Añadido
+- **Diagnóstico en inglés en `/en/diagnosis`**: análisis de la web (hallazgos, nota, errores), las 15 preguntas, el resultado, el email del diagnóstico y la autorrespuesta del presupuesto. Las traducciones están en `app/diagnostico_i18n.py` y los hallazgos llevan `titulo_en`/`detalle_en` en `web_audit.py`. El cálculo es el mismo en los dos idiomas. Lo que lee Mario (resumen del presupuesto, aviso interno, Brevo) sigue en español; el aviso interno indica el idioma. Los presupuestos llegan con `source=diagnostico-en`.
+- La web en inglés (home, productos, menú, pie) enlaza a `/en/diagnosis`. Se quita el aviso "The report is in Spanish for now". `hreflang` entre `/diagnostico` y `/en/diagnosis`, y la segunda entra en el sitemap.
+- **Menú en el móvil**: por debajo de 900 px la cabecera no tenía navegación; ahora hay un botón que abre productos, cómo trabajamos, diagnóstico y contacto.
+
+### Cambiado
+- `diagnostico.html` pasa a ser plantilla Jinja con selector ES/EN, y "Volver a la web" lleva a la home del idioma correspondiente.
+- Repaso de diseño:
+  - el gris de los textos secundarios (`--stone`) se oscurece para cumplir el contraste AA;
+  - los titulares se equilibran para no dejar una palabra sola en la última línea;
+  - anillo de foco en la caja de la URL;
+  - zonas táctiles más grandes en el pie, el selector de idioma y "Volver a la web";
+  - se respeta "reducir movimiento" en la animación del flujo.
+- Diagnóstico:
+  - si eliges "No tengo web" ya no te pregunta "Tu web hoy…";
+  - la última pregunta pasa a ser "¿Qué te importa más ahora mismo?";
+  - el campo opcional del negocio usa 16 px para que iOS no haga zoom;
+  - las letras A–D se ocultan en pantallas táctiles;
+  - un error al calcular el resultado se muestra en la página en vez de en un `alert()`.
+- El título SEO de la home baja de 71 a 61 caracteres (nuestro propio analizador lo marcaba como demasiado largo).
+
+### Corregido
+- En el test se veía un botón "Continuar" que no hacía nada en todas las preguntas de una sola respuesta, y una píldora vacía en el resultado cuando no había web (el CSS anulaba el atributo `hidden`).
+- En el móvil la página se desplazaba 38 px hacia los lados por el halo del hero.
+- El menú de Productos se cerraba al bajar el ratón despacio hacia él.
+
 ## 2026-11-12 (home de automatización para empresas)
 
 ### Cambiado

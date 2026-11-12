@@ -30,8 +30,9 @@ def test_paginas_de_producto():
         assert f"fd.set('source', 'producto-{slug}')" in r.text
         assert '"@type": "Service"' in r.text
     webs = client.get("/productos/webs").text
-    assert "99<small> €/mes</small>" in webs           # los planes de web sí van en su página
-    assert "€/mes" not in client.get("/productos/crm-automatizado").text
+    assert "€/mes" not in webs and "59" not in webs     # sin precios en la web corporativa
+    assert "sin permanencia" in webs
+    assert "€/month" not in client.get("/en/products/websites").text
     assert client.get("/productos/no-existe").status_code == 404
     r = client.get("/productos/asistente-de-voz", follow_redirects=False)
     assert r.status_code == 301 and r.headers["location"] == "/asistente-de-voz"
@@ -87,8 +88,7 @@ def test_home_y_productos_en_ingles():
         assert f'class="lang" href="{p["alt"]}"' in r.text
         assert f"fd.set('source', 'producto-{p['slug']}-en')" in r.text
     webs = client.get("/en/products/websites").text
-    assert "99<small> €/month</small>" in webs and "No lock-in" in webs
-    assert "Sin permanencia" in client.get("/productos/webs").text
+    assert "€/month" not in webs and "no lock-in" in webs
     assert client.get("/en/products/nope").status_code == 404
     r = client.get("/en/products/voice-assistant", follow_redirects=False)
     assert r.status_code == 301 and r.headers["location"] == "/en/voice-assistant"
@@ -98,3 +98,22 @@ def test_autorespuesta_en_ingles():
     subject, _, body, _, signoff = _autoreply_parts(LeadNotification(
         lead_id=1, name="Laura", phone="+34600000000", source="home-en", landing_language="en"))
     assert subject.startswith("We've received") and "automate" in body and "voice" not in body
+
+
+def test_privacidad_y_aviso_legal():
+    for path, alt, txt in (("/privacidad", "/en/privacy", "Quién es el responsable"),
+                           ("/en/privacy", "/privacidad", "Who we are")):
+        r = client.get(path)
+        assert r.status_code == 200, path
+        assert txt in r.text and sitio.OWNER["nif"] in r.text and "aepd.es" in r.text
+        assert f'href="https://sprintiasolutions.com{alt}"' in r.text   # hreflang
+        assert 'id="contactForm"' not in r.text
+    home = client.get("/").text
+    assert 'href="/privacidad" target="_blank">política de privacidad</a>' in home
+    assert '<a href="/privacidad">Privacidad y aviso legal</a>' in home
+    assert 'href="/en/privacy"' in client.get("/en").text
+    assert 'href="/privacidad"' in client.get("/diagnostico").text
+    assert 'href="/en/privacy"' in client.get("/en/diagnosis").text
+    assert 'href="/en/privacy"' in client.get("/en/voice-assistant").text
+    sm = client.get("/sitemap.xml").text
+    assert "/privacidad</loc>" in sm and "/en/privacy</loc>" in sm

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block css %}
+  .legal{padding:56px 0 96px}
+  .legal .wrap{max-width:720px}
+  .legal h1{font-size:clamp(2.5rem,5.4vw,3.8rem);line-height:1;margin:14px 0 18px}
+  .legal .upd{color:var(--stone);font-size:.92rem;margin:0 0 30px}
+  .legal .toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 44px;padding:0;list-style:none}
+  .legal .toc a{display:inline-block;padding:8px 14px;border-radius:999px;background:var(--paper);border:1px solid var(--line);text-decoration:none;font-size:.9rem;color:var(--ink-2)}
+  .legal .toc a:hover{border-color:var(--ink);color:var(--ink)}
+  .legal h2{font-size:clamp(1.7rem,3vw,2.2rem);line-height:1.08;margin:52px 0 14px;scroll-margin-top:90px}
+  .legal h3{font-weight:600;font-size:1.04rem;margin:26px 0 6px}
+  .legal p,.legal li{color:var(--ink-2)}
+  .legal p{margin:0 0 14px}
+  .legal ul{margin:0 0 14px;padding-left:20px}
+  .legal li{margin:0 0 6px}
+  .legal a{color:var(--accent)}
+  .legal .card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin:0 0 14px}
+  .legal .card dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}
+  .legal .card dt{color:var(--stone)}.legal .card dd{margin:0;color:var(--ink)}
+  @media(max-width:560px){.legal .card dl{grid-template-columns:1fr;gap:0}.legal .card dd{margin-bottom:10px}}
+{% endblock %}
+
+{% block main %}
+<section class="legal">
+  <div class="container"><div class="wrap">
+{% if lang == 'en' %}
+    <div class="kicker">Legal</div>
+    <h1>Privacy and <em>legal notice</em>.</h1>
+    <p class="upd">Last updated: {{ updated_en }}</p>
+    <ul class="toc">
+      <li><a href="#who">Who we are</a></li><li><a href="#data">What data and why</a></li>
+      <li><a href="#share">Who we share it with</a></li><li><a href="#keep">How long we keep it</a></li>
+      <li><a href="#rights">Your rights</a></li><li><a href="#cookies">Cookies</a></li><li><a href="#notice">Legal notice</a></li>
+    </ul>
+
+    <h2 id="who">Who we are</h2>
+    <p>Sprintia is the trading name of the person responsible for this website and for your data:</p>
+    <div class="card"><dl>
+      <dt>Owner</dt><dd>{{ owner.name }}</dd>
+      <dt>Tax ID (NIF)</dt><dd>{{ owner.nif }}</dd>
+      <dt>Address</dt><dd>{{ owner.address }}</dd>
+      <dt>Contact</dt><dd><a href="mailto:{{ owner.email }}">{{ owner.email }}</a></dd>
+    </dl></div>
+
+    <h2 id="data">What data we collect and why</h2>
+    <h3>When you write to us or ask for a quote</h3>
+    <p>Your name, company, email, phone, the message you send and the page you came from. We use them to reply and to prepare a proposal. Legal basis: your request and the steps before a possible contract.</p>
+    <h3>When you take the free assessment</h3>
+    <p>Your website address, your answers, your name, company and email. We analyse your website with public information (the page itself, Google's speed test and your public Google business listing) and email you the result. Legal basis: your consent, which you give by ticking the box.</p>
+    <h3>If you ask to receive ideas and case studies</h3>
+    <p>Only if you tick that box, we'll email you now and then. You can unsubscribe from the link in any email or by writing to us. Legal basis: your consent.</p>
+    <h3>When you browse the site</h3>
+    <p>We measure which pages are visited and which buttons are clicked, to understand what works. We don't use this to identify you. See <a href="#cookies">Cookies</a>.</p>
+    <p>If you're a client and we run the voice assistant or other automations with your customers' data, that processing is governed by the data processing agreement we sign with you.</p>
+
+    <h2 id="share">Who we share it with</h2>
+    <p>We don't sell your data or give it to third parties for their own purposes. We use these providers, who process it only on our behalf:</p>
+    <ul>
+      <li><b>Railway</b>: hosting for the website and the database.</li>
+      <li><b>Brevo</b> (servers in the EU): contact list and sending of the assessment and newsletters.</li>
+      <li><b>Resend</b>: sending of confirmation emails and internal notices about new requests.</li>
+      <li><b>PostHog</b> (servers in the EU): website analytics.</li>
+      <li><b>Google</b>: speed test and business listing lookup for the assessment. Only your website address is sent, not your personal data.</li>
+    </ul>
+    <p>Some of these providers are based in the United States. In that case the transfer is covered by the EU–US Data Privacy Framework or the European Commission's standard contractual clauses.</p>
+
+    <h2 id="keep">How long we keep it</h2>
+    <p>Requests and assessments: up to two years after our last contact if you don't become a client. If you do, for as long as we work together and then for the periods required by law. Newsletters: until you unsubscribe.</p>
+
+    <h2 id="rights">Your rights</h2>
+    <p>You can ask to access, correct or delete your data, object to or restrict its use, take it with you, or withdraw your consent at any time. Write to <a href="mailto:{{ owner.email }}">{{ owner.email }}</a> and we'll reply within a month. If you think we haven't handled your data properly, you can complain to the Spanish Data Protection Agency (<a href="https://www.aepd.es" rel="noopener">aepd.es</a>).</p>
+    <p>This site isn't aimed at children under 14.</p>
+
+    <h2 id="cookies">Cookies</h2>
+    <p>We don't use advertising cookies. We use one analytics cookie from PostHog (<code>ph_…_posthog</code>, lasts one year) that counts visits and clicks with a random identifier. You can delete it or block it in your browser settings and the site will keep working.</p>
+
+    <h2 id="notice">Legal notice</h2>
+    <p>This website is owned by the person listed in <a href="#who">Who we are</a>, in accordance with Spanish Law 34/2002 on information society services (LSSI-CE). The texts, design and logo of Sprintia belong to their owner. Brands mentioned (Google, HubSpot, Holded and others) belong to their respective owners and are cited only to indicate compatibility. The free assessment gives an estimate based on your answers and public data; it is guidance, not a guarantee of results.</p>
+{% else %}
+    <div class="kicker">Legal</div>
+    <h1>Privacidad y <em>aviso legal</em>.</h1>
+    <p class="upd">Última actualización: {{ updated_es }}</p>
+    <ul class="toc">
+      <li><a href="#responsable">Quién es el responsable</a></li><li><a href="#datos">Qué datos y para qué</a></li>
+      <li><a href="#cesion">Con quién los compartimos</a></li><li><a href="#plazo">Cuánto tiempo</a></li>
+      <li><a href="#derechos">Tus derechos</a></li><li><a href="#cookies">Cookies</a></li><li><a href="#aviso">Aviso legal</a></li>
+    </ul>
+
+    <h2 id="responsable">Quién es el responsable</h2>
+    <p>Sprintia es el nombre comercial del titular de esta web y responsable de tus datos:</p>
+    <div class="card"><dl>
+      <dt>Titular</dt><dd>{{ owner.name }}</dd>
+      <dt>NIF</dt><dd>{{ owner.nif }}</dd>
+      <dt>Domicilio</dt><dd>{{ owner.address }}</dd>
+      <dt>Contacto</dt><dd><a href="mailto:{{ owner.email }}">{{ owner.email }}</a></dd>
+    </dl></div>
+
+    <h2 id="datos">Qué datos tratamos y para qué</h2>
+    <h3>Cuando nos escribes o pides presupuesto</h3>
+    <p>Tu nombre, empresa, email, teléfono, el mensaje que envías y la página desde la que llegas. Los usamos para responderte y preparar una propuesta. Base legal: tu solicitud y las medidas previas a un posible contrato.</p>
+    <h3>Cuando haces el diagnóstico gratuito</h3>
+    <p>La dirección de tu web, tus respuestas, tu nombre, empresa y email. Analizamos tu web con información pública (la propia página, la prueba de velocidad de Google y tu ficha pública de Google) y te enviamos el resultado por email. Base legal: tu consentimiento, que das al marcar la casilla.</p>
+    <h3>Si pides recibir ideas y casos</h3>
+    <p>Solo si marcas esa casilla, te escribiremos de vez en cuando. Puedes darte de baja desde el enlace de cualquier email o escribiéndonos. Base legal: tu consentimiento.</p>
+    <h3>Cuando navegas por la web</h3>
+    <p>Medimos qué páginas se visitan y qué botones se pulsan, para saber qué funciona. No lo usamos para identificarte. Más detalle en <a href="#cookies">Cookies</a>.</p>
+    <p>Si eres cliente y usamos el asistente de voz u otras automatizaciones con los datos de tus clientes, ese tratamiento se rige por el contrato de encargo de tratamiento que firmamos contigo.</p>
+
+    <h2 id="cesion">Con quién los compartimos</h2>
+    <p>No vendemos tus datos ni los cedemos a terceros para sus propios fines. Trabajamos con estos proveedores, que solo los tratan por encargo nuestro:</p>
+    <ul>
+      <li><b>Railway</b>: alojamiento de la web y de la base de datos.</li>
+      <li><b>Brevo</b> (servidores en la UE): lista de contactos y envío del diagnóstico y de los emails informativos.</li>
+      <li><b>Resend</b>: envío de los emails de confirmación y de los avisos internos de solicitudes nuevas.</li>
+      <li><b>PostHog</b> (servidores en la UE): analítica de la web.</li>
+      <li><b>Google</b>: prueba de velocidad y búsqueda de la ficha de empresa para el diagnóstico. Solo se envía la dirección de tu web, no tus datos personales.</li>
+    </ul>
+    <p>Algunos de estos proveedores están en Estados Unidos. En ese caso, la transferencia está amparada por el Marco de Privacidad de Datos UE-EE. UU. o por las cláusulas contractuales tipo de la Comisión Europea.</p>
+
+    <h2 id="plazo">Cuánto tiempo los guardamos</h2>
+    <p>Solicitudes y diagnósticos: hasta dos años desde el último contacto si no llegas a ser cliente. Si lo eres, mientras trabajemos juntos y después durante los plazos que exige la ley. Emails informativos: hasta que te des de baja.</p>
+
+    <h2 id="derechos">Tus derechos</h2>
+    <p>Puedes pedir acceder a tus datos, rectificarlos o suprimirlos, oponerte a su uso o limitarlo, llevártelos a otro sitio o retirar tu consentimiento cuando quieras. Escríbenos a <a href="mailto:{{ owner.email }}">{{ owner.email }}</a> y te respondemos en menos de un mes. Si crees que no hemos tratado bien tus datos, puedes reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es" rel="noopener">aepd.es</a>).</p>
+    <p>Esta web no está dirigida a menores de 14 años.</p>
+
+    <h2 id="cookies">Cookies</h2>
+    <p>No usamos cookies publicitarias. Usamos una cookie de analítica de PostHog (<code>ph_…_posthog</code>, dura un año) que cuenta visitas y clics con un identificador aleatorio. Puedes borrarla o bloquearla desde los ajustes de tu navegador y la web seguirá funcionando.</p>
+
+    <h2 id="aviso">Aviso legal</h2>
+    <p>En cumplimiento de la Ley 34/2002 de servicios de la sociedad de la información (LSSI-CE), el titular de esta web es la persona indicada en <a href="#responsable">Quién es el responsable</a>. Los textos, el diseño y el logotipo de Sprintia pertenecen a su titular. Las marcas que se citan (Google, HubSpot, Holded y otras) son de sus dueños y se mencionan solo para indicar compatibilidad. El diagnóstico gratuito da una estimación a partir de tus respuestas y de datos públicos: es orientativo y no garantiza resultados.</p>
+{% endif %}
+  </div></div>
+</section>
+{% endblock %}
+
+{% block contact %}{% endblock %}
