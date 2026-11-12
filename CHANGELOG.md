@@ -6,6 +6,11 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-11-12 (sin precios en ninguna página)
+
+### Cambiado
+- **La landing de voz (`/asistente-de-voz` y `/en/voice-assistant`) ya no muestra precios**: fuera los planes del asistente (79/149/299 €/mes), los de webs (59/99/149 €/mes), el alta de 149 €, el minuto extra de 0,25 € y las ofertas con precio del JSON-LD. En su lugar, la sección "06 · Precio" ofrece un precio cerrado según el negocio, con el botón "Pedir precio" (`data-lead="Precio"`, abre el mismo formulario). El menú "Planes" pasa a "Precio" y "¿Todavía sin web?" enlaza a la página de webs. Se mantienen los importes de los ejemplos de conversación (son precios del negocio del cliente, no nuestros).
+
 ## 2026-11-12 (aviso de cookies)
 
 ### Añadido
