@@ -128,3 +128,16 @@ def test_aviso_de_cookies():
         # PostHog arranca sin guardar nada hasta que se acepta
         assert "persistence:window.phPersistence?phPersistence():'memory'" in html, path
         assert html.index("window.phPersistence = function") < html.index("posthog.init("), path
+
+
+def test_la_landing_de_voz_no_muestra_precios():
+    import json, re
+    for path in ("/asistente-de-voz", "/en/voice-assistant"):
+        html = client.get(path).text
+        for s in ("79€", "149€", "299€", "59€", "€59", "€149", "0,25€", "/mes</span>", '"price"', "planes-web"):
+            assert s not in html, (path, s)
+        assert 'id="precios"' in html and 'data-lead="Precio"' in html
+        for block in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S):
+            json.loads(block)                                   # JSON-LD sigue siendo válido
+    en = client.get("/en/voice-assistant").text
+    assert "A fixed price, <em>for your business</em>." in en and 'href="/en/products/websites"' in en
