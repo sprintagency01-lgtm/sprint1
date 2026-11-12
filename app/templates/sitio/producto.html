@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block jsonld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "name": {{ p.nombre|tojson }},
+  "serviceType": {{ p.nombre|tojson }},
+  "description": {{ p.seo_desc|tojson }},
+  "url": "https://sprintiasolutions.com{{ p.url }}",
+  "areaServed": "ES",
+  "inLanguage": "{{ lang }}",
+  "provider": {"@type": "Organization", "name": "Sprintia", "url": "https://sprintiasolutions.com{{ t.home }}"}
+}
+</script>
+{% if p.faq %}<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [{% for q in p.faq %}{"@type": "Question", "name": {{ q[0]|tojson }}, "acceptedAnswer": {"@type": "Answer", "text": {{ q[1]|tojson }}}}{% if not loop.last %},{% endif %}{% endfor %}]
+}
+</script>{% endif %}
+{% endblock %}
+
+{% block css %}
+  .phero{padding:56px 0 84px}
+  .crumbs{font-size:.88rem;color:var(--stone);margin-bottom:22px}
+  .crumbs a{text-decoration:none;color:var(--stone)}.crumbs a:hover{color:var(--ink)}
+  .pgrid{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center}
+  .phero h1{font-size:clamp(2.7rem,6vw,4.7rem);line-height:.99;margin:16px 0 20px}
+  .phero .lede{font-size:clamp(1.06rem,1.5vw,1.2rem);color:var(--ink-2);max-width:46ch;margin:0 0 28px}
+  .acts{display:flex;gap:12px;flex-wrap:wrap}
+  @media(max-width:960px){.pgrid{grid-template-columns:1fr;gap:40px}.phero{padding:36px 0 60px}}
+  .probs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .prob{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:22px}
+  .prob q{font-family:var(--serif);font-size:1.38rem;line-height:1.18;quotes:"«" "»";display:block}
+  @media(max-width:860px){.probs{grid-template-columns:1fr}}
+  .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .feat{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:24px}
+  .feat .n{font-family:var(--mono);font-size:.74rem;color:var(--accent);display:block;margin-bottom:14px}
+  .feat h3{font-weight:600;font-size:1.08rem;margin:0 0 6px;font-family:var(--sans)}
+  .feat p{margin:0;color:var(--ink-2);font-size:.96rem}
+  @media(max-width:900px){.feats{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.feats{grid-template-columns:1fr}}
+  /* planes */
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .plan{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:14px;position:relative}
+  .plan.hi{border:2px solid var(--accent);box-shadow:var(--shadow-2)}
+  .plan .badge{position:absolute;top:-12px;left:24px;background:var(--accent);color:#fff;font-size:.74rem;font-weight:600;padding:5px 11px;border-radius:999px}
+  .plan h3{font-weight:700;font-size:1.15rem;font-family:var(--sans)}
+  .plan .for{color:var(--stone);font-size:.92rem;margin-top:-10px}
+  .plan .amt{font-family:var(--serif);font-size:3rem;line-height:1}
+  .plan .amt small{font-family:var(--sans);font-size:1rem;color:var(--stone)}
+  .plan .btn{margin-top:auto}
+  .pnote{color:var(--stone);font-size:.92rem;margin:18px 0 0}
+  @media(max-width:900px){.plans{grid-template-columns:1fr}}
+  .quote-band{border-radius:28px;padding:52px 48px;display:grid;grid-template-columns:1.2fr .8fr;gap:36px;align-items:center}
+  .quote-band h2{font-size:clamp(2.1rem,4.6vw,3.2rem);line-height:1.02;margin:12px 0 12px}
+  .quote-band .acts .btn.ghost{color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
+  @media(max-width:860px){.quote-band{grid-template-columns:1fr;padding:38px 24px}}
+  .others{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .other{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:22px;text-decoration:none;transition:border-color .15s}
+  .other:hover{border-color:rgba(45,76,255,.4)}
+  .other b{display:block;font-weight:600;margin-bottom:4px}.other span{color:var(--stone);font-size:.92rem}
+  @media(max-width:860px){.others{grid-template-columns:1fr}#contactGrid{grid-template-columns:1fr!important;gap:32px!important}}
+{% endblock %}
+
+{% block main %}
+<section class="phero">
+  <div class="container">
+    <div class="crumbs"><a href="{{ t.home }}">Sprintia</a> · <a href="{{ t.home }}#productos">{{ t.crumb_products }}</a> · {{ p.nombre }}</div>
+    <div class="pgrid">
+      <div>
+        <div class="kicker">{{ p.kicker }}</div>
+        <h1>{{ p.h1|safe }}</h1>
+        <p class="lede">{{ p.lede }}</p>
+        <div class="acts">
+          <a class="btn accent" href="#contacto" data-cta="producto-presupuesto">{{ t.p_quote }} <span aria-hidden="true">→</span></a>
+          <a class="btn ghost" href="/diagnostico" data-cta="producto-diagnostico">{{ t.p_diag }}</a>
+        </div>
+      </div>
+      <div class="flow" aria-label="{{ t.example }}: {{ p.flujo_titulo }}">
+        <div class="flow-top"><span class="kicker">{{ p.flujo_titulo }}</span><span class="live"><i></i>{{ t.live }}</span></div>
+        {% for s in p.flujo %}<div class="fstep"><div class="fdot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12.5l4 4 8-9"/></svg></div><div><b>{{ s[0] }}</b><span>{{ s[1] }}</span></div><div class="t">{{ s[2] }}</div></div>{% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="container">
+    <div class="head reveal"><div class="kicker">{{ t.p_for }}</div><h2>{{ t.p_if|safe }}</h2></div>
+    <div class="probs">{% for t in p.problemas %}<div class="prob reveal"><q>{{ t }}</q></div>{% endfor %}</div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="container">
+    <div class="head reveal"><div class="kicker">{{ t.p_includes }}</div><h2>{{ p.incluye_titulo|safe }}</h2></div>
+    <div class="feats">{% for f in p.incluye %}<div class="feat reveal"><span class="n">{{ '%02d' % loop.index }}</span><h3>{{ f[0] }}</h3><p>{{ f[1] }}</p></div>{% endfor %}</div>
+  </div>
+</section>
+
+{% if p.planes %}
+<section style="padding-top:0" id="planes">
+  <div class="container">
+    <div class="head reveal"><div class="kicker">{{ t.p_plans }}</div><h2>{{ t.p_plans_title|safe }}</h2><p>{{ p.planes_intro }}</p></div>
+    <div class="plans">
+      {% for pl in p.planes %}<div class="plan reveal{% if pl.destacado %} hi{% endif %}">
+        {% if pl.destacado %}<span class="badge">{{ t.p_badge }}</span>{% endif %}
+        <h3>{{ pl.nombre }}</h3><div class="for">{{ pl.para }}</div>
+        <div class="amt">{{ pl.precio }}<small> {{ t.p_month }}</small></div>
+        <ul class="ticks">{% for t in pl.incluye %}<li>{{ t }}</li>{% endfor %}</ul>
+        <a class="btn {{ 'accent' if pl.destacado else 'ghost' }}" href="#contacto" data-cta="plan-{{ pl.nombre|lower }}">{{ t.p_want }}</a>
+      </div>{% endfor %}
+    </div>
+    <p class="pnote">{{ p.planes_nota }}</p>
+  </div>
+</section>
+{% else %}
+<section style="padding-top:0">
+  <div class="container">
+    <div class="quote-band dark reveal">
+      <div>
+        <div class="kicker">{{ t.p_cost }}</div>
+        <h2>{{ t.p_cost_title|safe }}</h2>
+        <p style="margin:0;font-size:1.06rem">{{ p.precio_texto }}</p>
+      </div>
+      <div class="acts" style="justify-content:flex-start">
+        <a class="btn accent" href="#contacto" data-cta="banda-presupuesto">{{ t.p_quote }} <span aria-hidden="true">→</span></a>
+        <a class="btn ghost" href="/diagnostico" data-cta="banda-diagnostico">{{ t.p_start_diag }}</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if p.faq %}
+<section style="padding-top:0">
+  <div class="container">
+    <div class="head reveal" style="margin-bottom:20px"><div class="kicker">{{ t.faq_kicker }}</div><h2>{{ t.faq_title|safe }}</h2></div>
+    <div class="faq">{% for q in p.faq %}<details><summary>{{ q[0] }}</summary><p>{{ q[1] }}</p></details>{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+
+<section style="padding-top:0">
+  <div class="container">
+    <div class="head reveal" style="margin-bottom:22px"><div class="kicker">{{ t.p_combines }}</div><h2>{{ t.p_others|safe }}</h2></div>
+    <div class="others">{% for o in productos if o.slug != p.slug %}<a class="other reveal" href="{{ o.url }}"><b>{{ o.nombre }} →</b><span>{{ o.menu }}</span></a>{% endfor %}</div>
+  </div>
+</section>
+{% endblock %}
+
+{% block contact_title %}{{ p.contacto_titulo|safe }}{% endblock %}

@@ -265,7 +265,17 @@ def _autoreply_parts(lead: LeadNotification) -> tuple[str, str, str, str, str]:
     name = lead.name.split()[0] if lead.name else ""
     family = _language_family(lead.landing_language)
 
-    if family == "en":
+    if family == "en" and (lead.source or "").startswith(("home", "producto")):
+        greeting = f"Hi {name}," if name else "Hi,"
+        subject = "We've received your message at Sprintia"
+        body = (
+            "Thanks for getting in touch. We've received your request: we'll "
+            "review it and get back to you within one or two working days to "
+            "see what we can automate for you."
+        )
+        extra = "If you'd like to add anything, just reply to this email."
+        signoff = "Best,\nMario, from Sprintia"
+    elif family == "en":
         greeting = f"Hi {name}," if name else "Hi,"
         subject = "We received your request at Sprintia"
         body = (
@@ -302,6 +312,16 @@ def _autoreply_parts(lead: LeadNotification) -> tuple[str, str, str, str, str]:
             "Gracias por pedirnos presupuesto. Ya tenemos tu diagnóstico y lo que "
             "nos has contado: lo revisamos y te escribimos en uno o dos días "
             "laborables con una propuesta para tu caso."
+        )
+        extra = "Si quieres añadir algo, responde directamente a este email."
+        signoff = "Un saludo,\nMario, de Sprintia"
+    elif (lead.source or "").startswith(("home", "producto")):
+        greeting = f"Hola {name}," if name else "Hola,"
+        subject = "Hemos recibido tu mensaje en Sprintia"
+        body = (
+            "Gracias por escribirnos. Hemos recibido tu solicitud: la revisamos y "
+            "te escribimos en uno o dos días laborables para ver qué podemos "
+            "automatizar en tu caso."
         )
         extra = "Si quieres añadir algo, responde directamente a este email."
         signoff = "Un saludo,\nMario, de Sprintia"

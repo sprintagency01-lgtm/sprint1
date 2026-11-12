@@ -89,8 +89,8 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     # Grupo web
     ("<h3>Web</h3>", "<h3>Website</h3>"),
     (
-        "La web va incluida en la cuota: sin coste de diseño ni de alta. Permanencia mínima de 12 meses.",
-        "The website is included in the fee: no design or setup cost. 12-month minimum term.",
+        "La web va incluida en la cuota: sin coste de diseño ni de alta. Sin permanencia.",
+        "The website is included in the fee: no design or setup cost. No lock-in.",
     ),
     ("Presencia profesional", "Professional presence"),
     ("Tu web, hecha y mantenida", "Your website, built and maintained"),
@@ -147,14 +147,14 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
         'content="asistente IA llamadas, recepcionista virtual 24/7, agente IA reservas, agenda automatizada, atención telefónica IA, concierge digital, diseño web para negocios locales, Sprintia"',
         'content="AI phone assistant, 24/7 virtual receptionist, AI booking agent, automated scheduling, AI call answering, digital concierge, web design for local businesses, Sprintia"',
     ),
-    ('<link rel="canonical" href="https://sprintiasolutions.com/">', '<link rel="canonical" href="https://sprintiasolutions.com/en">'),
+    ('<link rel="canonical" href="https://sprintiasolutions.com/">', '<link rel="canonical" href="https://sprintiasolutions.com/en/voice-assistant">'),
     ('<meta property="og:locale" content="es_ES">', '<meta property="og:locale" content="en_US">'),
     ('<meta property="og:title" content="Sprintia — IA que reserva por ti">', '<meta property="og:title" content="Sprintia - AI that books for you">'),
     (
         '<meta property="og:description" content="Agente de IA que atiende, conversa y reserva por ti. Concierge digital para negocios que viven de citas.">',
         '<meta property="og:description" content="AI agent that answers calls, talks to customers and books appointments for you. A digital concierge for appointment-based businesses.">',
     ),
-    ('<meta property="og:url" content="https://sprintiasolutions.com/">', '<meta property="og:url" content="https://sprintiasolutions.com/en">'),
+    ('<meta property="og:url" content="https://sprintiasolutions.com/">', '<meta property="og:url" content="https://sprintiasolutions.com/en/voice-assistant">'),
     ('<meta property="og:image:alt" content="Sprintia — IA que reserva por ti">', '<meta property="og:image:alt" content="Sprintia - AI that books for you">'),
     ('<meta name="twitter:title" content="Sprintia — IA que reserva por ti">', '<meta name="twitter:title" content="Sprintia - AI that books for you">'),
     (
@@ -166,7 +166,7 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
         '"description": "Sprintia is an AI agent that answers, talks and books appointments for you. A 24/7 digital concierge for appointment-based businesses.",',
     ),
     ('"inLanguage": "es-ES"', '"inLanguage": "en-US"'),
-    ('"url": "https://sprintiasolutions.com/"', '"url": "https://sprintiasolutions.com/en"'),
+    ('"url": "https://sprintiasolutions.com/"', '"url": "https://sprintiasolutions.com/en/voice-assistant"'),
     ('"description": "300 minutos de llamada/mes incluidos"', '"description": "300 call minutes/month included"'),
     ('"description": "800 minutos de llamada/mes incluidos + bot de Telegram"', '"description": "800 call minutes/month included + Telegram bot"'),
     ('"description": "Desde 299€: 2.000 minutos de llamada/mes ampliables, multi-sede"', '"description": "From €299: 2,000 call minutes/month expandable, multi-location"'),
@@ -209,7 +209,7 @@ _EN_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ('<a href="#voz">Voz</a>', '<a href="#voz">Voice</a>'),
     ('<a href="#precios">Planes</a>', '<a href="#precios">Plans</a>'),
     ('<a href="#integraciones">Integraciones</a>', '<a href="#integraciones">Integrations</a>'),
-    ('<a href="#final" class="btn btn-sm btn-ghost" data-lead="Entrar">Entrar</a>', '<a href="/" class="btn btn-sm btn-ghost" hreflang="es">ES</a>'),
+    ('<a href="#final" class="btn btn-sm btn-ghost" data-lead="Entrar">Entrar</a>', '<a href="/asistente-de-voz" class="btn btn-sm btn-ghost" hreflang="es">ES</a>'),
     ('Probar Sprintia <span class="arrow">→</span>', 'Try Sprintia <span class="arrow">→</span>'),
     ('ASISTENTE VIRTUAL · 24 / 7', 'VIRTUAL ASSISTANT · 24 / 7'),
     ('Tus <em>reservas</em>,<br>\n        resueltas antes<br>de que suenen.', 'Your <em>bookings</em>,<br>\n        handled before<br>the phone rings.'),
@@ -491,16 +491,16 @@ def render_landing_variant(html: str, lang: str = "es") -> str:
     if lang != "en":
         return html.replace(
             '<link rel="canonical" href="https://sprintiasolutions.com/">',
-            '<link rel="canonical" href="https://sprintiasolutions.com/">\n<link rel="alternate" hreflang="en" href="https://sprintiasolutions.com/en">\n<link rel="alternate" hreflang="es" href="https://sprintiasolutions.com/">',
+            '<link rel="canonical" href="https://sprintiasolutions.com/">\n<link rel="alternate" hreflang="en" href="https://sprintiasolutions.com/en/voice-assistant">\n<link rel="alternate" hreflang="es" href="https://sprintiasolutions.com/asistente-de-voz">',
         ).replace(
             '<a href="#final" class="btn btn-sm btn-ghost" data-lead="Entrar">Entrar</a>',
-            '<a href="/en" class="btn btn-sm btn-ghost" hreflang="en">EN</a>',
+            '<a href="/en/voice-assistant" class="btn btn-sm btn-ghost" hreflang="en">EN</a>',
         )
 
     out = html
     for old, new in _EN_REPLACEMENTS:
         out = out.replace(old, new)
     return out.replace(
-        '<link rel="canonical" href="https://sprintiasolutions.com/en">',
-        '<link rel="canonical" href="https://sprintiasolutions.com/en">\n<link rel="alternate" hreflang="es" href="https://sprintiasolutions.com/">\n<link rel="alternate" hreflang="en" href="https://sprintiasolutions.com/en">',
+        '<link rel="canonical" href="https://sprintiasolutions.com/en/voice-assistant">',
+        '<link rel="canonical" href="https://sprintiasolutions.com/en/voice-assistant">\n<link rel="alternate" hreflang="es" href="https://sprintiasolutions.com/asistente-de-voz">\n<link rel="alternate" hreflang="en" href="https://sprintiasolutions.com/en/voice-assistant">',
     )
