@@ -6,6 +6,15 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-11-12 (aviso de cookies)
+
+### Añadido
+- **Aviso de cookies** en la web corporativa y el diagnóstico (ES/EN), con "Rechazar" y "Aceptar" al mismo nivel y enlace "Cookies" en el pie para cambiar la elección. Plantilla compartida `app/templates/sitio/_consent.html`.
+
+### Cambiado
+- PostHog arranca con `persistence: 'memory'` (no guarda nada en el navegador) hasta que la persona acepta; al aceptar pasa a cookie + localStorage, y al rechazar se borran las `ph_*`. La elección se guarda en `localStorage.sprintia_cookies`. Quien no acepta sigue contando como página vista, pero cada página es un visitante nuevo para PostHog.
+- La política de privacidad explica el funcionamiento y permite reabrir el aviso.
+
 ## 2026-11-12 (sin precios y política de privacidad)
 
 ### Añadido

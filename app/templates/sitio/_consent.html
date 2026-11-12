@@ -1,0 +1,54 @@
+{# Aviso de cookies compartido por la web corporativa y el diagnóstico.
+   Hasta que la persona acepta, PostHog funciona en memoria (no guarda nada en
+   el navegador). Al aceptar pasa a cookie + localStorage; al rechazar se borran
+   las cookies ph_* que hubiera. La elección se guarda en localStorage
+   (`sprintia_cookies` = yes | no), que es almacenamiento técnico y no requiere
+   consentimiento. #}
+{% set en = lang == 'en' %}
+<style>
+  .ck{position:fixed;left:16px;bottom:16px;z-index:60;max-width:400px;background:var(--paper,#fafaf7);color:var(--ink,#15161a);border:1px solid var(--line,rgba(21,22,26,.1));border-radius:18px;padding:18px 18px 16px;box-shadow:0 1px 0 rgba(21,22,26,.06),0 24px 60px -24px rgba(21,22,26,.32);font-size:.9rem;line-height:1.45}
+  .ck p{margin:0 0 14px;color:var(--ink-2,#3a3b40)}
+  .ck p a{color:var(--ink,#15161a)}
+  .ck-acts{display:flex;gap:8px}
+  .ck-acts button{flex:1;border:0;border-radius:999px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer;background:var(--ink,#15161a);color:var(--paper,#fafaf7)}
+  .ck-acts button:hover{background:#000}
+  .ck-acts button:focus-visible,.ck-link:focus-visible{outline:2px solid var(--accent,#2d4cff);outline-offset:2px}
+  .ck-link{background:none;border:0;padding:6px 0;font:inherit;color:inherit;cursor:pointer;text-decoration:none}
+  .ck-link:hover{color:var(--ink,#15161a)}
+  @media(max-width:560px){.ck{left:12px;right:12px;bottom:12px;max-width:none}}
+  @media print{.ck{display:none}}
+</style>
+<div class="ck" id="ck" role="dialog" aria-live="polite" aria-label="Cookies" hidden>
+  {% if en %}<p>We'd like to use an analytics cookie to see which pages work best. No advertising. <a href="/en/privacy#cookies">More info</a></p>
+  {% else %}<p>Queremos usar una cookie de analítica para saber qué páginas funcionan mejor. Nada de publicidad. <a href="/privacidad#cookies">Más información</a></p>{% endif %}
+  <div class="ck-acts"><button type="button" data-ck="no">{{ 'Reject' if en else 'Rechazar' }}</button><button type="button" data-ck="yes">{{ 'Accept' if en else 'Aceptar' }}</button></div>
+</div>
+<script>
+(function(){
+  var K = 'sprintia_cookies';
+  function get(){ try{ return localStorage.getItem(K); }catch(e){ return null; } }
+  window.phPersistence = function(){ return get() === 'yes' ? 'localStorage+cookie' : 'memory'; };
+  var box = document.getElementById('ck');
+  function wipe(){
+    var host = location.hostname.replace(/^www\./, '');
+    document.cookie.split(';').forEach(function(c){
+      var n = c.split('=')[0].trim();
+      if(/^ph_/.test(n)){ ['', '; domain=' + host, '; domain=.' + host].forEach(function(d){ document.cookie = n + '=; Max-Age=0; path=/' + d; }); }
+    });
+    try{ Object.keys(localStorage).forEach(function(k){ if(/^ph_|^__ph/.test(k)) localStorage.removeItem(k); }); }catch(e){}
+  }
+  function choose(v){
+    try{ localStorage.setItem(K, v); }catch(e){}
+    box.hidden = true;
+    if(v === 'no') wipe();
+    try{ if(window.posthog && posthog.set_config) posthog.set_config({persistence: window.phPersistence()}); }catch(e){}
+    if(window.track) track(v === 'yes' ? 'cookies_accepted' : 'cookies_rejected');
+  }
+  box.querySelectorAll('[data-ck]').forEach(function(b){ b.addEventListener('click', function(){ choose(b.dataset.ck); }); });
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('[data-cookies]');
+    if(a){ e.preventDefault(); box.hidden = false; box.querySelector('[data-ck=yes]').focus(); }
+  });
+  if(!get()) box.hidden = false;
+})();
+</script>

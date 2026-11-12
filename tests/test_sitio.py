@@ -117,3 +117,14 @@ def test_privacidad_y_aviso_legal():
     assert 'href="/en/privacy"' in client.get("/en/voice-assistant").text
     sm = client.get("/sitemap.xml").text
     assert "/privacidad</loc>" in sm and "/en/privacy</loc>" in sm
+
+
+def test_aviso_de_cookies():
+    for path, txt in (("/", "Rechazar"), ("/en", "Reject"), ("/diagnostico", "Rechazar"),
+                      ("/en/diagnosis", "Reject"), ("/productos/webs", "Rechazar"), ("/privacidad", "Rechazar")):
+        html = client.get(path).text
+        assert 'id="ck"' in html and txt in html, path
+        assert "data-cookies" in html, path                       # se puede volver a abrir
+        # PostHog arranca sin guardar nada hasta que se acepta
+        assert "persistence:window.phPersistence?phPersistence():'memory'" in html, path
+        assert html.index("window.phPersistence = function") < html.index("posthog.init("), path
