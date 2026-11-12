@@ -22,10 +22,10 @@ def test_landing_ok():
 
 def test_english_landing_ok():
     client = TestClient(app)
-    r = client.get("/en")
+    r = client.get("/en/voice-assistant")
     assert r.status_code == 200
     assert '<html lang="en">' in r.text
-    assert 'https://sprintiasolutions.com/en' in r.text
+    assert 'https://sprintiasolutions.com/en/voice-assistant' in r.text
     assert 'Your <em>bookings</em>' in r.text
     assert 'name="landing_language" value="en"' in r.text
     assert "Try Sprintia" in r.text

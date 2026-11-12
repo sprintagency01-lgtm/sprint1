@@ -10,13 +10,16 @@ Entrada más reciente arriba.
 
 ### Cambiado
 - **La home (`/`) es ahora la web corporativa**: Sprintia como proveedor de automatización para empresas. Resumen, problemas típicos, cuatro productos, cómo trabajamos, herramientas, diagnóstico gratis, FAQ y contacto. Acción principal: "Analiza tu web gratis" (lleva a `/diagnostico?web=…`). Sin precios en la home. Código en `app/sitio.py` y plantillas Jinja en `app/templates/sitio/`.
-- **La landing del asistente de voz se mueve a `/asistente-de-voz`** sin cambios de contenido (canonical, og:url y hreflang corregidos; el logo lleva a la home). `/en` sigue siendo la landing de voz en inglés y su hreflang `es` apunta a `/asistente-de-voz`.
+- **La landing del asistente de voz se mueve a `/asistente-de-voz`** (canonical, og:url y hreflang corregidos; el logo lleva a la home).
+- **`/en` es ahora la home corporativa en inglés.** La landing de voz en inglés pasa a `/en/voice-assistant` (sus botones ES/EN enlazan con `/asistente-de-voz`).
+- **Webs sin permanencia**: fuera el "Permanencia mínima de 12 meses" de los planes de web (landing de voz en ES/EN y página de webs).
 
 ### Añadido
 - Páginas de producto: `/productos/crm-automatizado`, `/productos/webs` (con los planes 59/99/149 €) y `/productos/automatizacion-de-procesos`, con JSON-LD `Service` y FAQ. `/productos/asistente-de-voz` redirige (301) a `/asistente-de-voz`.
 - Formulario de contacto en home y productos → `POST /api/leads` con `source=home` o `producto-<slug>`; autorespuesta propia que habla de automatización, no del asistente de voz.
 - PostHog (`site=sprintia`) en la home y los productos: `home_url_submitted`, `home_cta`, `home_lead_submitted`.
-- Sitemap con la home, el diagnóstico y las páginas de producto.
+- Versión en inglés de la web corporativa: `/en`, `/en/products/automated-crm`, `/en/products/websites` y `/en/products/process-automation`, con selector ES/EN y hreflang en cada página. Los contactos llegan con `source=home-en` o `producto-<slug>-en`, `landing_language=en` y autorespuesta en inglés. El diagnóstico sigue solo en español (la home en inglés lo avisa).
+- Sitemap con la home en los dos idiomas, el diagnóstico y las páginas de producto.
 
 ---
 

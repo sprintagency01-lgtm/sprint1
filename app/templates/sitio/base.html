@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,8 +8,11 @@
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#f4efe6">
 <link rel="canonical" href="{{ base_url }}{{ path }}">
+{% if alt_path %}<link rel="alternate" hreflang="{{ lang }}" href="{{ base_url }}{{ path }}">
+<link rel="alternate" hreflang="{{ 'es' if lang == 'en' else 'en' }}" href="{{ base_url }}{{ alt_path }}">
+<link rel="alternate" hreflang="x-default" href="{{ base_url }}{{ path if lang == 'es' else alt_path }}">{% endif %}
 <meta property="og:type" content="website">
-<meta property="og:locale" content="es_ES">
+<meta property="og:locale" content="{{ t.locale }}">
 <meta property="og:site_name" content="Sprintia">
 <meta property="og:title" content="{{ og_title or seo_title }}">
 <meta property="og:description" content="{{ seo_desc }}">
@@ -147,6 +150,12 @@
   .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:44px;padding-top:22px;border-top:1px solid var(--line);color:var(--stone);font-size:.84rem}
   @media(max-width:800px){.foot{grid-template-columns:1fr 1fr}}
 
+  .lang{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;text-decoration:none;color:var(--ink-2);padding:8px 10px;border-radius:999px;box-shadow:inset 0 0 0 1.5px rgba(21,22,26,.14)}
+  .lang:hover{color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+  .nav-r{display:flex;align-items:center;gap:10px}
+  .cta-s{display:none}
+  @media(max-width:520px){.cta-l{display:none}.cta-s{display:inline}.nav-r .btn.sm{padding:10px 15px}}
+  html[lang=en] .pain q,html[lang=en] .prob q{quotes:"\201C" "\201D"}
   .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
   .reveal.in{opacity:1;transform:none}
   @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
@@ -155,23 +164,23 @@
 </head>
 <body>
 <header id="top"><div class="container nav">
-  <a class="logo" href="/" aria-label="Sprintia, inicio">
+  <a class="logo" href="{{ t.home }}" aria-label="{{ t.home_aria }}">
     <svg viewBox="0 0 28 28" aria-hidden="true"><rect class="b" x="6.58" y="10.08" width="3.64" height="11.2" rx="1.82"/><rect class="b" x="12.18" y="5.6" width="3.64" height="17.92" rx="1.82"/><rect class="b" x="17.78" y="11.76" width="3.64" height="8.4" rx="1.82"/><circle class="d" cx="19.6" cy="6.16" r="2.38"/></svg>
     Sprintia
   </a>
-  <nav class="links" aria-label="Principal">
+  <nav class="links" aria-label="{{ t.nav_aria }}">
     <div class="drop" id="drop">
-      <button type="button" aria-haspopup="true" aria-expanded="false" onclick="this.parentNode.classList.toggle('open');this.setAttribute('aria-expanded',this.parentNode.classList.contains('open'))">Productos
+      <button type="button" aria-haspopup="true" aria-expanded="false" onclick="this.parentNode.classList.toggle('open');this.setAttribute('aria-expanded',this.parentNode.classList.contains('open'))">{{ t.nav_products }}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="drop-menu">
         {% for p in productos %}<a href="{{ p.url }}"><b>{{ p.nombre }}</b><small>{{ p.menu }}</small></a>{% endfor %}
       </div>
     </div>
-    <a href="/#como">Cómo trabajamos</a>
-    <a href="/diagnostico">Diagnóstico gratis</a>
-    <a href="#contacto">Contacto</a>
+    <a href="{{ t.home }}#como">{{ t.nav_how }}</a>
+    <a href="/diagnostico">{{ t.nav_diag }}</a>
+    <a href="#contacto">{{ t.nav_contact }}</a>
   </nav>
-  <a class="btn sm accent" href="/diagnostico" data-cta="nav">Analiza tu web <span aria-hidden="true">→</span></a>
+  <div class="nav-r">{% if alt_path %}<a class="lang" href="{{ alt_path }}" hreflang="{{ 'es' if lang == 'en' else 'en' }}" title="{{ t.switch_title }}" data-cta="idioma">{{ t.switch_label }}</a>{% endif %}<a class="btn sm accent" href="/diagnostico" data-cta="nav"><span class="cta-l">{{ t.nav_cta }}</span><span class="cta-s">{{ t.nav_cta_short }}</span> <span aria-hidden="true">→</span></a></div>
 </div></header>
 
 <main>
@@ -180,25 +189,25 @@
 <section id="contacto">
   <div class="container" style="display:grid;grid-template-columns:1fr 1.1fr;gap:56px;align-items:start" id="contactGrid">
     <div>
-      <div class="kicker">Contacto</div>
-      <h2 style="font-size:clamp(2.2rem,4.6vw,3.2rem);line-height:1.03;margin:14px 0 16px">{% block contact_title %}Cuéntanos qué te quita <em>tiempo</em>.{% endblock %}</h2>
-      <p style="color:var(--ink-2);font-size:1.08rem;margin:0 0 22px">Te respondemos en uno o dos días laborables. Si lo vemos claro, te proponemos qué automatizar primero y cuánto cuesta, sin compromiso.</p>
-      <p style="color:var(--stone);font-size:.95rem;margin:0">¿Prefieres el email? <a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></p>
+      <div class="kicker">{{ t.contact_kicker }}</div>
+      <h2 style="font-size:clamp(2.2rem,4.6vw,3.2rem);line-height:1.03;margin:14px 0 16px">{% block contact_title %}{{ t.contact_title|safe }}{% endblock %}</h2>
+      <p style="color:var(--ink-2);font-size:1.08rem;margin:0 0 22px">{{ t.contact_lede }}</p>
+      <p style="color:var(--stone);font-size:.95rem;margin:0">{{ t.contact_email }} <a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></p>
     </div>
     <div class="card" id="contactCard" style="box-shadow:var(--shadow-1)">
       <form id="contactForm" novalidate>
         <div class="row">
-          <label class="f">Nombre<input name="name" autocomplete="name" required maxlength="120"></label>
-          <label class="f">Empresa<input name="company" autocomplete="organization" maxlength="200"></label>
+          <label class="f">{{ t.f_name }}<input name="name" autocomplete="name" required maxlength="120"></label>
+          <label class="f">{{ t.f_company }}<input name="company" autocomplete="organization" maxlength="200"></label>
         </div>
         <div class="row">
-          <label class="f">Email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
-          <label class="f">Teléfono<input name="phone" type="tel" autocomplete="tel" required maxlength="25"></label>
+          <label class="f">{{ t.f_email }}<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+          <label class="f">{{ t.f_phone }}<input name="phone" type="tel" autocomplete="tel" required maxlength="25"></label>
         </div>
-        <label class="f">¿Qué te gustaría automatizar? (opcional)<textarea name="message" maxlength="2000" placeholder="Por ejemplo: pasamos las facturas a mano, los contactos de la web se pierden…"></textarea></label>
+        <label class="f">{{ t.f_message }}<textarea name="message" maxlength="2000" placeholder="{{ t.f_placeholder }}"></textarea></label>
         <label class="hp" aria-hidden="true">Web<input name="website" tabindex="-1" autocomplete="off"></label>
-        <label class="chk"><input type="checkbox" name="consent" required> Acepto que Sprintia me contacte para responder a mi solicitud.</label>
-        <button class="btn accent" type="submit">Enviar <span aria-hidden="true">→</span></button>
+        <label class="chk"><input type="checkbox" name="consent" required> {{ t.f_consent }}</label>
+        <button class="btn accent" type="submit">{{ t.f_send }} <span aria-hidden="true">→</span></button>
         <div class="err" id="contactErr" role="alert"></div>
       </form>
     </div>
@@ -209,12 +218,12 @@
 <footer><div class="container">
   <div class="foot">
     <div>
-      <a class="logo" href="/" aria-label="Sprintia"><svg viewBox="0 0 28 28" aria-hidden="true"><rect class="b" x="6.58" y="10.08" width="3.64" height="11.2" rx="1.82"/><rect class="b" x="12.18" y="5.6" width="3.64" height="17.92" rx="1.82"/><rect class="b" x="17.78" y="11.76" width="3.64" height="8.4" rx="1.82"/><circle class="d" cx="19.6" cy="6.16" r="2.38"/></svg>Sprintia</a>
-      <p>Automatización para empresas: webs, CRM, atención y procesos que funcionan solos.</p>
+      <a class="logo" href="{{ t.home }}" aria-label="Sprintia"><svg viewBox="0 0 28 28" aria-hidden="true"><rect class="b" x="6.58" y="10.08" width="3.64" height="11.2" rx="1.82"/><rect class="b" x="12.18" y="5.6" width="3.64" height="17.92" rx="1.82"/><rect class="b" x="17.78" y="11.76" width="3.64" height="8.4" rx="1.82"/><circle class="d" cx="19.6" cy="6.16" r="2.38"/></svg>Sprintia</a>
+      <p>{{ t.foot_tagline }}</p>
     </div>
-    <div><h4>Productos</h4><ul>{% for p in productos %}<li><a href="{{ p.url }}">{{ p.nombre }}</a></li>{% endfor %}</ul></div>
-    <div><h4>Empieza</h4><ul><li><a href="/diagnostico">Analiza tu web gratis</a></li><li><a href="/#como">Cómo trabajamos</a></li><li><a href="#contacto">Pide presupuesto</a></li></ul></div>
-    <div><h4>Sprintia</h4><ul><li><a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></li><li><a href="/en">English</a></li></ul></div>
+    <div><h4>{{ t.foot_products }}</h4><ul>{% for p in productos %}<li><a href="{{ p.url }}">{{ p.nombre }}</a></li>{% endfor %}</ul></div>
+    <div><h4>{{ t.foot_start }}</h4><ul><li><a href="/diagnostico">{{ t.foot_diag }}</a></li><li><a href="{{ t.home }}#como">{{ t.nav_how }}</a></li><li><a href="#contacto">{{ t.foot_quote }}</a></li></ul></div>
+    <div><h4>Sprintia</h4><ul><li><a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></li><li><a href="{{ alt_path or ('/' if lang == 'en' else '/en') }}">{{ t.foot_lang }}</a></li></ul></div>
   </div>
   <div class="foot-bottom"><div>© {{ year }} Sprintia</div><div>sprintiasolutions.com</div></div>
 </div></footer>
@@ -238,9 +247,9 @@
     f.addEventListener('submit', function(ev){
       ev.preventDefault();
       var v = (f.querySelector('input').value || '').trim(), err = f.querySelector('.err');
-      if(!/^[^\s]+\.[^\s]{2,}/.test(v)){ if(err) err.textContent = 'Escribe la dirección de tu web, por ejemplo tuempresa.com'; return; }
+      if(!/^[^\s]+\.[^\s]{2,}/.test(v)){ if(err) err.textContent = {{ t.js_url|tojson }}; return; }
       track('home_url_submitted', {where: f.dataset.url});
-      location.href = '/diagnostico?web=' + encodeURIComponent(v) + '&utm_source=web&utm_medium=' + encodeURIComponent(f.dataset.url);
+      location.href = '/diagnostico?web=' + encodeURIComponent(v) + '&utm_source=web&utm_medium=' + encodeURIComponent(f.dataset.url){% if lang != 'es' %} + '&utm_content={{ lang }}'{% endif %};
     });
   });
   document.querySelectorAll('[data-cta]').forEach(function(a){ a.addEventListener('click', function(){ track('home_cta', {cta: a.dataset.cta}); }); });
@@ -264,24 +273,24 @@
     var o = {}; new FormData(cf).forEach(function(v, k){ o[k] = v; });
     var err = document.getElementById('contactErr'), btn = cf.querySelector('button[type=submit]');
     err.textContent = '';
-    if(!o.name || o.name.trim().length < 2) return err.textContent = 'Dinos tu nombre.';
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = 'Revisa el email.';
-    if(!/^\+?[0-9\s\-\(\)\.]{6,25}$/.test(o.phone || '')) return err.textContent = 'Revisa el teléfono.';
-    if(!o.consent) return err.textContent = 'Marca la casilla para que podamos contactarte.';
+    if(!o.name || o.name.trim().length < 2) return err.textContent = {{ t.js_name|tojson }};
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email || '')) return err.textContent = {{ t.js_email|tojson }};
+    if(!/^\+?[0-9\s\-\(\)\.]{6,25}$/.test(o.phone || '')) return err.textContent = {{ t.js_phone|tojson }};
+    if(!o.consent) return err.textContent = {{ t.js_consent|tojson }};
     var fd = new FormData();
     ['name','email','phone','company','message','website'].forEach(function(k){ fd.set(k, o[k] || ''); });
-    fd.set('consent', '1'); fd.set('country', 'España'); fd.set('landing_language', 'es');
+    fd.set('consent', '1'); fd.set('country', {{ t.country|tojson }}); fd.set('landing_language', '{{ lang }}');
     fd.set('source', '{{ lead_source }}');
     var q = new URLSearchParams(location.search);
     ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(function(k){ if(q.get(k)) fd.set(k, q.get(k)); });
-    btn.disabled = true; btn.textContent = 'Enviando…';
+    btn.disabled = true; btn.textContent = {{ t.js_sending|tojson }};
     try{
       var r = await fetch('/api/leads', {method:'POST', body: fd});
       var d = await r.json().catch(function(){ return {}; });
-      if(!r.ok) throw new Error(d.error || 'No se pudo enviar.');
+      if(!r.ok) throw new Error(d.error || {{ t.js_fail|tojson }});
       track('home_lead_submitted', {source: '{{ lead_source }}'});
-      document.getElementById('contactCard').innerHTML = '<div class="ok-msg"><div class="ic">✓</div><div><h3 style="font-family:var(--serif);font-size:1.9rem;margin:0 0 6px">Recibido</h3><p style="margin:0;color:var(--ink-2)">Te escribimos en uno o dos días laborables.</p></div></div>';
-    }catch(e){ btn.disabled = false; btn.innerHTML = 'Enviar <span aria-hidden="true">→</span>'; err.textContent = e.message || 'No se pudo enviar.'; }
+      document.getElementById('contactCard').innerHTML = '<div class="ok-msg"><div class="ic">✓</div><div><h3 style="font-family:var(--serif);font-size:1.9rem;margin:0 0 6px">{{ t.js_ok_title }}</h3><p style="margin:0;color:var(--ink-2)">{{ t.js_ok_text }}</p></div></div>';
+    }catch(e){ btn.disabled = false; btn.innerHTML = {{ t.f_send|tojson }} + ' <span aria-hidden="true">→</span>'; err.textContent = e.message || {{ t.js_fail|tojson }}; }
   });
 })();
 </script>

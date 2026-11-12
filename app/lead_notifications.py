@@ -265,7 +265,17 @@ def _autoreply_parts(lead: LeadNotification) -> tuple[str, str, str, str, str]:
     name = lead.name.split()[0] if lead.name else ""
     family = _language_family(lead.landing_language)
 
-    if family == "en":
+    if family == "en" and (lead.source or "").startswith(("home", "producto")):
+        greeting = f"Hi {name}," if name else "Hi,"
+        subject = "We've received your message at Sprintia"
+        body = (
+            "Thanks for getting in touch. We've received your request: we'll "
+            "review it and get back to you within one or two working days to "
+            "see what we can automate for you."
+        )
+        extra = "If you'd like to add anything, just reply to this email."
+        signoff = "Best,\nMario, from Sprintia"
+    elif family == "en":
         greeting = f"Hi {name}," if name else "Hi,"
         subject = "We received your request at Sprintia"
         body = (

@@ -234,9 +234,11 @@ async def landing() -> HTMLResponse:
     return HTMLResponse(_voice_page_html())
 
 
-@app.get("/en", response_class=HTMLResponse)
+@app.get("/en/voice-assistant", response_class=HTMLResponse)
 async def landing_en() -> HTMLResponse:
-    return HTMLResponse(_localized_landing_html("en"))
+    # `/en` es la home corporativa en inglés (app/sitio.py); el logo vuelve allí.
+    html = _localized_landing_html("en").replace('<a class="logo" href="#"', '<a class="logo" href="/en"')
+    return HTMLResponse(html)
 
 
 @app.get("/ana-demo", response_class=HTMLResponse)
@@ -301,9 +303,9 @@ async def sitemap() -> Response:
     base = "https://sprintiasolutions.com"
     urls = [
         (f"{base}/", "1.0"),
+        (f"{base}/en", "0.9"),
         (f"{base}/diagnostico", "0.9"),
         *[(f"{base}{path}", "0.8") for path in sitio.product_paths()],
-        (f"{base}/en", "0.6"),
     ]
     items = "".join(
         f"<url><loc>{loc}</loc><changefreq>weekly</changefreq>"
