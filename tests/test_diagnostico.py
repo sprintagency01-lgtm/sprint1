@@ -104,7 +104,6 @@ def test_pagina_inyecta_las_preguntas():
     client = TestClient(app)
     res = client.get("/diagnostico")
     assert res.status_code == 200
-    assert "__DIAG_DATA__" not in res.text
     assert "¿Cuántas personas sois?" in res.text
 
 
@@ -118,7 +117,7 @@ def test_endpoint_resultado():
 
 def test_enviar_valida_y_entrega_en_segundo_plano(monkeypatch):
     sent = []
-    monkeypatch.setattr(d, "_deliver", lambda *a: sent.append(a))
+    monkeypatch.setattr(d, "_deliver", lambda *a, **k: sent.append(a))
     client = TestClient(app)
     base = {"answers": _answers(2), "name": "Laura", "email": "laura@example.com", "company": "Acme", "consent": True}
 
@@ -131,7 +130,7 @@ def test_enviar_valida_y_entrega_en_segundo_plano(monkeypatch):
 
 def test_enviar_honeypot_y_rate_limit(monkeypatch):
     sent = []
-    monkeypatch.setattr(d, "_deliver", lambda *a: sent.append(a))
+    monkeypatch.setattr(d, "_deliver", lambda *a, **k: sent.append(a))
     client = TestClient(app)
     base = {"answers": _answers(2), "name": "Laura", "email": "laura@example.com", "consent": True}
     h = {"X-Forwarded-For": "203.0.113.9"}
@@ -149,3 +148,39 @@ def test_autorespuesta_del_presupuesto_no_habla_de_voz():
     assert "presupuesto" in subject.lower()
     assert "voz" not in body
     assert "Mario" in signoff
+
+
+def test_diagnostico_en_ingles():
+    client = TestClient(app)
+    es = client.get("/diagnostico").text
+    en = client.get("/en/diagnosis")
+    assert en.status_code == 200
+    t = en.text
+    assert '<html lang="en">' in t and "How many people work at your company?" in t
+    assert "Analyse my website" in t and "¿Cuántas personas sois?" not in t
+    assert 'hreflang="es" href="https://sprintiasolutions.com/diagnostico"' in t
+    assert 'hreflang="en" href="https://sprintiasolutions.com/en/diagnosis"' in es
+    assert '"source": "diagnostico-en"' in t and "Pon tu web" in es
+
+    res = client.post("/api/diagnostico/resultado", json={"answers": _answers(2), "lang": "en"}).json()
+    assert res["perfil"]["nombre"] == "Your team is the glue"
+    assert {b["nombre"] for b in res["bloques"]} == {"Visibility", "Sales", "Operations", "Customers"}
+    assert "Perfil: Tu equipo hace de pegamento" in res["resumen"]  # lo que lee Mario sigue en español
+    err = client.post("/api/diagnostico/enviar", json={"answers": _answers(2), "name": "L", "lang": "en"})
+    assert err.json()["error"] == "Tell us your name."
+
+
+def test_email_en_ingles():
+    r = d.compute(_answers(3))
+    subject, text, body = d.build_email("Laura Smith", r, lang="en")
+    assert subject.startswith("Your diagnosis:") and text.startswith("Hi Laura,")
+    assert "What you're missing" in body and "What could be automated" in body
+    assert f"/en/diagnosis?r={r['codigo']}#presupuesto" in body
+    assert "Lo que te falta" not in body and '<html lang="en">' in body
+
+
+def test_autorespuesta_presupuesto_en_ingles():
+    lead = LeadNotification(lead_id=1, name="Laura", phone="+34600000000", source="diagnostico-en",
+                            landing_language="en")
+    subject, _, body, _, signoff = _autoreply_parts(lead)
+    assert "quote" in subject and "voice" not in body and "Mario" in signoff

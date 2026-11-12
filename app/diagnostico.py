@@ -22,7 +22,6 @@ datos personales, por eso pueden ir en la URL del botón del email.
 from __future__ import annotations
 
 import html
-import json
 import logging
 import pathlib
 import re
@@ -33,6 +32,9 @@ import httpx
 from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+from . import diagnostico_i18n as i18n
 from . import web_audit
 from .brevo import send_transactional_email
 from .config import settings
@@ -42,8 +44,11 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["diagnostico"])
 
 PUBLIC_URL = "https://sprintiasolutions.com/diagnostico"
-_TEMPLATE_PATH = pathlib.Path(__file__).parent / "templates" / "diagnostico.html"
-_TEMPLATE_CACHE: str | None = None
+PUBLIC_URLS = {"es": PUBLIC_URL, "en": "https://sprintiasolutions.com/en/diagnosis"}
+_TEMPLATES = Environment(loader=FileSystemLoader(pathlib.Path(__file__).parent / "templates"),
+                         autoescape=select_autoescape(["html"]))
+_TEMPLATES.policies["json.dumps_kwargs"] = {"ensure_ascii": False}
+_PAGE_CACHE: dict[str, str] = {}
 
 # Coste por hora de trabajo administrativo que se usa para pasar horas a euros.
 COSTE_HORA_EUR = 25
@@ -146,7 +151,7 @@ QUESTIONS: list[dict] = [
     },
     {
         "id": "prioridad", "bloque": "empresa",
-        "texto": "Si mañana pudieras quitarte un problema, ¿cuál sería?",
+        "texto": "¿Qué te importa más ahora mismo?",
         "opciones": ["Vender más", "Ahorrar tiempo", "Cometer menos errores",
                      "Crecer sin contratar más gente"],
     },
@@ -277,7 +282,8 @@ def compute(answers: list[int]) -> dict:
     orden = sorted(AREAS, key=lambda ar: (-puntos[ar], pref.index(ar)))
     fugas = [{"area": ar, "titulo": FUGAS[ar][0], "texto": FUGAS[ar][1]}
              for ar in orden if puntos[ar] >= 2][:5]
-    automatizaciones = [AUTOMATIZACIONES[ar] for ar in orden if puntos[ar] >= 1][:6]
+    areas_auto = [ar for ar in orden if puntos[ar] >= 1][:6]
+    automatizaciones = [AUTOMATIZACIONES[ar] for ar in areas_auto]
 
     herramientas = [opt for j, opt in enumerate(QUESTIONS[_Q["herramientas"]]["opciones"])
                     if a["herramientas"] & (1 << j)]
@@ -298,6 +304,7 @@ def compute(answers: list[int]) -> dict:
         "bloques": bloques,
         "fugas": fugas,
         "automatizaciones": automatizaciones,
+        "areas_auto": areas_auto,
         "contexto": {
             "sector": label("sector"), "tamano": label("tamano"), "rol": label("rol"),
             "prioridad": label("prioridad"), "herramientas": herramientas,
@@ -307,14 +314,34 @@ def compute(answers: list[int]) -> dict:
     }
 
 
-def public_result(r: dict) -> dict:
-    """Lo que ve la pantalla: sin el detalle, que va por email."""
+def _lang(raw) -> str:
+    return raw if raw in i18n.LANGS else "es"
+
+
+def localize(r: dict, lang: str) -> dict:
+    """El resultado con los textos que ve el visitante en su idioma (el cálculo es el mismo)."""
+    if lang != "en":
+        return r
+    nombre, frase = i18n.PERFILES_EN[r["perfil"]["id"]]
     return {
-        "perfil": r["perfil"],
+        **r,
+        "perfil": {"id": r["perfil"]["id"], "nombre": nombre, "frase": frase},
+        "bloques": [{**b, "nombre": i18n.BLOQUES_EN[b["id"]]} for b in r["bloques"]],
+        "fugas": [{"area": f["area"], "titulo": i18n.FUGAS_EN[f["area"]][0], "texto": i18n.FUGAS_EN[f["area"]][1]}
+                  for f in r["fugas"]],
+        "automatizaciones": [i18n.AUTOMATIZACIONES_EN[ar] for ar in r["areas_auto"]],
+    }
+
+
+def public_result(r: dict, lang: str = "es") -> dict:
+    """Lo que ve la pantalla: sin el detalle, que va por email. El resumen va a Mario, en español."""
+    v = localize(r, lang)
+    return {
+        "perfil": v["perfil"],
         "fuga_pct": r["fuga_pct"],
         "horas": r["horas"],
         "euros_mes": r["euros_mes"],
-        "bloques": r["bloques"],
+        "bloques": v["bloques"],
         "n_fugas": len(r["fugas"]),
         "n_automatizaciones": len(r["automatizaciones"]),
         "codigo": r["codigo"],
@@ -341,12 +368,24 @@ def summary_text(r: dict, audit: dict | None = None) -> str:
     return "\n".join(lines)
 
 
-def public_audit(audit: dict, audit_id: str) -> dict:
+def audit_view(audit: dict, lang: str = "es") -> dict:
+    """Nivel, hallazgos y puntos fuertes en el idioma del visitante."""
+    if lang != "en":
+        return {"nivel": audit["nivel"], "bien": audit["bien"],
+                "hallazgos": [{k: f[k] for k in ("nivel", "area", "titulo", "detalle")} for f in audit["hallazgos"]]}
+    return {
+        "nivel": audit.get("nivel_en") or audit["nivel"],
+        "bien": audit.get("bien_en") or audit["bien"],
+        "hallazgos": [{"nivel": f["nivel"], "area": f["area"], "titulo": f.get("titulo_en") or f["titulo"],
+                       "detalle": f.get("detalle_en", "")} for f in audit["hallazgos"]],
+    }
+
+
+def public_audit(audit: dict, audit_id: str, lang: str = "es") -> dict:
     """Lo que ve la pantalla del análisis de la web."""
     return {
         "id": audit_id, "url": audit["url"], "dominio": audit["dominio"],
-        "nota": audit["nota"], "nivel": audit["nivel"],
-        "hallazgos": audit["hallazgos"], "bien": audit["bien"],
+        "nota": audit["nota"], **audit_view(audit, lang),
         "detectado": audit["detectado"], "auto": audit["auto"], "parcial": audit["parcial"],
         "con_google": audit.get("velocidad") is not None, "resumen_web": "\n".join(web_audit.summary_lines(audit)),
     }
@@ -356,70 +395,73 @@ def public_audit(audit: dict, audit_id: str) -> dict:
 # Email del diagnóstico
 # ---------------------------------------------------------------------------
 
-def build_email(name: str, r: dict, audit: dict | None = None) -> tuple[str, str, str]:
+def build_email(name: str, r: dict, audit: dict | None = None, lang: str = "es") -> tuple[str, str, str]:
+    lang = _lang(lang)
+    L = i18n.EMAIL[lang]
     first = (name or "").split()[0] if name else ""
     h = r["horas"]
-    if h["max"] >= 15:
-        subject = f"Tu diagnóstico: {h['min']}–{h['max']} horas al mes que se pueden recuperar"
-    else:
-        subject = "Tu diagnóstico de automatización"
-    cta = f"{PUBLIC_URL}?r={r['codigo']}#presupuesto"
+    r = localize(r, lang)
+    subject = L["subject_hours"].format(**h) if h["max"] >= 15 else L["subject"]
+    cta = f"{PUBLIC_URLS[lang]}?r={r['codigo']}#presupuesto"
     e = html.escape
-    euros_txt = f"{r['euros_mes']:,}".replace(",", ".")
+    euros_txt = f"{r['euros_mes']:,}"
+    if lang == "es":
+        euros_txt = euros_txt.replace(",", ".")
 
     fugas_html = "".join(
         f"<li style='margin:0 0 10px'><b>{e(f['titulo'])}:</b> {e(f['texto'])}</li>" for f in r["fugas"]
-    ) or "<li>No hemos visto fugas grandes: tenéis lo básico bien resuelto.</li>"
+    ) or f"<li>{L['fugas_none']}</li>"
     autos_html = "".join(f"<li style='margin:0 0 8px'>{e(t)}</li>" for t in r["automatizaciones"])
     web_html, web_txt = "", []
     if audit:
-        malos = audit["hallazgos"][:5]
+        av = audit_view(audit, lang)
+        malos = av["hallazgos"][:5]
         items = "".join(f"<li style='margin:0 0 8px'>{e(f['titulo'])}</li>" for f in malos) \
-            or "<li>No hemos visto nada grave.</li>"
+            or f"<li>{L['web_none']}</li>"
         web_html = (
-            f"<h2 style=\"font-size:16px;margin:0 0 4px\">Lo que hemos visto en tu web</h2>"
+            f"<h2 style=\"font-size:16px;margin:0 0 4px\">{L['web_h']}</h2>"
             f"<p style=\"margin:0 0 10px;font-size:14px;color:#7d7c78\">{e(audit['dominio'])} · "
-            f"<b style=\"color:#15161a\">{audit['nota']}/100</b> ({e(audit['nivel'].lower())})</p>"
+            f"<b style=\"color:#15161a\">{audit['nota']}/100</b> ({e(av['nivel'].lower())})</p>"
             f"<ul style=\"margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.5;color:#3a3b40\">{items}</ul>"
         )
-        web_txt = [f"Lo que hemos visto en tu web ({audit['dominio']}, {audit['nota']}/100):",
+        web_txt = [L["txt_web"].format(dominio=audit["dominio"], nota=audit["nota"]),
                    *[f"- {f['titulo']}" for f in malos], ""]
 
-    html_body = f"""<!doctype html><html lang="es"><body style="margin:0;background:#f4efe6;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#15161a">
+    html_body = f"""<!doctype html><html lang="{lang}"><body style="margin:0;background:#f4efe6;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#15161a">
 <div style="max-width:560px;margin:0 auto;padding:28px 18px">
   <div style="font-weight:700;font-size:18px;letter-spacing:-.01em;margin-bottom:18px">Sprintia</div>
   <div style="background:#fafaf7;border:1px solid rgba(21,22,26,.10);border-radius:20px;padding:28px">
-    <p style="margin:0 0 6px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7d7c78">Tu diagnóstico</p>
+    <p style="margin:0 0 6px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7d7c78">{L['eyebrow']}</p>
     <h1 style="margin:0 0 6px;font-family:Georgia,serif;font-weight:400;font-size:30px;line-height:1.1">{e(r['perfil']['nombre'])}</h1>
     <p style="margin:0 0 18px;color:#3a3b40;font-size:15px;line-height:1.5">{e(r['perfil']['frase'])}</p>
     <div style="background:#dee3ff;border-radius:14px;padding:16px 18px;margin:0 0 22px">
-      <div style="font-size:26px;font-weight:700;color:#1f37c4">{h['min']}–{h['max']} h/mes</div>
-      <div style="font-size:14px;color:#3a3b40">que se pueden recuperar · unos {euros_txt} € al mes</div>
+      <div style="font-size:26px;font-weight:700;color:#1f37c4">{L['hours'].format(**h)}</div>
+      <div style="font-size:14px;color:#3a3b40">{L['hours_sub'].format(euros=euros_txt)}</div>
     </div>
-    {web_html}<h2 style="font-size:16px;margin:0 0 10px">Lo que te falta</h2>
+    {web_html}<h2 style="font-size:16px;margin:0 0 10px">{L['fugas_h']}</h2>
     <ul style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.5;color:#3a3b40">{fugas_html}</ul>
-    <h2 style="font-size:16px;margin:0 0 10px">Lo que se podría automatizar</h2>
+    <h2 style="font-size:16px;margin:0 0 10px">{L['autos_h']}</h2>
     <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.5;color:#3a3b40">{autos_html}</ul>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#3a3b40">Cada empresa lo resuelve de una forma distinta. Si quieres, te preparamos un presupuesto con lo que haríamos en tu caso, sin compromiso.</p>
-    <a href="{e(cta)}" style="display:inline-block;background:#2d4cff;color:#fff;text-decoration:none;font-weight:600;padding:14px 22px;border-radius:999px;font-size:15px">Pide tu presupuesto sin compromiso →</a>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#3a3b40">{L['pitch']}</p>
+    <a href="{e(cta)}" style="display:inline-block;background:#2d4cff;color:#fff;text-decoration:none;font-weight:600;padding:14px 22px;border-radius:999px;font-size:15px">{L['cta']} →</a>
   </div>
-  <p style="font-size:12px;color:#7d7c78;line-height:1.5;margin:18px 4px 0">Las horas son una estimación a partir de tus respuestas y de supuestos medios ({COSTE_HORA_EUR} €/h). Recibes este email porque lo has pedido en sprintiasolutions.com. Puedes responder a este correo si tienes cualquier duda.</p>
+  <p style="font-size:12px;color:#7d7c78;line-height:1.5;margin:18px 4px 0">{L['foot'].format(rate=COSTE_HORA_EUR)}</p>
 </div></body></html>"""
 
     text_lines = [
-        f"Hola {first}," if first else "Hola,",
+        L["hi"].format(first=first) if first else L["hi_anon"],
         "",
-        f"Tu diagnóstico: {r['perfil']['nombre']}. {r['perfil']['frase']}",
-        f"{h['min']}–{h['max']} h/mes que se pueden recuperar (unos {euros_txt} € al mes).",
+        L["txt_result"].format(nombre=r["perfil"]["nombre"], frase=r["perfil"]["frase"]),
+        L["txt_hours"].format(euros=euros_txt, **h),
         "",
         *web_txt,
-        "Lo que te falta:",
+        L["fugas_h"] + ":",
         *[f"- {f['titulo']}: {f['texto']}" for f in r["fugas"]],
         "",
-        "Lo que se podría automatizar:",
+        L["autos_h"] + ":",
         *[f"- {t}" for t in r["automatizaciones"]],
         "",
-        f"Pide tu presupuesto sin compromiso: {cta}",
+        f"{L['cta']}: {cta}",
         "",
         "Sprintia",
     ]
@@ -489,8 +531,9 @@ def _sync_contact(name: str, email: str, company: str, marketing: bool, r: dict,
         log.exception("No se pudo sincronizar el contacto del diagnóstico con Brevo")
 
 
-def _deliver(name: str, email: str, company: str, marketing: bool, r: dict, audit: dict | None = None) -> None:
-    subject, text, html_body = build_email(name, r, audit)
+def _deliver(name: str, email: str, company: str, marketing: bool, r: dict, audit: dict | None = None,
+             lang: str = "es") -> None:
+    subject, text, html_body = build_email(name, r, audit, lang)
     if not send_transactional_email(to_email=email, to_name=name, subject=subject, text=text,
                                     html_body=html_body, tag="diagnostico"):
         log.warning("Email de diagnóstico no enviado a %s (¿falta BREVO_SENDER_EMAIL?)", email)
@@ -500,7 +543,8 @@ def _deliver(name: str, email: str, company: str, marketing: bool, r: dict, audi
         internal = (
             f"Nuevo diagnóstico ({r['temperatura']})\n"
             f"Nombre: {name}\nEmail: {email}\nEmpresa: {company or '—'}\n"
-            f"Consentimiento marketing: {'sí' if marketing else 'no'}\n\n"
+            f"Consentimiento marketing: {'sí' if marketing else 'no'}\n"
+            f"Idioma: {'inglés (/en/diagnosis)' if lang == 'en' else 'español'}\n\n"
             f"{summary_text(r, audit)}"
         )
         for rcpt in [p.strip() for p in to.replace(";", ",").split(",") if p.strip()]:
@@ -571,19 +615,40 @@ def get_audit(audit_id) -> dict | None:
     return None
 
 
-def _template() -> str:
-    global _TEMPLATE_CACHE
-    if _TEMPLATE_CACHE is None:
-        data = {"questions": [{k: q[k] for k in ("id", "bloque", "texto", "opciones", "multi", "ayuda") if k in q}
-                              for q in QUESTIONS]}
-        raw = _TEMPLATE_PATH.read_text(encoding="utf-8")
-        _TEMPLATE_CACHE = raw.replace("__DIAG_DATA__", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"))
-    return _TEMPLATE_CACHE
+def _questions(lang: str) -> list[dict]:
+    out = []
+    for q in QUESTIONS:
+        item = {k: q[k] for k in ("id", "bloque", "texto", "opciones", "multi", "ayuda") if k in q}
+        if lang == "en":
+            item.update(i18n.QUESTIONS_EN[q["id"]])
+        out.append(item)
+    return out
+
+
+def render_page(lang: str = "es") -> str:
+    lang = _lang(lang)
+    if lang not in _PAGE_CACHE:
+        data = {"questions": _questions(lang), "sector_es": QUESTIONS[_Q["sector"]]["opciones"],
+                "t": i18n.JS[lang]}
+        _PAGE_CACHE[lang] = _TEMPLATES.get_template("diagnostico.html").render(
+            lang=lang, u=i18n.PAGE[lang], data=data)
+    return _PAGE_CACHE[lang]
 
 
 @router.get("/diagnostico", response_class=HTMLResponse)
 async def diagnostico_page() -> HTMLResponse:
-    return HTMLResponse(_template())
+    return HTMLResponse(render_page("es"))
+
+
+@router.get("/en/diagnosis", response_class=HTMLResponse)
+async def diagnosis_page_en() -> HTMLResponse:
+    return HTMLResponse(render_page("en"))
+
+
+def _err(msg: str, status: int, lang: str) -> JSONResponse:
+    if lang == "en":
+        msg = i18n.API_ERRORS_EN.get(msg) or web_audit.error_en(msg)
+    return JSONResponse({"error": msg}, status_code=status)
 
 
 async def _json(request: Request) -> dict:
@@ -597,66 +662,67 @@ async def _json(request: Request) -> dict:
 @router.post("/api/diagnostico/resultado")
 async def diagnostico_resultado(request: Request):
     body = await _json(request)
+    lang = _lang(body.get("lang"))
     try:
         r = compute(parse_answers(body.get("answers")))
     except InvalidAnswers as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-    return public_result(r)
+        return _err(str(e), 400, lang)
+    return public_result(r, lang)
 
 
 @router.post("/api/diagnostico/analizar")
 async def diagnostico_analizar(request: Request):
     body = await _json(request)
+    lang = _lang(body.get("lang"))
     ip = _ip(request)
     if _limited(ip, _AUDIT_HITS, _MAX_AUDITS):
-        return JSONResponse({"error": "Has analizado muchas webs seguidas. Prueba dentro de un rato."},
-                            status_code=429)
+        return _err("Has analizado muchas webs seguidas. Prueba dentro de un rato.", 429, lang)
     negocio = str(body.get("negocio") or "").strip()[:120]
     try:
         url = web_audit.normalize_url(body.get("url"))
     except web_audit.AuditError as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
+        return _err(str(e), 400, lang)
     _hit(ip, _AUDIT_HITS)
     try:
         audit = await web_audit.analyze(url, negocio)
     except web_audit.AuditError as e:
         log.info("análisis web fallido url=%s motivo=%s", url, e)
-        return JSONResponse({"error": str(e)}, status_code=422)
+        return _err(str(e), 422, lang)
     except Exception:
         log.exception("análisis web roto url=%s", url)
-        return JSONResponse({"error": "No hemos podido analizar esa web ahora mismo."}, status_code=502)
-    log.info("análisis web url=%s nota=%s", audit["url"], audit["nota"])
-    return public_audit(audit, _save_audit(audit))
+        return _err("No hemos podido analizar esa web ahora mismo.", 502, lang)
+    log.info("análisis web url=%s nota=%s lang=%s", audit["url"], audit["nota"], lang)
+    return public_audit(audit, _save_audit(audit), lang)
 
 
 @router.post("/api/diagnostico/enviar")
 async def diagnostico_enviar(request: Request, background_tasks: BackgroundTasks):
     body = await _json(request)
+    lang = _lang(body.get("lang"))
     ip = _ip(request)
     if str(body.get("website") or "").strip():  # honeypot
         log.warning("diagnóstico descartado por honeypot ip=%s", ip)
         _hit(ip)
         return {"ok": True}
     if _limited(ip):
-        return JSONResponse({"error": "Has enviado varios diagnósticos seguidos. Prueba dentro de un rato."},
-                            status_code=429)
+        return _err("Has enviado varios diagnósticos seguidos. Prueba dentro de un rato.", 429, lang)
     name = str(body.get("name") or "").strip()[:120]
     email = str(body.get("email") or "").strip().lower()[:200]
     company = str(body.get("company") or "").strip()[:200]
     marketing = bool(body.get("marketing_consent"))
     if len(name) < 2:
-        return JSONResponse({"error": "Dinos tu nombre."}, status_code=400)
+        return _err("Dinos tu nombre.", 400, lang)
     if not _EMAIL_RE.match(email):
-        return JSONResponse({"error": "El email no parece válido."}, status_code=400)
+        return _err("El email no parece válido.", 400, lang)
     if not body.get("consent"):
-        return JSONResponse({"error": "Tienes que aceptar que te enviemos el diagnóstico."}, status_code=400)
+        return _err("Tienes que aceptar que te enviemos el diagnóstico.", 400, lang)
     try:
         r = compute(parse_answers(body.get("answers")))
     except InvalidAnswers as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
+        return _err(str(e), 400, lang)
     audit = get_audit(body.get("audit_id"))
     _hit(ip)
-    log.info("diagnóstico enviado email=%s perfil=%s temp=%s web=%s", email, r["perfil"]["id"], r["temperatura"],
-             audit["dominio"] if audit else "-")
-    background_tasks.add_task(_deliver, name, email, company, marketing, r, audit)
+    log.info("diagnóstico enviado email=%s perfil=%s temp=%s web=%s lang=%s", email, r["perfil"]["id"],
+             r["temperatura"], audit["dominio"] if audit else "-", lang)
+    background_tasks.add_task(_deliver, name, email, company, marketing, r, audit, lang=lang)
     return {"ok": True}

@@ -163,7 +163,7 @@ def test_analizar_tiene_limite_por_ip(fake_audit):
 
 def test_el_email_usa_la_auditoria_del_servidor(fake_audit, monkeypatch):
     sent = []
-    monkeypatch.setattr(d, "_deliver", lambda *a: sent.append(a))
+    monkeypatch.setattr(d, "_deliver", lambda *a, **k: sent.append(a))
     client = TestClient(app)
     audit_id = client.post("/api/diagnostico/analizar", json={"url": "empresa.es"}).json()["id"]
     answers = [0] * len(d.QUESTIONS)
@@ -178,3 +178,19 @@ def test_el_email_usa_la_auditoria_del_servidor(fake_audit, monkeypatch):
     assert "Lo que hemos visto en tu web" in body and "empresa.es" in body
     assert "No hay ninguna forma clara de contactar" in text
     assert "Web: http://empresa.es/" in d.summary_text(r, sent[0][-1])
+
+
+def test_hallazgos_en_ingles():
+    bad = w.evaluate(_facts(BAD, url="http://empresa.es/", sitemap=False),
+                     {"perf": 31, "seo": 60, "lcp_s": 6.2}, {"found": False}, year=YEAR)
+    v = d.audit_view(bad, "en")
+    titulos = [f["titulo"] for f in v["hallazgos"]]
+    assert v["nivel"] == "Needs work"
+    assert "Takes 6.2 s to load on mobile" in titulos
+    assert "The site asks Google not to show it" in titulos
+    assert "The footer still says © 2019" in titulos
+    assert all(f["titulo"] != f.get("titulo_en") for f in bad["hallazgos"])  # todos traducidos
+    good = w.evaluate(_facts(GOOD), {"perf": 92, "seo": 100, "lcp_s": 1.8},
+                      {"found": True, "rating": 4.8, "count": 120}, year=YEAR)
+    assert "4.8 ★ from 120 reviews on Google" in d.audit_view(good, "en")["bien"]
+    assert w.error_en("La web responde con un error (404). Revisa la dirección.").startswith("The site responds")

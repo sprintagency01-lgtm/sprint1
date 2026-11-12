@@ -77,7 +77,7 @@
         <p class="lede">{{ p.lede }}</p>
         <div class="acts">
           <a class="btn accent" href="#contacto" data-cta="producto-presupuesto">{{ t.p_quote }} <span aria-hidden="true">→</span></a>
-          <a class="btn ghost" href="/diagnostico" data-cta="producto-diagnostico">{{ t.p_diag }}</a>
+          <a class="btn ghost" href="{{ t.diag }}" data-cta="producto-diagnostico">{{ t.p_diag }}</a>
         </div>
       </div>
       <div class="flow" aria-label="{{ t.example }}: {{ p.flujo_titulo }}">
@@ -129,7 +129,7 @@
       </div>
       <div class="acts" style="justify-content:flex-start">
         <a class="btn accent" href="#contacto" data-cta="banda-presupuesto">{{ t.p_quote }} <span aria-hidden="true">→</span></a>
-        <a class="btn ghost" href="/diagnostico" data-cta="banda-diagnostico">{{ t.p_start_diag }}</a>
+        <a class="btn ghost" href="{{ t.diag }}" data-cta="banda-diagnostico">{{ t.p_start_diag }}</a>
       </div>
     </div>
   </div>

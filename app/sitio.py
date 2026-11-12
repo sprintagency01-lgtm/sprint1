@@ -345,8 +345,8 @@ _BY_SLUG_EN = {p["slug"]: p for p in PRODUCTOS_EN}
 # Textos de interfaz de las plantillas (base y producto).
 T: dict[str, dict[str, str]] = {
     "es": {
-        "locale": "es_ES", "home": "/", "home_aria": "Sprintia, inicio", "nav_aria": "Principal",
-        "nav_products": "Productos", "nav_how": "Cómo trabajamos", "nav_diag": "Diagnóstico gratis", "nav_contact": "Contacto",
+        "locale": "es_ES", "home": "/", "diag": "/diagnostico", "home_aria": "Sprintia, inicio", "nav_aria": "Principal",
+        "nav_products": "Productos", "nav_how": "Cómo trabajamos", "nav_diag": "Diagnóstico gratis", "nav_contact": "Contacto", "nav_menu": "Menú", "nav_menu_aria": "Abrir el menú",
         "nav_cta": "Analiza tu web", "nav_cta_short": "Analizar", "switch_label": "EN", "switch_title": "English",
         "contact_kicker": "Contacto", "contact_title": "Cuéntanos qué te quita <em>tiempo</em>.",
         "contact_lede": "Te respondemos en uno o dos días laborables. Si lo vemos claro, te proponemos qué automatizar primero y cuánto cuesta, sin compromiso.",
@@ -370,8 +370,8 @@ T: dict[str, dict[str, str]] = {
         "faq_title": "Lo que nos <em>suelen</em> preguntar.", "p_combines": "Se combina con", "p_others": "Otros <em>productos</em>.",
     },
     "en": {
-        "locale": "en_GB", "home": "/en", "home_aria": "Sprintia, home", "nav_aria": "Main",
-        "nav_products": "Products", "nav_how": "How we work", "nav_diag": "Free assessment", "nav_contact": "Contact",
+        "locale": "en_GB", "home": "/en", "diag": "/en/diagnosis", "home_aria": "Sprintia, home", "nav_aria": "Main",
+        "nav_products": "Products", "nav_how": "How we work", "nav_diag": "Free assessment", "nav_contact": "Contact", "nav_menu": "Menu", "nav_menu_aria": "Open the menu",
         "nav_cta": "Analyse your website", "nav_cta_short": "Analyse", "switch_label": "ES", "switch_title": "Español",
         "contact_kicker": "Contact", "contact_title": "Tell us what's eating your <em>time</em>.",
         "contact_lede": "We reply within one or two working days. If it's a fit, we'll suggest what to automate first and what it costs, no strings attached.",
@@ -417,7 +417,7 @@ def _cached(key: str, fn) -> HTMLResponse:
 async def home() -> HTMLResponse:
     return _cached("home", lambda: _render(
         "home.html", path="/", alt_path="/en", lead_source="home",
-        seo_title="Sprintia · Automatización para empresas: webs, CRM, atención y procesos",
+        seo_title="Automatización para empresas: webs, CRM y procesos · Sprintia",
         og_title="Sprintia · Lo que tu equipo hace a mano, que se haga solo",
         seo_desc="Diseñamos y montamos automatizaciones para empresas: webs que captan clientes, CRM automatizado, asistente de voz con IA y automatización de procesos. Analiza tu web gratis.",
         herramientas=HERRAMIENTAS, faq=FAQ_HOME,
@@ -428,7 +428,7 @@ async def home() -> HTMLResponse:
 async def home_en() -> HTMLResponse:
     return _cached("home:en", lambda: _render(
         "home_en.html", "en", path="/en", alt_path="/", lead_source="home-en",
-        seo_title="Sprintia · Business automation: websites, CRM, support and processes",
+        seo_title="Business automation: websites, CRM and processes · Sprintia",
         og_title="Sprintia · What your team does by hand, done automatically",
         seo_desc="We design and build automation for businesses: websites that bring in customers, an automated CRM, an AI voice assistant and process automation. Analyse your website for free.",
         herramientas=HERRAMIENTAS, faq=FAQ_HOME_EN,

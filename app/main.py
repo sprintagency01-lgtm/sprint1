@@ -305,6 +305,7 @@ async def sitemap() -> Response:
         (f"{base}/", "1.0"),
         (f"{base}/en", "0.9"),
         (f"{base}/diagnostico", "0.9"),
+        (f"{base}/en/diagnosis", "0.8"),
         *[(f"{base}{path}", "0.8") for path in sitio.product_paths()],
     ]
     items = "".join(
