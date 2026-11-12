@@ -249,16 +249,17 @@
     <div><h4>{{ t.foot_start }}</h4><ul><li><a href="{{ t.diag }}">{{ t.foot_diag }}</a></li><li><a href="{{ t.home }}#como">{{ t.nav_how }}</a></li><li><a href="#contacto">{{ t.foot_quote }}</a></li></ul></div>
     <div><h4>Sprintia</h4><ul><li><a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></li><li><a href="{{ alt_path or ('/' if lang == 'en' else '/en') }}">{{ t.foot_lang }}</a></li></ul></div>
   </div>
-  <div class="foot-bottom"><div>© {{ year }} Sprintia</div><div><a href="{{ t.privacy }}">{{ t.foot_legal }}</a></div></div>
+  <div class="foot-bottom"><div>© {{ year }} Sprintia</div><div><a href="{{ t.privacy }}">{{ t.foot_legal }}</a> · <button class="ck-link" type="button" data-cookies>Cookies</button></div></div>
 </div></footer>
 
+{% include "_consent.html" %}
 <script>
 (function(){
   /* Analítica: proyecto PostHog compartido, se separa por site */
   window.track = function(n, p){ try{ if(window.posthog && posthog.capture) posthog.capture(n, Object.assign({site:'sprintia', page: location.pathname}, p||{})); }catch(e){} };
   if(!/^(localhost|127\.)/.test(location.hostname)){
     !function(t,e){var o,n,p,r;if(e.__SV||(window.posthog&&window.posthog.__loaded))return;window.posthog=e;e._i=[];e.init=function(i,s,a){function g(t,e){var o=e.split('.');if(o.length===2){t=t[o[0]];e=o[1]}t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments)))}}p=t.createElement('script');p.type='text/javascript';p.crossOrigin='anonymous';p.async=true;p.src=s.api_host.replace('.i.posthog.com','-assets.i.posthog.com')+'/static/array.js';r=t.getElementsByTagName('script')[0];r.parentNode.insertBefore(p,r);var u=e;if(a!==undefined)u=e[a]=[];else a='posthog';u.people=u.people||[];u.toString=function(){return'posthog'};u.people.toString=function(){return'posthog.people'};o='capture register register_once get_distinct_id opt_in_capturing opt_out_capturing'.split(' ');for(n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])};e.__SV=1}(document,window.posthog||[]);
-    posthog.init('phc_QPwTqqZbVEIwjiRz7bRvM2W8PXmBEgyjpIjHLq0zJQH',{api_host:'https://eu.i.posthog.com',person_profiles:'identified_only',capture_pageview:true});
+    posthog.init('phc_QPwTqqZbVEIwjiRz7bRvM2W8PXmBEgyjpIjHLq0zJQH',{api_host:'https://eu.i.posthog.com',person_profiles:'identified_only',capture_pageview:true,persistence:window.phPersistence?phPersistence():'memory'});
     posthog.register({site:'sprintia'});
   }
 
