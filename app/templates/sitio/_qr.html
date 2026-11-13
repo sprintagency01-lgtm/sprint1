@@ -1,0 +1,35 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha512-ZDSPMa/JM1D+7kdg2x3BsruQ6T/JpJo3jWDWkCZsP+5yVyp1KfESqLI+7RqB5k24F7p2cV7i2YHh/890y6P6Sw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+/* QR, copiar y descargar: compartido por las herramientas */
+window.QR = (function(){
+  var INK = '#15161a';
+  function make(text){ var q = qrcode(0, 'M'); q.addData(text); q.make(); return q; }
+  function svg(text, quiet){
+    var q = make(text), n = q.getModuleCount(), m = quiet == null ? 2 : quiet, s = n + m * 2, d = '';
+    for(var r = 0; r < n; r++) for(var c = 0; c < n; c++) if(q.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + s + ' ' + s + '" shape-rendering="crispEdges"><rect width="' + s + '" height="' + s + '" fill="#fff"/><path d="' + d + '" fill="' + INK + '"/></svg>';
+  }
+  function draw(ctx, text, x, y, size){
+    var q = make(text), n = q.getModuleCount(), cell = size / n;
+    ctx.fillStyle = INK;
+    for(var r = 0; r < n; r++) for(var c = 0; c < n; c++) if(q.isDark(r, c)) ctx.fillRect(Math.floor(x + c * cell), Math.floor(y + r * cell), Math.ceil(cell), Math.ceil(cell));
+  }
+  function png(text, px){
+    var size = px || 1024, pad = Math.round(size * 0.06), cv = document.createElement('canvas');
+    cv.width = cv.height = size; var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+    draw(ctx, text, pad, pad, size - pad * 2);
+    return cv;
+  }
+  function save(name, href){ var a = document.createElement('a'); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+  function saveSvg(name, text){ save(name, URL.createObjectURL(new Blob([svg(text)], {type: 'image/svg+xml'}))); }
+  function saveCanvas(name, cv){ cv.toBlob(function(b){ save(name, URL.createObjectURL(b)); }, 'image/png'); }
+  function copy(text, btn, done){
+    var ok = function(){ if(!btn) return; var l = btn.querySelector('span'), o = l.textContent; l.textContent = done; btn.classList.add('ok'); setTimeout(function(){ l.textContent = o; btn.classList.remove('ok'); }, 1600); };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, function(){ fallback(); });
+    else fallback();
+    function fallback(){ var t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); try{ document.execCommand('copy'); ok(); }catch(e){} t.remove(); }
+  }
+  return {svg: svg, draw: draw, png: png, saveSvg: saveSvg, saveCanvas: saveCanvas, copy: copy};
+})();
+</script>

@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block jsonld %}
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebApplication", "name": {{ s.seo_title|tojson }}, "url": "{{ base_url }}{{ path }}",
+ "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "isAccessibleForFree": true, "inLanguage": "{{ lang }}",
+ "description": {{ s.seo_desc|tojson }}, "provider": {"@type": "Organization", "name": "Sprintia", "url": "{{ base_url }}{{ t.home }}"}}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{% for q in s.faq %}{"@type": "Question", "name": {{ q[0]|tojson }}, "acceptedAnswer": {"@type": "Answer", "text": {{ q[1]|tojson }}}}{% if not loop.last %},{% endif %}{% endfor %}]}
+</script>
+{% endblock %}
+
+{% block css %}
+{% include "_herramientas_css.html" %}
+  /* analizando */
+  .scan{margin-top:34px;max-width:760px}
+  .scan h2{font-size:clamp(1.8rem,4vw,2.4rem);line-height:1.05;margin:0 0 20px;word-break:break-word}
+  .scan h2 small{display:block;font-family:var(--sans);font-size:.9rem;color:var(--stone);margin-bottom:6px;letter-spacing:0}
+  .steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+  .steps li{display:flex;align-items:center;gap:12px;color:var(--stone);transition:color .2s}
+  .steps .s{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--mist);display:grid;place-items:center;color:#fff}
+  .steps .s svg{width:12px;height:12px;opacity:0}
+  .steps li.run{color:var(--ink)}.steps li.run .s{border-top-color:var(--accent);animation:sp .8s linear infinite}
+  .steps li.done{color:var(--ink)}.steps li.done .s{background:var(--accent);border-color:var(--accent)}.steps li.done .s svg{opacity:1}
+  /* nota */
+  .verdict{display:grid;grid-template-columns:auto 1fr;gap:30px;align-items:end;padding-bottom:28px;border-bottom:1px solid var(--line)}
+  .big{font-family:var(--serif);font-size:clamp(6rem,15vw,9rem);line-height:.8;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .big small{font-family:var(--sans);font-size:.95rem;letter-spacing:0;color:var(--stone);margin-left:6px}
+  .verdict h2{font-size:clamp(2rem,4.4vw,3rem);line-height:1;margin:0 0 6px}
+  .verdict .dom{color:var(--stone);margin:0 0 18px;word-break:break-word}
+  .scale{position:relative;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3px;padding-top:16px}
+  .scale i{display:block;height:8px;border-radius:2px;background:var(--mist)}
+  .scale i.on{background:var(--c,var(--accent))}
+  .scale span{font-size:.74rem;color:var(--stone);margin-top:7px;display:block;line-height:1.2}
+  .scale .mk{position:absolute;top:0;width:2px;height:24px;background:var(--ink);transform:translateX(-1px);transition:left .9s cubic-bezier(.16,1,.3,1)}
+  @media(max-width:600px){.verdict{grid-template-columns:1fr;gap:12px}.scale span{font-size:.68rem}}
+  /* hallazgos */
+  .out h3.lst{font-family:var(--serif);font-weight:400;font-size:1.9rem;line-height:1.05;margin:34px 0 14px}
+  .finds{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+  .finds li{display:grid;grid-template-columns:96px 1fr;gap:18px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .finds .ar{font-size:.8rem;font-weight:600;color:var(--stone);padding-top:3px;display:flex;align-items:center;gap:8px}
+  .finds .ar i{flex:none;width:9px;height:9px;border-radius:50%;background:#d39a17}
+  .finds li.mal .ar i{background:#d93a24}
+  .finds b{display:block;font-weight:600}
+  .finds p{margin:3px 0 0;color:var(--ink-2);font-size:.95rem}
+  .finds .lv{font-size:.78rem;color:var(--stone);font-weight:500}
+  @media(max-width:560px){.finds li{grid-template-columns:1fr;gap:4px}}
+  .good{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+  .good li{display:inline-flex;align-items:center;gap:7px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:.9rem;color:var(--ink-2)}
+  .good li svg{width:14px;height:14px;color:var(--green);flex:none}
+  .good.plain li{padding:6px 12px}
+  .h4{font-weight:600;font-size:.95rem;margin:28px 0 10px}
+  .fine{font-size:.86rem;color:var(--stone);margin:16px 0 0}
+  .next{margin-top:34px;background:var(--ink);color:var(--paper);border-radius:var(--radius-lg);padding:30px;box-shadow:var(--shadow-2);display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+  .next h3{font-family:var(--serif);font-weight:400;font-size:2rem;line-height:1.02;margin:0 0 8px}
+  .next p{margin:0;color:#cfcdc6;max-width:48ch}
+  @media(max-width:700px){.next{grid-template-columns:1fr}}
+  .again{background:none;border:0;padding:8px 0;margin-top:14px;font:inherit;font-size:.92rem;color:var(--stone);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  .again:hover{color:var(--ink)}
+{% endblock %}
+
+{% block main %}
+<section class="thero">
+  <div class="container">
+    <div class="crumbs"><a href="{{ t.home }}">Sprintia</a> · <a href="{{ urls.index }}">{{ tx.crumb }}</a></div>
+    <h1>{{ s.h1|safe }}</h1>
+    <p class="lede">{{ s.lede }}</p>
+    <div class="tool">
+      <form id="azForm" novalidate>
+        <div class="urlbox">
+          <input id="azUrl" name="url" type="text" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="{{ s.ph }}" aria-label="{{ s.aria }}" maxlength="300">
+          <button class="btn accent" type="submit">{{ s.btn }} <span aria-hidden="true">→</span></button>
+        </div>
+        <p class="tnote">{{ s.note }}</p>
+        <div class="err" id="azErr" role="alert"></div>
+      </form>
+
+      <div class="scan" id="azScan" hidden aria-live="polite">
+        <h2><small>{{ s.scan }}</small><span id="azHost"></span></h2>
+        <ul class="steps" id="azSteps"></ul>
+      </div>
+
+      <div class="out" id="azOut" hidden aria-live="polite">
+        <div class="verdict">
+          <div class="big"><span id="azNota">0</span><small>{{ s.score_of }}</small></div>
+          <div>
+            <h2 id="azNivel"></h2>
+            <p class="dom" id="azDom"></p>
+            <div class="scale" id="azScale" aria-hidden="true">
+              {% for l in s.scale %}<div><i></i><span>{{ l }}</span></div>{% endfor %}
+              <b class="mk" id="azMk" style="left:0"></b>
+            </div>
+          </div>
+        </div>
+        <h3 class="lst" id="azFindsT"></h3>
+        <ul class="finds" id="azFinds"></ul>
+        <div id="azGoodBox"><div class="h4">{{ s.good }}</div><ul class="good" id="azGood"></ul></div>
+        <div id="azToolsBox"><div class="h4">{{ s.tools }}</div><ul class="good plain" id="azTools"></ul></div>
+        <p class="fine" id="azPartial" hidden>{{ s.partial }}</p>
+        <p class="fine" id="azNoGoogle" hidden>{{ s.no_google }}</p>
+        <div class="next">
+          <div><h3>{{ s.cta_h }}</h3><p>{{ s.cta_p }}</p></div>
+          <a class="btn accent" id="azCta" href="{{ t.diag }}">{{ s.cta_btn }} <span aria-hidden="true">→</span></a>
+        </div>
+        <button class="again" type="button" id="azAgain">{{ s.again }}</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="tinfo">
+  <div class="container">
+    <h2>{{ s.checks_t }}</h2>
+    <div class="defs">{% for c in s.checks %}<div><b>{{ c[0] }}</b><p>{{ c[1] }}</p></div>{% endfor %}</div>
+  </div>
+</section>
+
+<section class="tinfo">
+  <div class="container">
+    <h2>{{ t.faq_title|safe }}</h2>
+    <div class="faq">{% for q in s.faq %}<details><summary>{{ q[0] }}</summary><p>{{ q[1] }}</p></details>{% endfor %}</div>
+  </div>
+</section>
+
+<section class="tinfo">
+  <div class="container">
+    <div class="band dark">
+      <div><h2>{{ s.bridge_h }}</h2><p>{{ s.bridge_p }}</p></div>
+      <div class="bacts"><a class="btn accent" href="{{ s.bridge_url }}" data-cta="herramienta-puente">{{ s.bridge_btn }} <span aria-hidden="true">→</span></a></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+<script>
+(function(){
+  var J = {{ tx.js|tojson }}, AREAS = {{ areas|tojson }}, LV = {mal: {{ s.mal|tojson }}, aviso: {{ s.aviso|tojson }}};
+  var ISSUES = [{{ s.issues_none|tojson }}, {{ s.issues_one|tojson }}, {{ s.issues_many|tojson }}];
+  var DIAG = '{{ t.diag }}', LANG = '{{ lang }}';
+  var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  var timer = null, busy = false;
+
+  function steps(host){
+    $('azHost').textContent = host;
+    $('azSteps').innerHTML = J.scan_steps.map(function(t){ return '<li><span class="s">' + CHECK + '</span><span>' + esc(t) + '</span></li>'; }).join('');
+    var li = [].slice.call($('azSteps').children), i = 0;
+    li[0].className = 'run'; clearInterval(timer);
+    timer = setInterval(function(){ if(i >= li.length - 1) return clearInterval(timer); li[i].className = 'done'; li[++i].className = 'run'; }, 850);
+  }
+  function stepsDone(){ clearInterval(timer); [].forEach.call($('azSteps').children, function(l){ l.className = 'done'; }); }
+
+  async function run(url){
+    var err = $('azErr'); err.textContent = '';
+    if(!url) return err.textContent = J.err_url_empty;
+    if(!/^[^\s]+\.[^\s]{2,}/.test(url)) return err.textContent = J.err_url_bad;
+    if(busy) return; busy = true;
+    $('azOut').hidden = true; $('azScan').hidden = false;
+    steps(url.replace(/^https?:\/\//i, '').replace(/\/$/, ''));
+    var t0 = Date.now();
+    try{
+      var r = await fetch('/api/diagnostico/analizar', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: url, lang: LANG})});
+      var d = await r.json().catch(function(){ return {}; });
+      if(!r.ok) throw new Error(d.error || J.err_analyze);
+      await new Promise(function(res){ setTimeout(res, Math.max(0, 3600 - (Date.now() - t0))); });
+      stepsDone();
+      await new Promise(function(res){ setTimeout(res, 350); });
+      render(d, url);
+      track('analyzer_run', {nota: d.nota, dominio: d.dominio, hallazgos: d.hallazgos.length, con_google: d.con_google});
+    }catch(e){
+      clearInterval(timer); $('azScan').hidden = true;
+      err.textContent = e.message || J.err_analyze;
+      track('analyzer_failed', {error: String(e.message || '').slice(0, 80)});
+    }finally{ busy = false; }
+  }
+
+  function render(a, url){
+    $('azScan').hidden = true; $('azOut').hidden = false;
+    var c = a.nota >= 80 ? '#1f4d3a' : a.nota >= 60 ? '#2d4cff' : a.nota >= 40 ? '#d39a17' : '#d93a24';
+    var band = a.nota >= 80 ? 3 : a.nota >= 60 ? 2 : a.nota >= 40 ? 1 : 0;
+    var bars = $('azScale').querySelectorAll('i');
+    [].forEach.call(bars, function(b, i){ b.classList.toggle('on', i === band); });
+    $('azScale').style.setProperty('--c', c);
+    $('azMk').style.left = '0%';
+    requestAnimationFrame(function(){ $('azMk').style.left = a.nota + '%'; });
+    var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, n = reduce ? a.nota : 0;
+    $('azNota').textContent = n;
+    if(!reduce){ var tk = setInterval(function(){ n = Math.min(a.nota, n + 2); $('azNota').textContent = n; if(n >= a.nota) clearInterval(tk); }, 16); }
+    $('azNivel').textContent = a.nivel;
+    $('azDom').textContent = a.dominio;
+    var f = a.hallazgos;
+    $('azFindsT').textContent = f.length === 0 ? ISSUES[0] : f.length === 1 ? ISSUES[1] : ISSUES[2].replace('{n}', f.length);
+    $('azFinds').innerHTML = f.map(function(x){
+      return '<li class="' + x.nivel + '"><div class="ar"><i></i>' + esc(AREAS[x.area] || x.area) + '</div><div><b>' + esc(x.titulo) + '</b>' + (x.detalle ? '<p>' + esc(x.detalle) + '</p>' : '') + '</div></li>';
+    }).join('');
+    $('azFinds').hidden = !f.length;
+    $('azGood').innerHTML = a.bien.map(function(t){ return '<li>' + CHECK + esc(t) + '</li>'; }).join('');
+    $('azGoodBox').hidden = !a.bien.length;
+    var d = a.detectado, tools = [].concat(d.plataforma, d.analitica, d.marketing, d.chat, d.reservas, d.whatsapp ? ['WhatsApp'] : []);
+    $('azTools').innerHTML = tools.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('');
+    $('azToolsBox').hidden = !tools.length;
+    $('azPartial').hidden = !a.parcial;
+    $('azNoGoogle').hidden = !!a.con_google;
+    $('azCta').href = DIAG + '?web=' + encodeURIComponent(a.dominio || url) + '&utm_source=web&utm_medium=analizador';
+    $('azOut').scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'start'});
+  }
+
+  $('azForm').addEventListener('submit', function(ev){ ev.preventDefault(); run($('azUrl').value.trim()); });
+  $('azCta').addEventListener('click', function(){ track('analyzer_cta'); });
+  $('azAgain').addEventListener('click', function(){ $('azOut').hidden = true; $('azUrl').value = ''; $('azUrl').focus(); window.scrollTo({top: 0, behavior: 'smooth'}); });
+  var w = new URLSearchParams(location.search).get('web');
+  if(w){ $('azUrl').value = w.slice(0, 300); run($('azUrl').value.trim()); }
+})();
+</script>
+{% endblock %}

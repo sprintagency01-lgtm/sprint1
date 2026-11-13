@@ -155,7 +155,7 @@
 
   /* footer */
   footer{border-top:1px solid var(--line);padding:56px 0 40px;font-size:.92rem}
-  .foot{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px}
+  .foot{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;gap:28px}
   .foot h4{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);font-weight:400;margin:0 0 14px}
   .foot ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
   .foot li a{display:inline-block;padding:6px 0}
@@ -163,7 +163,8 @@
   .foot p{color:var(--stone);margin:12px 0 0;max-width:30ch}
   .foot-bottom a{color:inherit;text-decoration:none;padding:6px 0;display:inline-block}.foot-bottom a:hover{color:var(--ink)}
   .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:44px;padding-top:22px;border-top:1px solid var(--line);color:var(--stone);font-size:.84rem}
-  @media(max-width:800px){.foot{grid-template-columns:1fr 1fr}}
+  @media(max-width:980px){.foot{grid-template-columns:1fr 1fr 1fr}.foot>div:first-child{grid-column:1 / -1}}
+  @media(max-width:600px){.foot{grid-template-columns:1fr 1fr}}
 
   .lang{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;text-decoration:none;color:var(--ink-2);padding:11px 11px;line-height:1.2;border-radius:999px;box-shadow:inset 0 0 0 1.5px rgba(21,22,26,.14)}
   .lang:hover{color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
@@ -191,6 +192,7 @@
         {% for p in productos %}<a href="{{ p.url }}"><b>{{ p.nombre }}</b><small>{{ p.menu }}</small></a>{% endfor %}
       </div>
     </div>
+    <a href="{{ t.tools }}">{{ t.nav_tools }}</a>
     <a href="{{ t.home }}#como">{{ t.nav_how }}</a>
     <a href="{{ t.diag }}">{{ t.nav_diag }}</a>
     <a href="#contacto">{{ t.nav_contact }}</a>
@@ -200,6 +202,8 @@
 <nav class="mnav container" id="mnav" aria-label="{{ t.nav_menu }}" hidden>
   <div class="sec">{{ t.nav_products }}</div>
   {% for p in productos %}<a href="{{ p.url }}"><b>{{ p.nombre }}</b><small>{{ p.menu }}</small></a>{% endfor %}
+  <div class="sec">{{ t.nav_tools }}</div>
+  {% for n, u in t.tool_links %}<a href="{{ u }}"><b>{{ n }}</b></a>{% endfor %}
   <a href="{{ t.home }}#como"><b>{{ t.nav_how }}</b></a>
   <a href="{{ t.diag }}"><b>{{ t.nav_diag }}</b></a>
   <a href="#contacto"><b>{{ t.nav_contact }}</b></a>
@@ -246,6 +250,7 @@
       <p>{{ t.foot_tagline }}</p>
     </div>
     <div><h4>{{ t.foot_products }}</h4><ul>{% for p in productos %}<li><a href="{{ p.url }}">{{ p.nombre }}</a></li>{% endfor %}</ul></div>
+    <div><h4>{{ t.foot_tools }}</h4><ul>{% for n, u in t.tool_links %}<li><a href="{{ u }}">{{ n }}</a></li>{% endfor %}</ul></div>
     <div><h4>{{ t.foot_start }}</h4><ul><li><a href="{{ t.diag }}">{{ t.foot_diag }}</a></li><li><a href="{{ t.home }}#como">{{ t.nav_how }}</a></li><li><a href="#contacto">{{ t.foot_quote }}</a></li></ul></div>
     <div><h4>Sprintia</h4><ul><li><a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></li><li><a href="{{ alt_path or ('/' if lang == 'en' else '/en') }}">{{ t.foot_lang }}</a></li></ul></div>
   </div>
