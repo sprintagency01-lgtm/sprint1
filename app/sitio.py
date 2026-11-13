@@ -319,9 +319,11 @@ _PRODUCTOS = {"es": PRODUCTOS, "en": PRODUCTOS_EN}
 _BY_SLUG_EN = {p["slug"]: p for p in PRODUCTOS_EN}
 
 # Textos de interfaz de las plantillas (base y producto).
-T: dict[str, dict[str, str]] = {
+T: dict[str, dict] = {
     "es": {
-        "locale": "es_ES", "home": "/", "diag": "/diagnostico", "home_aria": "Sprintia, inicio", "nav_aria": "Principal",
+        "locale": "es_ES", "home": "/", "diag": "/diagnostico", "tools": "/herramientas", "nav_tools": "Herramientas", "foot_tools": "Herramientas gratis",
+        "tool_links": [("Analiza tu web", "/analizar-web"), ("Enlace para reseñas de Google", "/herramientas/enlace-resenas-google"),
+                       ("Enlace de WhatsApp", "/herramientas/enlace-whatsapp")], "home_aria": "Sprintia, inicio", "nav_aria": "Principal",
         "nav_products": "Productos", "nav_how": "Cómo trabajamos", "nav_diag": "Diagnóstico gratis", "nav_contact": "Contacto", "nav_menu": "Menú", "nav_menu_aria": "Abrir el menú",
         "nav_cta": "Analiza tu web", "nav_cta_short": "Analizar", "switch_label": "EN", "switch_title": "English",
         "contact_kicker": "Contacto", "contact_title": "Cuéntanos qué te quita <em>tiempo</em>.",
@@ -345,7 +347,9 @@ T: dict[str, dict[str, str]] = {
         "faq_title": "Lo que nos <em>suelen</em> preguntar.", "p_combines": "Se combina con", "p_others": "Otros <em>productos</em>.",
     },
     "en": {
-        "locale": "en_GB", "home": "/en", "diag": "/en/diagnosis", "home_aria": "Sprintia, home", "nav_aria": "Main",
+        "locale": "en_GB", "home": "/en", "diag": "/en/diagnosis", "tools": "/en/tools", "nav_tools": "Free tools", "foot_tools": "Free tools",
+        "tool_links": [("Website analyzer", "/en/website-analyzer"), ("Google review link", "/en/tools/google-review-link"),
+                       ("WhatsApp link", "/en/tools/whatsapp-link")], "home_aria": "Sprintia, home", "nav_aria": "Main",
         "nav_products": "Products", "nav_how": "How we work", "nav_diag": "Free assessment", "nav_contact": "Contact", "nav_menu": "Menu", "nav_menu_aria": "Open the menu",
         "nav_cta": "Analyse your website", "nav_cta_short": "Analyse", "switch_label": "ES", "switch_title": "Español",
         "contact_kicker": "Contact", "contact_title": "Tell us what's eating your <em>time</em>.",

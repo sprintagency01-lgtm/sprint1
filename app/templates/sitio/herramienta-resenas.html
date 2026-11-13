@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block jsonld %}
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebApplication", "name": {{ s.seo_title|tojson }}, "url": "{{ base_url }}{{ path }}",
+ "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "isAccessibleForFree": true, "inLanguage": "{{ lang }}",
+ "description": {{ s.seo_desc|tojson }}, "provider": {"@type": "Organization", "name": "Sprintia", "url": "{{ base_url }}{{ t.home }}"}}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{% for q in s.faq %}{"@type": "Question", "name": {{ q[0]|tojson }}, "acceptedAnswer": {"@type": "Answer", "text": {{ q[1]|tojson }}}}{% if not loop.last %},{% endif %}{% endfor %}]}
+</script>
+{% endblock %}
+
+{% block css %}
+{% include "_herramientas_css.html" %}
+  .picks{list-style:none;margin:22px 0 0;padding:0;border-top:1px solid var(--line);max-width:760px}
+  .picks h3{font-weight:600;font-size:.95rem;margin:0;padding:16px 0 6px}
+  .picks button{display:grid;grid-template-columns:1fr auto;gap:4px 16px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:15px 4px;font:inherit;color:var(--ink);cursor:pointer;transition:background .15s}
+  .picks button:hover{background:rgba(255,255,255,.55)}
+  .picks b{font-weight:600}
+  .picks small{grid-column:1;color:var(--stone);font-size:.88rem;line-height:1.35}
+  .picks .rt{grid-row:1 / span 2;grid-column:2;align-self:center;font-size:.88rem;color:var(--ink-2);display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .picks .rt svg{width:14px;height:14px;color:#d39a17}
+  .picks .go{font-size:.86rem;color:var(--accent);font-weight:600}
+  .chosen{display:flex;justify-content:space-between;gap:16px;align-items:baseline;margin-bottom:14px;flex-wrap:wrap}
+  .chosen h2{font-family:var(--serif);font-size:clamp(1.9rem,4vw,2.6rem);line-height:1.02;margin:0}
+  .chosen span{color:var(--stone);font-size:.92rem}
+  .help{margin-top:22px;font-size:.92rem;color:var(--ink-2);max-width:60ch}
+  .help b{font-weight:600;color:var(--ink)}
+  .tbtn.ok{box-shadow:inset 0 0 0 1.5px var(--green);color:var(--green)}
+{% endblock %}
+
+{% block main %}
+<section class="thero">
+  <div class="container">
+    <div class="crumbs"><a href="{{ t.home }}">Sprintia</a> · <a href="{{ urls.index }}">{{ tx.crumb }}</a></div>
+    <h1>{{ s.h1|safe }}</h1>
+    <p class="lede">{{ s.lede }}</p>
+    <div class="tool">
+      <form id="rvForm" novalidate>
+        <div class="urlbox">
+          <input id="rvQ" name="q" type="text" autocomplete="organization" placeholder="{{ s.ph }}" aria-label="{{ s.aria }}" maxlength="120">
+          <button class="btn accent" type="submit" id="rvBtn">{{ s.btn }} <span aria-hidden="true">→</span></button>
+        </div>
+        <p class="tnote">{{ s.note }}</p>
+        <div class="err" id="rvErr" role="alert"></div>
+      </form>
+      <div id="rvPicks" hidden><ul class="picks" id="rvList" aria-label="{{ s.pick }}"></ul></div>
+
+      <div class="out" id="rvOut" hidden aria-live="polite">
+        <div class="chosen"><h2 id="rvName"></h2><span id="rvMeta"></span></div>
+        <div class="linkrow"><code id="rvLink"></code><button class="tbtn solid" type="button" id="rvCopy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>{{ s.copy_link }}</span></button></div>
+        <div class="acts"><a class="tbtn" id="rvTest" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span>{{ s.test }}</span></a></div>
+        <div class="qrwrap">
+          <div class="qr" id="rvQr"></div>
+          <div>
+            <h3>{{ s.card_p }}</h3>
+            <p>{{ s.card_s }}.</p>
+            <div class="acts">
+              <button class="tbtn solid" type="button" id="rvCard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7"/></svg><span>{{ s.card }}</span></button>
+              <button class="tbtn" type="button" id="rvPng"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>{{ s.png }}</span></button>
+              <button class="tbtn" type="button" id="rvSvg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>{{ s.svg }}</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="help"><b>{{ s.help_t }}</b> {{ s.help_p }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="tinfo">
+  <div class="container">
+    <h2>{{ s.tips_t }}</h2>
+    <div class="defs">{% for c in s.tips %}<div><b>{{ c[0] }}</b><p>{{ c[1] }}</p></div>{% endfor %}</div>
+  </div>
+</section>
+
+<section class="tinfo">
+  <div class="container">
+    <h2>{{ t.faq_title|safe }}</h2>
+    <div class="faq">{% for q in s.faq %}<details><summary>{{ q[0] }}</summary><p>{{ q[1] }}</p></details>{% endfor %}</div>
+  </div>
+</section>
+
+<section class="tinfo">
+  <div class="container">
+    <div class="band dark">
+      <div><h2>{{ s.bridge_h }}</h2><p>{{ s.bridge_p }}</p></div>
+      <div class="bacts"><a class="btn accent" href="{{ s.bridge_url }}" data-cta="herramienta-puente">{{ s.bridge_btn }} <span aria-hidden="true">→</span></a></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block js %}
+{% include "_qr.html" %}
+<script>
+(function(){
+  var J = {{ tx.js|tojson }}, S = {{ {'none': s.none, 'one': s.reviews_one, 'many': s.reviews_many, 'zero': s.no_reviews, 'searching': s.searching, 'copied': s.copied, 'card_h': s.card_h, 'card_p': s.card_p, 'card_s': s.card_s, 'pick': s.pick}|tojson }};
+  var BASE = {{ review_base|tojson }}, LANG = '{{ lang }}', BTN = {{ s.btn|tojson }};
+  var STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></svg>';
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  var fmt = function(n){ return n.toLocaleString(LANG === 'en' ? 'en-GB' : 'es-ES', {maximumFractionDigits: 1, minimumFractionDigits: 1}); };
+  var cur = null, results = [];
+
+  function count(p){ return !p.count ? S.zero : p.count === 1 ? S.one : S.many.replace('{n}', p.count.toLocaleString(LANG === 'en' ? 'en-GB' : 'es-ES')); }
+
+  async function search(q){
+    var err = $('rvErr'), btn = $('rvBtn'); err.textContent = '';
+    if(q.length < 3) return err.textContent = J.err_q;
+    btn.disabled = true; btn.firstChild.nodeValue = S.searching + ' ';
+    $('rvOut').hidden = true;
+    try{
+      var r = await fetch('/api/herramientas/negocios', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({q: q, lang: LANG})});
+      var d = await r.json().catch(function(){ return {}; });
+      if(!r.ok) throw new Error(d.error || J.err_search);
+      results = d.results || [];
+      track('review_search', {resultados: results.length});
+      if(!results.length){ $('rvPicks').hidden = true; err.textContent = S.none; return; }
+      if(results.length === 1){ $('rvPicks').hidden = true; choose(results[0]); return; }
+      $('rvList').innerHTML = '<li><h3>' + esc(S.pick) + '</h3></li>' + results.map(function(p, i){
+        return '<li><button type="button" data-i="' + i + '"><b>' + esc(p.name) + '</b><small>' + esc(p.address) + '</small>'
+          + '<span class="rt">' + (p.rating ? STAR + fmt(p.rating) + ' · ' : '') + esc(count(p)) + '</span></button></li>';
+      }).join('');
+      $('rvPicks').hidden = false;
+    }catch(e){ err.textContent = e.message || J.err_search; }
+    finally{ btn.disabled = false; btn.firstChild.nodeValue = BTN + ' '; }
+  }
+
+  function choose(p){
+    cur = p; cur.link = BASE + encodeURIComponent(p.place_id);
+    $('rvPicks').hidden = true;
+    $('rvName').textContent = p.name;
+    $('rvMeta').textContent = (p.rating ? fmt(p.rating) + ' ★ · ' : '') + count(p);
+    $('rvLink').textContent = cur.link;
+    $('rvTest').href = cur.link;
+    $('rvQr').innerHTML = QR.svg(cur.link);
+    $('rvOut').hidden = false;
+    $('rvOut').scrollIntoView({behavior: 'smooth', block: 'start'});
+    track('review_link_created');
+  }
+
+  function slug(){ return (cur.name || 'negocio').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'negocio'; }
+
+  function wrap(ctx, text, x, y, maxW, lh){
+    var words = text.split(' '), line = '', lines = [];
+    words.forEach(function(w){ var t = line ? line + ' ' + w : w; if(ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; } else line = t; });
+    lines.push(line); lines.slice(0, 2).forEach(function(l, i){ ctx.fillText(l, x, y + i * lh); });
+    return Math.min(lines.length, 2);
+  }
+
+  async function card(){
+    try{ await Promise.all([document.fonts.load('400 120px "Instrument Serif"'), document.fonts.load('italic 400 120px "Instrument Serif"'), document.fonts.load('600 40px "Inter Tight"')]); }catch(e){}
+    var W = 1240, H = 1754, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    var ctx = cv.getContext('2d'), cx = W / 2;
+    ctx.fillStyle = '#f4efe6'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#66655f'; ctx.font = '500 38px "Inter Tight", system-ui, sans-serif';
+    var nl = wrap(ctx, cur.name, cx, 190, W - 200, 50);
+    ctx.fillStyle = '#15161a'; ctx.font = 'italic 400 150px "Instrument Serif", Georgia, serif';
+    ctx.fillText(S.card_h, cx, 360 + (nl - 1) * 50);
+    ctx.font = '400 66px "Instrument Serif", Georgia, serif';
+    ctx.fillText(S.card_p, cx, 460 + (nl - 1) * 50);
+    // estrellas
+    var sy = 540 + (nl - 1) * 50, ss = 56, gap = 18, sx = cx - (ss * 5 + gap * 4) / 2;
+    ctx.fillStyle = '#E8B84A';
+    for(var k = 0; k < 5; k++) star(ctx, sx + k * (ss + gap) + ss / 2, sy + ss / 2, ss / 2, ss / 4.6);
+    // QR
+    var qs = 760, qx = cx - qs / 2, qy = 690 + (nl - 1) * 40;
+    ctx.fillStyle = '#ffffff'; roundRect(ctx, qx - 50, qy - 50, qs + 100, qs + 100, 48); ctx.fill();
+    QR.draw(ctx, cur.link, qx, qy, qs);
+    ctx.fillStyle = '#3a3b40'; ctx.font = '500 40px "Inter Tight", system-ui, sans-serif';
+    ctx.fillText(S.card_s, cx, qy + qs + 140);
+    ctx.fillStyle = '#9a988f'; ctx.font = '400 26px "Inter Tight", system-ui, sans-serif';
+    ctx.fillText('sprintiasolutions.com', cx, H - 70);
+    QR.saveCanvas((LANG === 'en' ? 'review-card-' : 'tarjeta-resenas-') + slug() + '.png', cv);
+    track('qr_download', {tool: 'resenas', format: 'card'});
+  }
+  function star(ctx, x, y, R, r){ ctx.beginPath(); for(var i = 0; i < 10; i++){ var a = Math.PI / 5 * i - Math.PI / 2, rad = i % 2 ? r : R; ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); } ctx.closePath(); ctx.fill(); }
+  function roundRect(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+  $('rvForm').addEventListener('submit', function(ev){ ev.preventDefault(); search($('rvQ').value.trim()); });
+  $('rvList').addEventListener('click', function(e){ var b = e.target.closest('button[data-i]'); if(b) choose(results[+b.dataset.i]); });
+  $('rvCopy').addEventListener('click', function(){ QR.copy(cur.link, this, S.copied); track('review_link_copied'); });
+  $('rvPng').addEventListener('click', function(){ QR.saveCanvas((LANG === 'en' ? 'review-qr-' : 'qr-resenas-') + slug() + '.png', QR.png(cur.link, 1200)); track('qr_download', {tool: 'resenas', format: 'png'}); });
+  $('rvSvg').addEventListener('click', function(){ QR.saveSvg((LANG === 'en' ? 'review-qr-' : 'qr-resenas-') + slug() + '.svg', cur.link); track('qr_download', {tool: 'resenas', format: 'svg'}); });
+  $('rvCard').addEventListener('click', card);
+  var q = new URLSearchParams(location.search).get('negocio');
+  if(q){ $('rvQ').value = q.slice(0, 120); search($('rvQ').value.trim()); }
+})();
+</script>
+{% endblock %}

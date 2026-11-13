@@ -141,3 +141,87 @@ def test_la_landing_de_voz_no_muestra_precios():
             json.loads(block)                                   # JSON-LD sigue siendo válido
     en = client.get("/en/voice-assistant").text
     assert "A fixed price, <em>for your business</em>." in en and 'href="/en/products/websites"' in en
+
+
+# ---------- Herramientas gratis ----------
+from types import SimpleNamespace
+from app import herramientas
+
+
+def test_paginas_de_herramientas_en_dos_idiomas():
+    for key, (es, en) in herramientas.PATHS.items():
+        for path, alt, lang in ((es, en, "es"), (en, es, "en")):
+            r = client.get(path)
+            assert r.status_code == 200, path
+            assert f'<html lang="{lang}">' in r.text, path
+            assert f'<link rel="canonical" href="https://sprintiasolutions.com{path}">' in r.text, path
+            assert f'href="https://sprintiasolutions.com{alt}"' in r.text, path       # hreflang
+            assert "€/mes" not in r.text and "€/month" not in r.text, path
+    az = client.get("/analizar-web").text
+    assert "/api/diagnostico/analizar" in az and "?web=" in az and "analyzer_run" in az
+    assert "Analizar web gratis" in az
+    rv = client.get("/en/tools/google-review-link").text
+    assert "search.google.com/local/writereview?placeid=" in rv and "qrcode.min.js" in rv
+    wa = client.get("/herramientas/enlace-whatsapp").text
+    assert "https://wa.me/" in wa and 'value="+34"' in wa
+    assert 'value="+44"' in client.get("/en/tools/whatsapp-link").text
+
+
+def test_herramientas_en_menu_pie_y_sitemap():
+    home = client.get("/").text
+    assert 'href="/herramientas"' in home and 'href="/herramientas/enlace-whatsapp"' in home
+    assert 'href="/en/tools/google-review-link"' in client.get("/en").text
+    sm = client.get("/sitemap.xml").text
+    for p in herramientas.tool_paths():
+        assert f"https://sprintiasolutions.com{p}</loc>" in sm, p
+
+
+def test_busqueda_de_negocios(monkeypatch):
+    herramientas._HITS.clear(); herramientas._CACHE.clear()
+    url = "/api/herramientas/negocios"
+    assert client.post(url, json={"q": "ab"}).status_code == 400
+    # sin clave: aviso claro, en el idioma pedido
+    monkeypatch.setattr(herramientas, "settings", SimpleNamespace(diag_google_api_key=""))
+    r = client.post(url, json={"q": "Panadería Lola", "lang": "en"})
+    assert r.status_code == 503 and "Google Business Profile" in r.json()["error"]
+
+    monkeypatch.setattr(herramientas, "settings", SimpleNamespace(diag_google_api_key="test-key"))
+    calls = []
+
+    class FakeResp:
+        status_code = 200
+        text = ""
+        def json(self):
+            return {"places": [{"id": "ChIJ123", "displayName": {"text": "Panadería Lola"},
+                                "formattedAddress": "Calle Mayor 1, Córdoba", "rating": 4.7, "userRatingCount": 88},
+                               {"displayName": {"text": "sin id"}}]}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, u, json=None, headers=None):
+            calls.append((u, json, headers))
+            return FakeResp()
+
+    monkeypatch.setattr(herramientas.httpx, "AsyncClient", FakeClient)
+    r = client.post(url, json={"q": "Panadería Lola Córdoba"})
+    assert r.status_code == 200
+    assert r.json()["results"] == [{"place_id": "ChIJ123", "name": "Panadería Lola",
+                                    "address": "Calle Mayor 1, Córdoba", "rating": 4.7, "count": 88}]
+    assert calls[0][1]["regionCode"] == "ES" and "places.id" in calls[0][2]["X-Goog-FieldMask"]
+    client.post(url, json={"q": "Panadería Lola Córdoba"})
+    assert len(calls) == 1                                          # segunda vez, de la caché
+
+    herramientas._HITS.clear()
+    for _ in range(herramientas._MAX_SEARCHES):
+        client.post(url, json={"q": "Panadería Lola Córdoba"})
+    r = client.post(url, json={"q": "Panadería Lola Córdoba"})
+    assert r.status_code == 429
+    herramientas._HITS.clear()
+
+
+def test_herramientas_sin_textos_rotos():
+    for p in herramientas.tool_paths():
+        html = client.get(p).text
+        assert "built-in method" not in html and "{{" not in html, p

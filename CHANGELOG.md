@@ -6,6 +6,18 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-11-13 (herramientas gratis)
+
+### Añadido
+- **Analizador de webs** en `/analizar-web` y `/en/website-analyzer`: el análisis del diagnóstico sin el test (nota, escala, hallazgos por área, lo que está bien y herramientas detectadas). Usa `/api/diagnostico/analizar`. Con `?web=dominio.com` analiza al entrar (para emails en frío). Termina en el diagnóstico completo con la web ya puesta.
+- **Enlace para reseñas de Google** en `/herramientas/enlace-resenas-google` y `/en/tools/google-review-link`: busca el negocio en Google Places (nuevo `POST /api/herramientas/negocios`, 20 búsquedas cada 10 min por IP y caché de 24 h) y da el enlace oficial para valorar, el QR en PNG/SVG y una tarjeta para imprimir. Acepta `?negocio=`.
+- **Enlace de WhatsApp** en `/herramientas/enlace-whatsapp` y `/en/tools/whatsapp-link`: enlace wa.me con mensaje, QR en PNG/SVG y código de botón para la web. Todo en el navegador.
+- Índice en `/herramientas` y `/en/tools`. "Herramientas" en el menú, el menú del móvil y una columna nueva en el pie. Las ocho URLs entran en el sitemap.
+- Código en `app/herramientas.py` y plantillas `app/templates/sitio/herramienta-*.html`. Eventos de PostHog: `analyzer_run`, `analyzer_cta`, `review_search`, `review_link_created`, `whatsapp_link_created`, `qr_download`.
+
+### Env / despliegue
+- La búsqueda de negocios usa la misma `DIAG_GOOGLE_API_KEY` (Places API New). Sin clave, la página explica cómo sacar el enlace desde el Perfil de Empresa de Google.
+
 ## 2026-11-12 (sin precios en ninguna página)
 
 ### Cambiado

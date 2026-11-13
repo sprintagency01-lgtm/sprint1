@@ -27,6 +27,7 @@ from . import oauth_web
 from . import diag
 from . import diagnostico
 from . import sitio
+from . import herramientas
 from . import sheets_sync
 from . import telegram as tg_module
 from . import gemini_live_bridge
@@ -165,6 +166,7 @@ app.include_router(diag.router)
 app.include_router(diagnostico.router)
 # Web corporativa: home y páginas de producto (la home ya no es la landing de voz).
 app.include_router(sitio.router)
+app.include_router(herramientas.router)
 # Demo Gemini 3.1 Flash Live (POC paralelo a ElevenLabs):
 #   GET  /gemini-demo      → UI HTML para probar Ana en navegador
 #   WS   /gemini-demo/ws   → bridge browser ↔ Gemini Live
@@ -307,6 +309,7 @@ async def sitemap() -> Response:
         (f"{base}/diagnostico", "0.9"),
         (f"{base}/en/diagnosis", "0.8"),
         *[(f"{base}{path}", "0.8") for path in sitio.product_paths()],
+        *[(f"{base}{path}", "0.7") for path in herramientas.tool_paths()],
         (f"{base}/privacidad", "0.3"),
         (f"{base}/en/privacy", "0.3"),
     ]
