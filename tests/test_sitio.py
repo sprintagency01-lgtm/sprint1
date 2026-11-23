@@ -61,6 +61,39 @@ def test_sitemap_incluye_productos():
         assert f"<loc>https://sprintiasolutions.com{path}</loc>" in xml
 
 
+def test_sitemap_lastmod_fijo_por_pagina():
+    import re
+    xml = client.get("/sitemap.xml").text
+    urls = re.findall(r"<url>(.*?)</url>", xml)
+    assert urls and all(re.search(r"<lastmod>\d{4}-\d{2}-\d{2}</lastmod>", u) for u in urls)
+    # Fecha fija de la tabla de main.py, no la de la petición.
+    assert "<loc>https://sprintiasolutions.com/</loc><lastmod>2026-11-13</lastmod>" in xml
+
+
+def test_llms_txt():
+    r = client.get("/llms.txt")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/plain")
+    body = r.text
+    assert body.startswith("# Sprintia\n")
+    for p in sitio.PRODUCTOS:
+        assert f"https://sprintiasolutions.com{p['url']}" in body
+    for _, url in sitio.T["es"]["tool_links"]:
+        assert f"https://sprintiasolutions.com{url}" in body
+    assert "hola@sprintiasolutions.com" in body
+    assert "€" not in body                                  # sin precios, como la web corporativa
+
+
+def test_home_seo_basico():
+    import re
+    for path in ("/", "/en"):
+        html = client.get(path).text
+        desc = re.search(r'<meta name="description" content="([^"]*)"', html).group(1)
+        assert 50 < len(desc) <= 155, (path, len(desc))
+        assert '"@type": "WebSite"' in html and '"@type": "FAQPage"' in html
+        assert "<h4>" not in html                           # heading-order: el pie va con h3 tras los h2
+        assert ">Más información<" not in html and ">More info<" not in html   # link-text
+
+
 def test_autorespuesta_de_la_web_corporativa():
     for source in ("home", "producto-webs"):
         subject, _, body, _, signoff = _autoreply_parts(

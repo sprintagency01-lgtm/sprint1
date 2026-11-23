@@ -20,6 +20,16 @@
   "mainEntity": [{% for q in faq %}{"@type": "Question", "name": {{ q[0]|tojson }}, "acceptedAnswer": {"@type": "Answer", "text": {{ q[1]|tojson }}}}{% if not loop.last %},{% endif %}{% endfor %}]
 }
 </script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Sprintia",
+  "url": "https://sprintiasolutions.com/",
+  "inLanguage": ["es", "en"],
+  "publisher": {"@type": "Organization", "name": "Sprintia", "url": "https://sprintiasolutions.com/"}
+}
+</script>
 {% endblock %}
 
 {% block css %}

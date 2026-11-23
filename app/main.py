@@ -299,6 +299,19 @@ async def gsc_verification() -> PlainTextResponse:
     )
 
 
+# Fecha del último cambio de contenido de cada página (último commit que tocó
+# sus textos o su plantilla). Es fija a propósito: el sitemap no debe dar la
+# fecha de cada petición ni la del despliegue. Actualízala al cambiar el
+# contenido visible de una página. Las rutas que no estén aquí usan el valor
+# por defecto.
+_SITEMAP_LASTMOD_DEFAULT = "2026-11-12"
+_SITEMAP_LASTMOD = {
+    "/": "2026-11-13",
+    "/en": "2026-11-13",
+    **{path: "2026-11-13" for path in herramientas.tool_paths()},
+}
+
+
 @app.get("/sitemap.xml", include_in_schema=False)
 async def sitemap() -> Response:
     """Sitemap mínimo con las páginas públicas indexables de la landing."""
@@ -314,7 +327,9 @@ async def sitemap() -> Response:
         (f"{base}/en/privacy", "0.3"),
     ]
     items = "".join(
-        f"<url><loc>{loc}</loc><changefreq>weekly</changefreq>"
+        f"<url><loc>{loc}</loc>"
+        f"<lastmod>{_SITEMAP_LASTMOD.get(loc[len(base):] or '/', _SITEMAP_LASTMOD_DEFAULT)}</lastmod>"
+        f"<changefreq>weekly</changefreq>"
         f"<priority>{prio}</priority></url>"
         for loc, prio in urls
     )
@@ -324,6 +339,12 @@ async def sitemap() -> Response:
         f"{items}</urlset>"
     )
     return Response(content=xml, media_type="application/xml")
+
+
+@app.get("/llms.txt", include_in_schema=False)
+async def llms_txt() -> PlainTextResponse:
+    """Resumen de la web para asistentes de IA (https://llmstxt.org/)."""
+    return PlainTextResponse(sitio.llms_txt())
 
 
 @app.get("/robots.txt", include_in_schema=False)

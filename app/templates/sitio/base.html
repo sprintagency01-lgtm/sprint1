@@ -156,7 +156,7 @@
   /* footer */
   footer{border-top:1px solid var(--line);padding:56px 0 40px;font-size:.92rem}
   .foot{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;gap:28px}
-  .foot h4{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);font-weight:400;margin:0 0 14px}
+  .foot h3{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);font-weight:400;margin:0 0 14px}
   .foot ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
   .foot li a{display:inline-block;padding:6px 0}
   .foot a{text-decoration:none;color:var(--ink-2)}.foot a:hover{color:var(--ink)}
@@ -249,10 +249,10 @@
       <a class="logo" href="{{ t.home }}" aria-label="Sprintia"><svg viewBox="0 0 28 28" aria-hidden="true"><rect class="b" x="6.58" y="10.08" width="3.64" height="11.2" rx="1.82"/><rect class="b" x="12.18" y="5.6" width="3.64" height="17.92" rx="1.82"/><rect class="b" x="17.78" y="11.76" width="3.64" height="8.4" rx="1.82"/><circle class="d" cx="19.6" cy="6.16" r="2.38"/></svg>Sprintia</a>
       <p>{{ t.foot_tagline }}</p>
     </div>
-    <div><h4>{{ t.foot_products }}</h4><ul>{% for p in productos %}<li><a href="{{ p.url }}">{{ p.nombre }}</a></li>{% endfor %}</ul></div>
-    <div><h4>{{ t.foot_tools }}</h4><ul>{% for n, u in t.tool_links %}<li><a href="{{ u }}">{{ n }}</a></li>{% endfor %}</ul></div>
-    <div><h4>{{ t.foot_start }}</h4><ul><li><a href="{{ t.diag }}">{{ t.foot_diag }}</a></li><li><a href="{{ t.home }}#como">{{ t.nav_how }}</a></li><li><a href="#contacto">{{ t.foot_quote }}</a></li></ul></div>
-    <div><h4>Sprintia</h4><ul><li><a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></li><li><a href="{{ alt_path or ('/' if lang == 'en' else '/en') }}">{{ t.foot_lang }}</a></li></ul></div>
+    <div><h3>{{ t.foot_products }}</h3><ul>{% for p in productos %}<li><a href="{{ p.url }}">{{ p.nombre }}</a></li>{% endfor %}</ul></div>
+    <div><h3>{{ t.foot_tools }}</h3><ul>{% for n, u in t.tool_links %}<li><a href="{{ u }}">{{ n }}</a></li>{% endfor %}</ul></div>
+    <div><h3>{{ t.foot_start }}</h3><ul><li><a href="{{ t.diag }}">{{ t.foot_diag }}</a></li><li><a href="{{ t.home }}#como">{{ t.nav_how }}</a></li><li><a href="#contacto">{{ t.foot_quote }}</a></li></ul></div>
+    <div><h3>Sprintia</h3><ul><li><a href="mailto:hola@sprintiasolutions.com">hola@sprintiasolutions.com</a></li><li><a href="{{ alt_path or ('/' if lang == 'en' else '/en') }}">{{ t.foot_lang }}</a></li></ul></div>
   </div>
   <div class="foot-bottom"><div>© {{ year }} Sprintia</div><div><a href="{{ t.privacy }}">{{ t.foot_legal }}</a> · <button class="ck-link" type="button" data-cookies>Cookies</button></div></div>
 </div></footer>
