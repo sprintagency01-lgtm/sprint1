@@ -397,7 +397,7 @@ async def home() -> HTMLResponse:
         "home.html", path="/", alt_path="/en", lead_source="home",
         seo_title="Automatización para empresas: webs, CRM y procesos · Sprintia",
         og_title="Sprintia · Lo que tu equipo hace a mano, que se haga solo",
-        seo_desc="Diseñamos y montamos automatizaciones para empresas: webs que captan clientes, CRM automatizado, asistente de voz con IA y automatización de procesos. Analiza tu web gratis.",
+        seo_desc="Automatización para empresas: webs que captan clientes, CRM automatizado, asistente de voz con IA y automatización de procesos. Analiza tu web gratis.",
         herramientas=HERRAMIENTAS, faq=FAQ_HOME,
     ))
 
@@ -408,7 +408,7 @@ async def home_en() -> HTMLResponse:
         "home_en.html", "en", path="/en", alt_path="/", lead_source="home-en",
         seo_title="Business automation: websites, CRM and processes · Sprintia",
         og_title="Sprintia · What your team does by hand, done automatically",
-        seo_desc="We design and build automation for businesses: websites that bring in customers, an automated CRM, an AI voice assistant and process automation. Analyse your website for free.",
+        seo_desc="Automation for businesses: websites that bring in customers, an automated CRM, an AI voice assistant and process automation. Analyse your website free.",
         herramientas=HERRAMIENTAS, faq=FAQ_HOME_EN,
     ))
 
@@ -476,3 +476,71 @@ async def privacy_en() -> HTMLResponse:
 def product_paths() -> list[str]:
     """Rutas indexables de producto (para el sitemap), en los dos idiomas."""
     return [p["url"] for p in PRODUCTOS + PRODUCTOS_EN]
+
+
+# Sectores con página propia en la landing del asistente de voz (pestañas de
+# `templates/landing.html`) y sectores del diagnóstico (`diagnostico.QUESTIONS`).
+_SECTORES_VOZ = ["peluquerías", "clínicas", "consultores", "veterinarias", "restaurantes"]
+_SECTORES_DIAG = ["servicios profesionales", "comercio o ecommerce", "industria o distribución",
+                  "hostelería o turismo", "salud o clínicas", "inmobiliaria", "formación"]
+_TOOL_DESC = {
+    "/analizar-web": "nota de 0 a 100, test SEO, velocidad en el móvil, formas de contacto y reseñas de Google, sin registro.",
+    "/herramientas/enlace-resenas-google": "busca tu negocio y da el enlace directo para que te dejen reseña en Google, con QR y tarjeta para imprimir.",
+    "/herramientas/enlace-whatsapp": "enlace de WhatsApp con el mensaje ya escrito, con QR y botón para tu web.",
+}
+
+
+def llms_txt() -> str:
+    """`/llms.txt`: qué es Sprintia, en texto plano y con los mismos datos de la web."""
+    b = BASE_URL
+    lines = [
+        "# Sprintia",
+        "",
+        "> Sprintia diseña y monta automatizaciones para empresas: webs que captan clientes, "
+        "CRM automatizado, asistente de voz con IA y automatización de procesos, conectados "
+        "a las herramientas que la empresa ya usa. Trabaja con empresas de España.",
+        "",
+        "Sin precios en la web corporativa: después del diagnóstico gratuito se da un presupuesto "
+        "cerrado, con lo que incluye y el plazo. Los planes del asistente de voz están en su página.",
+        "",
+        "## Servicios",
+        "",
+    ]
+    for p in PRODUCTOS:
+        lines.append(f"- [{p['nombre']}]({b}{p['url']}): {p['resumen']}")
+    lines += [
+        "",
+        "## Para quién",
+        "",
+        "- Empresas que ya funcionan y pierden demasiado tiempo en tareas repetitivas: de 10 a 250 "
+        "personas, aunque también trabaja con negocios más pequeños.",
+        f"- Asistente de voz: {', '.join(_SECTORES_VOZ)} y cualquier negocio que vive de citas.",
+        f"- Sectores del diagnóstico: {', '.join(_SECTORES_DIAG)}.",
+        "",
+        "## Herramientas gratis",
+        "",
+        f"- [Herramientas]({b}/herramientas): índice.",
+    ]
+    for name, url in T["es"]["tool_links"]:
+        lines.append(f"- [{name}]({b}{url}): {_TOOL_DESC[url]}")
+    lines += [
+        f"- [Diagnóstico de automatización]({b}/diagnostico): tu web y 15 preguntas para saber "
+        "cuántas horas de trabajo manual podrías recuperar y por dónde empezar.",
+        "",
+        "## Con qué trabaja",
+        "",
+        ", ".join(HERRAMIENTAS) + ".",
+        "",
+        "## Contacto",
+        "",
+        f"- Email: {OWNER['email']}",
+        f"- Formulario: {b}/#contacto",
+        "",
+        "## En inglés",
+        "",
+        f"- [Home]({b}/en)",
+    ]
+    for p in PRODUCTOS_EN:
+        lines.append(f"- [{p['nombre']}]({b}{p['url']})")
+    lines += [f"- [Free tools]({b}/en/tools)", f"- [Free assessment]({b}/en/diagnosis)", ""]
+    return "\n".join(lines)

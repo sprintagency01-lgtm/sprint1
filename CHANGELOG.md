@@ -6,6 +6,22 @@ Entrada más reciente arriba.
 
 ---
 
+## 2026-11-23 (SEO semanal)
+
+### Añadido
+- `/llms.txt` (texto plano, en español): qué es Sprintia, los cuatro servicios, para quién, las herramientas gratis con sus URL, con qué trabaja y el email de contacto. Se genera desde los mismos datos de `app/sitio.py`.
+- JSON-LD `WebSite` en la home (ES y EN). El `FAQPage` ya estaba en la home, los productos y las herramientas.
+
+### Cambiado
+- `sitemap.xml` con `<lastmod>` por página: fechas fijas en `_SITEMAP_LASTMOD` de `app/main.py` (último cambio de contenido), no la fecha de la petición. Hay que actualizarlas al cambiar el contenido visible.
+- Description de la home por debajo de 155 caracteres (150 en ES, 151 en EN).
+
+### Corregido
+- Lighthouse `heading-order`: los títulos del pie pasan de `h4` a `h3` (mismo estilo).
+- Lighthouse `link-text`: el enlace del aviso de cookies dice «Cómo usamos las cookies» / «How we use cookies» en vez de «Más información» / «More info».
+
+---
+
 ## 2026-11-13 (herramientas gratis)
 
 ### Añadido
